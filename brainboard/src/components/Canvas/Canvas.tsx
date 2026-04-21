@@ -17,7 +17,6 @@ export function Canvas() {
   const canvasShellRef = useRef<HTMLDivElement>(null)
   const isSpaceDownRef = useRef(false)
 
-  // Selecto needs a real DOM element, which only exists after first render
   const [shellEl, setShellEl] = useState<HTMLDivElement | null>(null)
 
   const { board, createCard, setViewport } = useBoardStore()
@@ -30,10 +29,8 @@ export function Canvas() {
   useEffect(() => {
     let frame: number
     const tryScroll = () => {
-      const viewer = viewerRef.current
-      if (!viewer) return
       try {
-        viewer.scrollTo(
+        viewerRef.current?.scrollTo(
           WORLD_CENTER - window.innerWidth  / 2,
           WORLD_CENTER - (window.innerHeight - 48) / 2
         )
@@ -46,12 +43,23 @@ export function Canvas() {
   }, [])
 
   // -------------------------------------------------------------------------
-  // Space key: track via ref (not state) to avoid re-renders.
-  // preventDefault prevents InfiniteViewer's internal space handler.
+  // Space key: track state + prevent viewer's internal handler.
+  //
+  // CRITICAL FIX: only preventDefault when the focused element is NOT a text
+  // input. Without this check, space is swallowed globally and users can't
+  // type spaces in card title/note fields.
   // -------------------------------------------------------------------------
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') { e.preventDefault(); isSpaceDownRef.current = true }
+      if (e.code !== 'Space') return
+      const active = document.activeElement
+      const inInput =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement
+      if (!inInput) {
+        e.preventDefault()
+        isSpaceDownRef.current = true
+      }
     }
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') isSpaceDownRef.current = false
@@ -76,20 +84,53 @@ export function Canvas() {
   }, [])
 
   // -------------------------------------------------------------------------
-  // Wheel → zoom toward cursor (setTo is the correct API for 0.28.x)
+  // Wheel → zoom toward cursor
+  //
+  // Correct zoom-to-cursor math:
+  //   The point in world-space under the cursor must remain fixed after zoom.
+  //
+  //   InfiniteViewer convention (verified from source):
+  //     screenX = (worldX - scrollLeft) * zoom
+  //     → worldX = screenX / zoom + scrollLeft
+  //
+  //   After applying newZoom, to keep worldX fixed under cursor:
+  //     newScrollLeft = worldX - screenX / newZoom
+  //                   = (screenX / oldZoom + scrollLeft) - screenX / newZoom
+  //
+  //   setTo({ x, y, zoom }) sets scroll + zoom atomically.
+  //   This avoids the one-frame lag of separate scrollTo + setZoom calls.
   // -------------------------------------------------------------------------
   useEffect(() => {
     const el = canvasShellRef.current
     if (!el) return
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const viewer = viewerRef.current
       if (!viewer) return
-      const rawDelta = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY
-      const nextZoom = Math.max(0.1, Math.min(4, viewer.getZoom() * Math.exp(-rawDelta / 500)))
-      const rect     = el.getBoundingClientRect()
-      viewer.setTo({ zoom: nextZoom, zoomOffsetX: e.clientX - rect.left, zoomOffsetY: e.clientY - rect.top })
+
+      const rawDelta  = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY
+      const oldZoom   = viewer.getZoom()
+      const newZoom   = Math.max(0.1, Math.min(4, oldZoom * Math.exp(-rawDelta / 500)))
+
+      const rect    = el.getBoundingClientRect()
+      const screenX = e.clientX - rect.left   // cursor in viewport coords
+      const screenY = e.clientY - rect.top
+
+      const scrollLeft = viewer.getScrollLeft()
+      const scrollTop  = viewer.getScrollTop()
+
+      // World point under cursor at current zoom
+      const worldX = screenX / oldZoom + scrollLeft
+      const worldY = screenY / oldZoom + scrollTop
+
+      // New scroll such that worldX stays under cursor at newZoom
+      const newScrollX = worldX - screenX / newZoom
+      const newScrollY = worldY - screenY / newZoom
+
+      viewer.setTo({ x: newScrollX, y: newScrollY, zoom: newZoom })
     }
+
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
@@ -99,13 +140,17 @@ export function Canvas() {
   // -------------------------------------------------------------------------
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !inInput) {
+      const inInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      if (inInput) return
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault()
         selectMany(cards.map(c => c.id))
       }
-      if (e.key === 'Escape' && !inInput) clearSelection()
-      if ((e.key === 'f' || e.key === 'F') && !inInput) { e.preventDefault(); frameAll() }
+      if (e.key === 'Escape') clearSelection()
+      if (e.key === 'f' || e.key === 'F') { e.preventDefault(); frameAll() }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -113,8 +158,7 @@ export function Canvas() {
   }, [cards, selectMany, clearSelection])
 
   // -------------------------------------------------------------------------
-  // Frame all cards (F)
-  // setTo is atomic: sets x, y, and zoom together — no RAF needed
+  // Frame all cards (F) — uses same world-math as wheel zoom
   // -------------------------------------------------------------------------
   const frameAll = useCallback(() => {
     const viewer = viewerRef.current
@@ -135,29 +179,22 @@ export function Canvas() {
   }, [cards])
 
   // -------------------------------------------------------------------------
-  // Pan — fires on: space + left-drag OR middle-mouse drag on world layer.
-  //
-  // Left-drag WITHOUT space is handled by react-selecto (rubber-band).
-  // The selecto dragCondition returns false when space is held, so these
-  // two are mutually exclusive.
+  // Pan — space + left-drag OR middle-mouse drag on world layer
   // -------------------------------------------------------------------------
   const handleWorldPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.target !== e.currentTarget) return  // clicking a card — not our job
+      if (e.target !== e.currentTarget) return
 
       const isPan = e.button === 1 || (e.button === 0 && isSpaceDownRef.current)
-      if (!isPan) return  // let selecto handle left-click rubber band
+      if (!isPan) return
 
       const target = e.currentTarget
       target.setPointerCapture(e.pointerId)
-
-      const viewer     = viewerRef.current!
-      const startX     = e.clientX
-      const startY     = e.clientY
-      const startSX    = viewer.getScrollLeft()
-      const startSY    = viewer.getScrollTop()
-
       target.style.cursor = 'grabbing'
+
+      const viewer = viewerRef.current!
+      const startX = e.clientX, startY = e.clientY
+      const startSX = viewer.getScrollLeft(), startSY = viewer.getScrollTop()
 
       const onMove = (me: PointerEvent) => {
         const zoom = viewer.getZoom()
@@ -189,7 +226,6 @@ export function Canvas() {
     [createCard]
   )
 
-  // Click on empty canvas → clear selection
   const handleWorldClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => { if (e.target === e.currentTarget) clearSelection() },
     [clearSelection]
@@ -234,9 +270,9 @@ export function Canvas() {
         </div>
       </InfiniteViewer>
 
-      {/* Selecto rubber-band — lives outside the viewer so the band renders
-          in screen space, not scaled world space. Card hit detection works
-          correctly because getBoundingClientRect is always screen coordinates. */}
+      {/* Selecto rubber-band.
+          onSelectEnd fires on pointer-up with the final set of hit elements.
+          (onSelect fires during drag for live preview — not what we want.) */}
       {shellEl && (
         <Selecto
           container={shellEl}
@@ -247,12 +283,12 @@ export function Canvas() {
           continueSelect={false}
           dragCondition={(e) => {
             const target = (e.inputEvent as MouseEvent).target as Element
-            // Skip rubber-band if: clicking on a card, or space is held (pan mode)
             if (target.closest('[data-card-id]')) return false
             if (isSpaceDownRef.current) return false
             return true
           }}
-          onSelect={({ selected }) => {
+          onSelectEnd={({ selected }) => {
+            if (selected.length === 0) return
             selectMany(
               selected
                 .map(el => (el as HTMLElement).dataset.cardId)
@@ -298,12 +334,13 @@ function EmptyState() {
       <p className={styles.emptyPrimary}>Your board is empty</p>
       <p className={styles.emptySecondary}>Double-click anywhere to add a card</p>
       <div className={styles.shortcuts}>
-        <Shortcut keys={['Double-click']}    label="New card"     />
-        <Shortcut keys={['Drag']}            label="Select"       />
-        <Shortcut keys={['Space', 'Drag']}   label="Pan"          />
-        <Shortcut keys={['Scroll']}          label="Zoom"         />
-        <Shortcut keys={['F']}               label="Frame all"    />
-        <Shortcut keys={['Ctrl', 'A']}       label="Select all"   />
+        <Shortcut keys={['Double-click']}  label="New card"    />
+        <Shortcut keys={['Double-click']}  label="Edit card"   />
+        <Shortcut keys={['Drag']}          label="Select"      />
+        <Shortcut keys={['Space', 'Drag']} label="Pan"         />
+        <Shortcut keys={['Scroll']}        label="Zoom"        />
+        <Shortcut keys={['F']}             label="Frame all"   />
+        <Shortcut keys={['Ctrl', 'A']}     label="Select all"  />
       </div>
     </div>
   )

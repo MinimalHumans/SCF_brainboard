@@ -1,18 +1,26 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { marked } from 'marked'
 import { useBoardStore } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { useCardDrag } from '@/hooks/useCardDrag'
 import type { Card } from '@/types/board'
-import { ENTITY_TYPES, SWATCH_KEYS, getCardNote } from '@/types/board'
+import { ENTITY_TYPES, SWATCH_KEYS } from '@/types/board'
 import styles from './Card.module.css'
 
-// Configure marked once
 marked.use({ breaks: true, gfm: true })
 
 // ---------------------------------------------------------------------------
-// Props
+// Card mode state machine
+//
+//   closed  ←→  flipped    (flip button toggles between these)
+//   closed  →   open       (double-click)
+//   open    →   closed     (close button or Escape)
+//
+// The flip animation only runs between 'closed' and 'flipped'.
+// 'open' is a separate expanded edit state — no flip in edit mode.
+// This sidesteps the CSS preserve-3d / InfiniteViewer transform conflict.
 // ---------------------------------------------------------------------------
+type CardMode = 'closed' | 'open' | 'flipped'
 
 interface CardProps {
   card:          Card
@@ -20,83 +28,90 @@ interface CardProps {
   getViewerZoom: () => number
 }
 
-// ---------------------------------------------------------------------------
-// Card component
-// ---------------------------------------------------------------------------
-
 export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
+  const [mode, setMode] = useState<CardMode>('closed')
 
-  // Store actions — stable function references, safe as individual selectors
   const updateCardContent = useBoardStore(s => s.updateCardContent)
   const publishCard       = useBoardStore(s => s.publishCard)
-
-  // Entity for the back face (null if unpublished)
   const entity = useBoardStore(s =>
     card.entityId ? s.board.entities.find(e => e.id === card.entityId) : undefined
   )
-
-  // Selection state — boolean selector, only re-renders when this card's selection changes
   const isSelected = useSelectionStore(s => s.selectedIds.has(card.id))
 
-  const handlePointerDown = useCardDrag(card.id, getViewerZoom)
+  const isOpen     = mode === 'open'
+  const isFlipped  = mode === 'flipped'
+  const published  = card.entityId !== null
+  const hasInstance = allCards.some(
+    c => c.entityId === card.entityId && c.id !== card.id && published
+  )
 
-  // -------------------------------------------------------------------------
-  // Double-click → enter edit mode (front face only)
-  // -------------------------------------------------------------------------
+  const handlePointerDown = useCardDrag(card.id, getViewerZoom, isOpen)
+
+  // Double-click on closed card → open edit mode
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!card.isFlipped) setIsEditing(true)
-  }, [card.isFlipped])
-
-  // -------------------------------------------------------------------------
-  // Escape key → exit edit mode
-  // -------------------------------------------------------------------------
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (mode === 'closed') {
       e.stopPropagation()
-      setIsEditing(false)
+      setMode('open')
     }
+  }, [mode])
+
+  // Escape anywhere on the card → close
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && mode === 'open') {
+      e.stopPropagation()
+      setMode('closed')
+    }
+  }, [mode])
+
+  // Flip button — single click, uses onPointerDown to avoid drag conflict
+  const handleFlipPointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()  // prevent card drag from starting
+    if (mode === 'closed')  setMode('flipped')
+    if (mode === 'flipped') setMode('closed')
+    // In open mode, flip button is not shown
+  }, [mode])
+
+  const handleClose = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setMode('closed')
   }, [])
 
-  // -------------------------------------------------------------------------
-  // Flip button
-  // -------------------------------------------------------------------------
-  const handleFlip = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsEditing(false)
-    updateCardContent(card.id, { isFlipped: !card.isFlipped })
-  }, [card.id, card.isFlipped, updateCardContent])
-
-  // -------------------------------------------------------------------------
-  // Field update helpers
-  // -------------------------------------------------------------------------
-  const setTitle       = useCallback((v: string) => updateCardContent(card.id, { title: v }),       [card.id, updateCardContent])
-  const setNoteRaw     = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),     [card.id, updateCardContent])
+  // Field updates
+  const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
+  const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
   const setInstanceNote = useCallback((v: string) => updateCardContent(card.id, { instanceNote: v }), [card.id, updateCardContent])
-  const setColor       = useCallback((v: string) => updateCardContent(card.id, { color: v as any }),[card.id, updateCardContent])
-  const setType        = useCallback((v: string) => updateCardContent(card.id, { type: v as any }), [card.id, updateCardContent])
+  const setType         = useCallback((v: string) => updateCardContent(card.id, { type: v as any }),  [card.id, updateCardContent])
 
-  const handlePublish  = useCallback((e: React.MouseEvent) => {
+  // Swatch: use onPointerDown with stopPropagation to prevent card drag stealing
+  const handleSwatchPointerDown = useCallback((e: React.PointerEvent, swatch: string) => {
     e.stopPropagation()
+    e.preventDefault()
+    updateCardContent(card.id, { color: swatch as any })
+  }, [card.id, updateCardContent])
+
+  const handlePublishPointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
     publishCard(card.id)
+    setMode('closed')
   }, [card.id, publishCard])
 
-  // noteRaw shown on back face (shared entity note or draft note)
-  const noteRaw = getCardNote(card, entity ? [entity] : [])
-
-  const published = card.entityId !== null
-  const hasInstance = allCards.some(c => c.entityId === card.entityId && c.id !== card.id && published)
+  // Markdown for back face
+  const noteHtml = useMemo(() => {
+    const source = entity?.noteRaw ?? card.noteRaw
+    return source ? marked.parse(source) as string : ''
+  }, [entity?.noteRaw, card.noteRaw])
 
   return (
     <div
-      ref={cardRef}
       data-card-id={card.id}
       className={[
-        styles.cardShell,
-        isSelected  ? styles.selected    : '',
-        published   ? styles.published   : styles.unpublished,
+        styles.card,
+        styles[mode],
+        isSelected ? styles.selected : '',
+        published  ? '' : styles.unpublished,
       ].join(' ').trim()}
       data-swatch={card.color}
       style={{ transform: `translate(${card.position.x}px, ${card.position.y}px)`, zIndex: card.zIndex }}
@@ -104,60 +119,109 @@ export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
     >
-      <div className={`${styles.cardInner} ${card.isFlipped ? styles.flipped : ''}`}>
+      {/* ====== DRAG HANDLE (always present, primary drag target when open) ====== */}
+      <div
+        className={styles.dragHandle}
+        data-drag-handle="true"
+        style={{ '--handle-color': `var(--swatch-${card.color})` } as React.CSSProperties}
+      >
+        <span className={styles.typeBadge}>{card.type}</span>
+        {hasInstance && <span className={styles.instanceGlyph} title="Multiple instances">◈</span>}
+        {!published  && <span className={styles.draftLabel}>Draft</span>}
 
-        {/* ==================== FRONT (note side) ==================== */}
-        <div className={`${styles.face} ${styles.front}`}>
-          <CardHeader
-            card={card}
-            isEditing={isEditing}
-            hasInstance={hasInstance}
-            onFlip={handleFlip}
-            onTypeChange={setType}
-          />
+        <div className={styles.handleActions}>
+          {/* Flip button: closed ↔ flipped. Not shown in open mode. */}
+          {mode !== 'open' && (
+            <button
+              className={styles.iconBtn}
+              onPointerDown={handleFlipPointerDown}
+              title={isFlipped ? 'Show front' : 'Show attributes'}
+              aria-label={isFlipped ? 'Show front' : 'Show attributes'}
+            >
+              <FlipIcon flipped={isFlipped} />
+            </button>
+          )}
+          {/* Close button: only in open mode */}
+          {mode === 'open' && (
+            <button
+              className={styles.iconBtn}
+              onPointerDown={handleClose}
+              title="Close edit mode"
+              aria-label="Close"
+            >
+              <CloseIcon />
+            </button>
+          )}
+        </div>
+      </div>
 
-          {/* Title */}
-          {isEditing ? (
-            <input
-              className={styles.titleInput}
-              value={card.title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={`New ${card.type}`}
-              onClick={e => e.stopPropagation()}
-              autoFocus
-            />
-          ) : (
+      {/* ====== FRONT FACE ====== */}
+      <div className={`${styles.face} ${styles.front} ${isFlipped ? styles.faceHidden : ''}`}>
+        {mode === 'closed' && (
+          /* Closed: compact read-only view */
+          <div className={styles.closedContent}>
             <div className={`${styles.title} text-display-card`}>
               {card.title || `New ${card.type}`}
             </div>
-          )}
+            {card.noteRaw && (
+              <p className={styles.notePreview}>{card.noteRaw}</p>
+            )}
+            {card.instanceNote && (
+              <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
+            )}
+          </div>
+        )}
 
-          {/* noteRaw — shared entity note */}
-          {isEditing ? (
-            <div className={styles.fieldGroup}>
+        {mode === 'open' && (
+          /* Open: full edit fields */
+          <div className={styles.openContent}>
+            {/* Type */}
+            <div className={styles.fieldRow}>
+              <label className={styles.fieldLabel}>Type</label>
+              <select
+                className={styles.typeSelect}
+                value={card.type}
+                onChange={e => setType(e.target.value)}
+                onClick={e => e.stopPropagation()}
+              >
+                {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+
+            {/* Title */}
+            <div className={styles.fieldRow}>
+              <label className={styles.fieldLabel}>Name</label>
+              <input
+                className={styles.titleInput}
+                value={card.title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder={`New ${card.type}`}
+                onClick={e => e.stopPropagation()}
+                autoFocus
+              />
+            </div>
+
+            {/* Note */}
+            <div className={styles.fieldRow}>
               <label className={styles.fieldLabel}>
-                Note {published ? <span className={styles.sharedTag}>shared · all instances</span> : null}
+                Note
+                {published && <span className={styles.sharedTag}> · shared</span>}
               </label>
               <textarea
                 className={styles.textarea}
                 value={card.noteRaw}
                 onChange={e => setNoteRaw(e.target.value)}
-                placeholder="Add a note…"
+                placeholder="Add a note… (markdown supported)"
                 rows={4}
                 onClick={e => e.stopPropagation()}
               />
             </div>
-          ) : (
-            card.noteRaw && (
-              <p className={styles.notePreview}>{card.noteRaw}</p>
-            )
-          )}
 
-          {/* instanceNote — local to this placement */}
-          {isEditing && (
-            <div className={styles.fieldGroup}>
+            {/* Instance note */}
+            <div className={styles.fieldRow}>
               <label className={styles.fieldLabel}>
-                Placement note <span className={styles.sharedTag}>this card only</span>
+                Placement note
+                <span className={styles.sharedTag}> · this card only</span>
               </label>
               <textarea
                 className={styles.textarea}
@@ -168,156 +232,93 @@ export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
                 onClick={e => e.stopPropagation()}
               />
             </div>
-          )}
 
-          {/* Swatch + type picker (edit mode only) */}
-          {isEditing && (
-            <div className={styles.editFooter}>
-              <SwatchPicker current={card.color} onChange={setColor} />
+            {/* Swatch picker */}
+            <div className={styles.fieldRow}>
+              <label className={styles.fieldLabel}>Color</label>
+              <div className={styles.swatchRow}>
+                {SWATCH_KEYS.map(swatch => (
+                  <div
+                    key={swatch}
+                    role="button"
+                    tabIndex={0}
+                    className={`${styles.swatchDot} ${card.color === swatch ? styles.swatchActive : ''}`}
+                    style={{ '--dot-color': `var(--swatch-${swatch})` } as React.CSSProperties}
+                    onPointerDown={e => handleSwatchPointerDown(e, swatch)}
+                    aria-label={swatch}
+                    title={swatch}
+                  />
+                ))}
+              </div>
             </div>
-          )}
 
-          {/* View-mode instance note preview */}
-          {!isEditing && card.instanceNote && (
-            <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
-          )}
-        </div>
-
-        {/* ==================== BACK (attribute side) ==================== */}
-        <div className={`${styles.face} ${styles.back}`}>
-          <div className={styles.backHeader}>
-            <span className={styles.typeBadge}>{card.type}</span>
-            {published && (
-              <span className={styles.entityTag}>Entity</span>
+            {/* Publish (if unpublished) */}
+            {!published && (
+              <div className={styles.publishRow}>
+                <button
+                  className={styles.publishBtn}
+                  onPointerDown={handlePublishPointerDown}
+                >
+                  Publish entity
+                </button>
+              </div>
             )}
-            <button className={styles.flipBtn} onClick={handleFlip} title="Flip to note side">
-              <FlipIcon />
+          </div>
+        )}
+      </div>
+
+      {/* ====== BACK FACE (attributes) ====== */}
+      <div className={`${styles.face} ${styles.back} ${!isFlipped ? styles.faceHidden : ''}`}>
+        {published && entity ? (
+          <div className={styles.backContent}>
+            <div className={`${styles.backTitle} text-display-card`}>{entity.title}</div>
+            {noteHtml ? (
+              <div
+                className={styles.markdown}
+                dangerouslySetInnerHTML={{ __html: noteHtml }}
+              />
+            ) : (
+              <p className={styles.emptyNote}>No note yet — double-click to edit.</p>
+            )}
+            <p className={styles.attributePlaceholder}>Attributes · Phase 6</p>
+          </div>
+        ) : (
+          <div className={styles.unpublishedBack}>
+            <p className={styles.unpublishedMsg}>
+              Publish this card to unlock the attribute side.
+            </p>
+            <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
+              Publish
             </button>
           </div>
-
-          {published && entity ? (
-            <>
-              <div className={`${styles.backTitle} text-display-card`}>{entity.title}</div>
-              {entity.noteRaw ? (
-                <MarkdownContent source={entity.noteRaw} className={styles.markdown} />
-              ) : (
-                <p className={styles.emptyNote}>No note yet — edit the front face.</p>
-              )}
-              <p className={styles.attributePlaceholder}>
-                Attributes available in Phase 6
-              </p>
-            </>
-          ) : (
-            <div className={styles.unpublishedBack}>
-              <p className={styles.unpublishedMsg}>Publish this card to unlock attributes and entity linking.</p>
-              <button className={styles.publishBtn} onClick={handlePublish}>
-                Publish
-              </button>
-            </div>
-          )}
-        </div>
-
+        )}
       </div>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// CardHeader — shared between front face states
+// Icons
 // ---------------------------------------------------------------------------
 
-function CardHeader({
-  card, isEditing, hasInstance, onFlip, onTypeChange,
-}: {
-  card: Card
-  isEditing: boolean
-  hasInstance: boolean
-  onFlip: (e: React.MouseEvent) => void
-  onTypeChange: (type: string) => void
-}) {
-  return (
-    <div className={styles.header}>
-      {isEditing ? (
-        <select
-          className={styles.typeSelect}
-          value={card.type}
-          onChange={e => onTypeChange(e.target.value)}
-          onClick={e => e.stopPropagation()}
-        >
-          {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      ) : (
-        <span className={styles.typeBadge}>{card.type}</span>
-      )}
-
-      {hasInstance && !isEditing && (
-        <span className={styles.instanceGlyph} title="Multiple instances on board">◈</span>
-      )}
-      {!card.entityId && !isEditing && (
-        <span className={styles.draftLabel}>Draft</span>
-      )}
-
-      <button
-        className={styles.flipBtn}
-        onClick={onFlip}
-        title="Show attributes"
-      >
-        <FlipIcon />
-      </button>
-    </div>
+function FlipIcon({ flipped }: { flipped: boolean }) {
+  return flipped ? (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+      <path d="M9.5 2L7 4.5M7 4.5L4.5 2M7 4.5V10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ) : (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+      <rect x="1.5" y="2.5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <line x1="1.5" y1="5.5" x2="11.5" y2="5.5" stroke="currentColor" strokeWidth="1.3"/>
+    </svg>
   )
 }
 
-// ---------------------------------------------------------------------------
-// SwatchPicker
-// ---------------------------------------------------------------------------
-
-function SwatchPicker({ current, onChange }: { current: string; onChange: (s: string) => void }) {
+function CloseIcon() {
   return (
-    <div className={styles.swatchPicker}>
-      {SWATCH_KEYS.map(swatch => (
-        <button
-          key={swatch}
-          className={`${styles.swatchDot} ${current === swatch ? styles.swatchActive : ''}`}
-          style={{ '--dot-color': `var(--swatch-${swatch})` } as React.CSSProperties}
-          onClick={e => { e.stopPropagation(); onChange(swatch) }}
-          aria-label={swatch}
-          title={swatch}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// MarkdownContent — renders noteRaw as HTML
-// ---------------------------------------------------------------------------
-
-function MarkdownContent({ source, className }: { source: string; className?: string }) {
-  const html = useMemo(() => marked.parse(source) as string, [source])
-  return (
-    <div
-      className={className}
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: html }}
-      onClick={e => e.stopPropagation()}
-    />
-  )
-}
-
-// ---------------------------------------------------------------------------
-// FlipIcon SVG
-// ---------------------------------------------------------------------------
-
-function FlipIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path
-        d="M2 4.5C2 3.12 3.12 2 4.5 2h5c1.38 0 2.5 1.12 2.5 2.5v1M12 9.5C12 10.88 10.88 12 9.5 12h-5C3.12 12 2 10.88 2 9.5v-1"
-        stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"
-      />
-      <path d="M10.5 3L12 4.5 10.5 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M3.5 11L2 9.5 3.5 8"  stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+      <line x1="3" y1="3" x2="10" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <line x1="10" y1="3" x2="3"  y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   )
 }
