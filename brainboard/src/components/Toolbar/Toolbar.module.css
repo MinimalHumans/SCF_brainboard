@@ -1,0 +1,122 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--toolbar-height);
+  padding: 0 var(--toolbar-padding-x);
+  background-color: var(--color-surface-base);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  z-index: var(--z-toolbar);
+  /* Subtle blur for depth — the canvas will scroll beneath this */
+  backdrop-filter: blur(0px); /* enabled in Phase 2 when canvas scrolls */
+  gap: var(--space-3);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* Zoom controls slot in here — Phase 2 */
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Wordmark: Fraunces with full WONK personality.
+   .text-display class from globals.css provides the font-variation-settings. */
+.wordmark {
+  font-size: var(--text-xl);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background-color: var(--color-border-strong);
+  flex-shrink: 0;
+}
+
+.boardName {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Phase 3: clicking this opens inline rename */
+  cursor: default;
+  transition: color var(--duration-fast) var(--easing-out);
+}
+
+.boardName:hover {
+  color: var(--color-text-primary);
+}
+
+/* Base action button style */
+.action {
+  height: 30px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    color var(--duration-fast) var(--easing-out),
+    background-color var(--duration-fast) var(--easing-out),
+    border-color var(--duration-fast) var(--easing-out);
+  white-space: nowrap;
+}
+
+.action:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.action:active:not(:disabled) {
+  background-color: var(--color-surface-raised);
+}
+
+.action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Publish All gets accent treatment to signal it's a primary action */
+.publishGroup {
+  display: flex;
+  align-items: center;
+  margin-left: var(--space-1);
+}
+
+.publishAll {
+  color: var(--color-accent);
+  border-color: var(--color-accent-muted);
+  background-color: var(--color-accent-subtle);
+}
+
+.publishAll:hover:not(:disabled) {
+  color: var(--color-accent-hover);
+  background-color: var(--color-accent-muted);
+  border-color: var(--color-accent);
+}

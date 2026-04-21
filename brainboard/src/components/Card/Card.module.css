@@ -1,0 +1,447 @@
+/* ==========================================================================
+   Swatch resolution — local CSS variables consumed by card styles below
+   ========================================================================== */
+
+.cardShell[data-swatch="amber"]  { --card-swatch: var(--swatch-amber);  --card-swatch-surface: var(--swatch-amber-surface);  }
+.cardShell[data-swatch="sage"]   { --card-swatch: var(--swatch-sage);   --card-swatch-surface: var(--swatch-sage-surface);   }
+.cardShell[data-swatch="sky"]    { --card-swatch: var(--swatch-sky);    --card-swatch-surface: var(--swatch-sky-surface);    }
+.cardShell[data-swatch="sand"]   { --card-swatch: var(--swatch-sand);   --card-swatch-surface: var(--swatch-sand-surface);   }
+.cardShell[data-swatch="violet"] { --card-swatch: var(--swatch-violet); --card-swatch-surface: var(--swatch-violet-surface); }
+.cardShell[data-swatch="rose"]   { --card-swatch: var(--swatch-rose);   --card-swatch-surface: var(--swatch-rose-surface);   }
+.cardShell[data-swatch="slate"]  { --card-swatch: var(--swatch-slate);  --card-swatch-surface: var(--swatch-slate-surface);  }
+.cardShell[data-swatch="fog"]    { --card-swatch: var(--swatch-fog);    --card-swatch-surface: var(--swatch-fog-surface);    }
+
+
+/* ==========================================================================
+   Card shell — world-space positioning + perspective for 3D flip
+   ========================================================================== */
+
+.cardShell {
+  position:    absolute;
+  left:        0;
+  top:         0;
+  width:       var(--card-width-default);
+  will-change: transform;
+
+  /* Perspective container for the 3D flip */
+  perspective:        1000px;
+  perspective-origin: center center;
+
+  transition:
+    box-shadow var(--duration-fast) var(--easing-out),
+    outline    var(--duration-fast) var(--easing-out);
+}
+
+
+/* ==========================================================================
+   Card inner — the element that actually rotates
+   ========================================================================== */
+
+.cardInner {
+  position:         relative;
+  min-height:       var(--card-height-default);
+  transform-style:  preserve-3d;
+  transition:       transform var(--duration-flip) var(--easing-flip);
+  border-radius:    var(--radius-md);
+}
+
+.flipped {
+  transform: rotateY(180deg);
+}
+
+
+/* ==========================================================================
+   Faces — front and back
+   ========================================================================== */
+
+.face {
+  -webkit-backface-visibility: hidden;
+  backface-visibility:         hidden;
+  border-radius:               var(--radius-md);
+
+  /* Swatch left stripe + surface tint */
+  border-left:       var(--card-border-accent) solid var(--card-swatch, var(--color-border));
+  background-color:  var(--color-surface-raised);
+  background-image:  linear-gradient(
+    135deg,
+    var(--card-swatch-surface, transparent) 0%,
+    transparent 60%
+  );
+
+  padding:     var(--card-padding);
+  box-shadow:  var(--shadow-card);
+}
+
+.front {
+  position: relative; /* establishes card height */
+  cursor:   grab;
+}
+
+.front:active {
+  cursor: grabbing;
+}
+
+.back {
+  /* Positioned behind the front; rotated 180° so it faces the viewer when flipped */
+  position:  absolute;
+  top:       0;
+  left:      0;
+  right:     0;
+  min-height: var(--card-height-default);
+  transform: rotateY(180deg);
+  cursor:    grab;
+}
+
+.back:active {
+  cursor: grabbing;
+}
+
+
+/* ==========================================================================
+   Selection + unpublished states (on cardShell, affect both faces via shadow)
+   ========================================================================== */
+
+.cardShell:not(.selected) .face:hover {
+  box-shadow: var(--shadow-card-raised);
+}
+
+.selected .face,
+.selected .face:hover {
+  box-shadow: var(--shadow-card-selected);
+}
+
+.unpublished .front {
+  outline:        1.5px dashed var(--color-border-strong);
+  outline-offset: -1px;
+}
+
+
+/* ==========================================================================
+   Front face — content
+   ========================================================================== */
+
+.header {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--space-1);
+  margin-bottom: var(--space-2);
+  min-height:    24px;
+}
+
+.typeBadge {
+  font-family:    var(--font-ui);
+  font-size:      var(--text-2xs);
+  font-weight:    var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color:          var(--card-swatch, var(--color-text-muted));
+  opacity:        0.9;
+  flex-shrink:    0;
+}
+
+.typeSelect {
+  font-family:    var(--font-ui);
+  font-size:      var(--text-xs);
+  font-weight:    var(--weight-medium);
+  color:          var(--card-swatch, var(--color-text-primary));
+  background:     var(--color-surface-inset);
+  border:         1px solid var(--color-border-strong);
+  border-radius:  var(--radius-xs);
+  padding:        2px var(--space-1);
+  cursor:         pointer;
+  flex-shrink:    0;
+}
+
+.instanceGlyph {
+  font-size:   var(--text-xs);
+  color:       var(--color-text-muted);
+  opacity:     0.6;
+  line-height: 1;
+}
+
+.draftLabel {
+  margin-left:    auto;
+  font-family:    var(--font-ui);
+  font-size:      var(--text-2xs);
+  font-weight:    var(--weight-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color:          var(--color-text-muted);
+  opacity:        0.5;
+}
+
+.flipBtn {
+  margin-left:    auto;
+  display:        flex;
+  align-items:    center;
+  justify-content: center;
+  width:          22px;
+  height:         22px;
+  border-radius:  var(--radius-xs);
+  color:          var(--color-text-muted);
+  opacity:        0;
+  transition:     opacity var(--duration-fast) var(--easing-out),
+                  background-color var(--duration-fast) var(--easing-out);
+  flex-shrink:    0;
+}
+
+/* Show flip button on card hover */
+.cardShell:hover .flipBtn,
+.selected .flipBtn {
+  opacity: 0.7;
+}
+
+.flipBtn:hover {
+  opacity:          1 !important;
+  background-color: var(--color-surface-hover);
+}
+
+/* Title */
+.title {
+  font-size:     var(--card-title-size);
+  color:         var(--color-text-primary);
+  line-height:   var(--leading-snug);
+  margin-bottom: var(--space-2);
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.titleInput {
+  display:       block;
+  width:         100%;
+  font-family:   var(--font-display);
+  font-size:     var(--card-title-size);
+  font-weight:   var(--weight-semibold);
+  font-variation-settings: 'wght' 600, 'WONK' 0.5, 'opsz' 18;
+  color:         var(--color-text-primary);
+  line-height:   var(--leading-snug);
+  background:    transparent;
+  border:        none;
+  border-bottom: 1px solid var(--color-border-strong);
+  border-radius: 0;
+  padding:       0 0 var(--space-1) 0;
+  margin-bottom: var(--space-3);
+  outline:       none;
+  cursor:        text;
+  user-select:   text;
+}
+
+.titleInput::placeholder { color: var(--color-text-muted); }
+
+/* Field groups (edit mode) */
+.fieldGroup {
+  margin-bottom: var(--space-3);
+}
+
+.fieldLabel {
+  display:        block;
+  font-family:    var(--font-ui);
+  font-size:      var(--text-xs);
+  font-weight:    var(--weight-medium);
+  color:          var(--color-text-muted);
+  margin-bottom:  var(--space-1);
+  letter-spacing: 0.02em;
+  user-select:    none;
+}
+
+.sharedTag {
+  font-size:   var(--text-2xs);
+  color:       var(--card-swatch, var(--color-text-muted));
+  opacity:     0.7;
+  margin-left: var(--space-1);
+}
+
+.textarea {
+  display:          block;
+  width:            100%;
+  font-family:      var(--font-ui);
+  font-size:        var(--text-sm);
+  line-height:      var(--leading-normal);
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-inset);
+  border:           1px solid var(--color-border);
+  border-radius:    var(--radius-sm);
+  padding:          var(--space-2);
+  resize:           vertical;
+  cursor:           text;
+  user-select:      text;
+  transition:       border-color var(--duration-fast) var(--easing-out);
+}
+
+.textarea:focus {
+  border-color: var(--color-accent);
+  outline:      none;
+}
+
+.textarea::placeholder { color: var(--color-text-muted); opacity: 0.6; }
+
+/* Note preview (view mode) */
+.notePreview {
+  font-family:        var(--font-ui);
+  font-size:          var(--text-sm);
+  color:              var(--color-text-secondary);
+  line-height:        var(--leading-normal);
+  display:            -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow:           hidden;
+  margin-top:         var(--space-1);
+}
+
+.instanceNotePreview {
+  font-family:        var(--font-ui);
+  font-size:          var(--text-xs);
+  color:              var(--color-text-muted);
+  line-height:        var(--leading-normal);
+  display:            -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow:           hidden;
+  margin-top:         var(--space-2);
+  opacity:            0.7;
+  font-style:         italic;
+}
+
+/* Swatch picker (edit mode) */
+.editFooter {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top:  1px solid var(--color-border);
+}
+
+.swatchPicker {
+  display:     flex;
+  gap:         var(--space-1);
+  flex-wrap:   wrap;
+}
+
+.swatchDot {
+  width:         18px;
+  height:        18px;
+  border-radius: var(--radius-full);
+  background-color: var(--dot-color, var(--color-border));
+  border:        2px solid transparent;
+  transition:    transform var(--duration-fast) var(--easing-spring),
+                 border-color var(--duration-fast) var(--easing-out);
+  flex-shrink:   0;
+}
+
+.swatchDot:hover {
+  transform: scale(1.2);
+}
+
+.swatchActive {
+  border-color: var(--color-text-primary);
+  transform:    scale(1.15);
+}
+
+
+/* ==========================================================================
+   Back face — attribute side
+   ========================================================================== */
+
+.backHeader {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--space-1);
+  margin-bottom: var(--space-3);
+  min-height:    24px;
+}
+
+.entityTag {
+  font-family:    var(--font-ui);
+  font-size:      var(--text-2xs);
+  font-weight:    var(--weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color:          var(--color-accent);
+  opacity:        0.8;
+}
+
+.backTitle {
+  font-size:     var(--card-title-size);
+  color:         var(--color-text-primary);
+  line-height:   var(--leading-snug);
+  margin-bottom: var(--space-3);
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+/* Markdown rendered content */
+.markdown {
+  font-family: var(--font-ui);
+  font-size:   var(--text-sm);
+  color:       var(--color-text-secondary);
+  line-height: var(--leading-normal);
+  user-select: text;
+  cursor:      text;
+
+  /* Clamp to 6 lines — attribute area takes over below */
+  display:            -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow:           hidden;
+}
+
+.markdown p  { margin: 0 0 var(--space-1) 0; }
+.markdown p:last-child { margin-bottom: 0; }
+.markdown strong { color: var(--color-text-primary); font-weight: var(--weight-semibold); }
+.markdown em     { font-style: italic; opacity: 0.85; }
+.markdown code   { font-family: var(--font-mono); font-size: 0.9em; background: var(--color-surface-inset); padding: 1px 4px; border-radius: var(--radius-xs); }
+
+.emptyNote {
+  font-family: var(--font-ui);
+  font-size:   var(--text-sm);
+  color:       var(--color-text-muted);
+  opacity:     0.6;
+  font-style:  italic;
+}
+
+.attributePlaceholder {
+  margin-top:  var(--space-3);
+  padding-top: var(--space-2);
+  border-top:  1px solid var(--color-border);
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  color:       var(--color-text-muted);
+  opacity:     0.45;
+  font-style:  italic;
+}
+
+/* Unpublished back face */
+.unpublishedBack {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  justify-content: center;
+  gap:            var(--space-3);
+  padding:        var(--space-4) 0;
+  text-align:     center;
+}
+
+.unpublishedMsg {
+  font-family: var(--font-ui);
+  font-size:   var(--text-sm);
+  color:       var(--color-text-muted);
+  line-height: var(--leading-normal);
+  opacity:     0.7;
+}
+
+.publishBtn {
+  height:           30px;
+  padding:          0 var(--space-4);
+  border-radius:    var(--radius-sm);
+  font-size:        var(--text-sm);
+  font-weight:      var(--weight-medium);
+  color:            var(--color-text-on-accent);
+  background-color: var(--color-accent);
+  border:           none;
+  cursor:           pointer;
+  transition:       background-color var(--duration-fast) var(--easing-out);
+}
+
+.publishBtn:hover {
+  background-color: var(--color-accent-hover);
+}

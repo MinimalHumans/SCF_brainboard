@@ -1,0 +1,168 @@
+/*
+ * Brainboard Global Styles
+ * Imports token file, applies base reset, sets typography defaults.
+ * Component-specific styles live in their own CSS Modules.
+ */
+
+@import './tokens.css';
+
+/* --- Font imports via fontsource packages ---
+ *  Imported in main.tsx so Vite bundles them properly.
+ *  Listed here as documentation of what's expected.
+ *    @fontsource-variable/inter
+ *    @fontsource-variable/fraunces
+ */
+
+
+/* --- Reset --- */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-base);
+  overflow: hidden; /* Canvas handles its own scroll */
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+
+/* --- Typography utilities ---
+ *  Applied directly in JSX via className, not via component style props.
+ *  Keeps layout concerns in CSS, not in component logic.
+ */
+
+.text-display {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  /* WONK axis: 1 = full character personality (wordmark, large titles)
+     Dial to 0.5 for card titles if it feels too strong in context.      */
+  font-variation-settings: 'wght' 700, 'WONK' 1, 'opsz' 36;
+}
+
+.text-display-card {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  font-variation-settings: 'wght' 600, 'WONK' 0.5, 'opsz' 18;
+}
+
+.text-ui {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-regular);
+  font-variation-settings: 'wght' 400;
+}
+
+.text-ui-medium {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-medium);
+  font-variation-settings: 'wght' 500;
+}
+
+
+/* --- Interactive base styles --- */
+
+button {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-variation-settings: 'wght' 500;
+  border: none;
+  cursor: pointer;
+  background: none;
+  color: inherit;
+  line-height: 1;
+}
+
+input, textarea {
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  background: none;
+  border: none;
+  color: inherit;
+  outline: none;
+  resize: none;
+}
+
+/* Visible focus ring for keyboard navigation.
+   Components that need custom focus treatment (e.g. cards) override this. */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* Remove default focus ring for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Disable text selection on canvas except in explicitly editable areas */
+.canvas-layer {
+  user-select: none;
+}
+
+.editable {
+  user-select: text;
+  cursor: text;
+}
+
+
+/* --- Scrollbar styling (applies within overlay panels) --- */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+
+/* --- Canvas dot-grid background ---
+ *  Applied to the infinite viewer's inner content area in Phase 2.
+ *  Defined here so it's visible in the Phase 0 placeholder.
+ */
+
+.canvas-grid {
+  background-color: var(--color-surface-canvas);
+  background-image: radial-gradient(
+    circle,
+    var(--color-grid-dot) 1.2px,
+    transparent 1.2px
+  );
+  background-size: var(--color-grid-size) var(--color-grid-size);
+  /* Grid should scale with zoom in Phase 2 — background-size will be
+     dynamically updated by the zoom handler, not via CSS alone. */
+}
