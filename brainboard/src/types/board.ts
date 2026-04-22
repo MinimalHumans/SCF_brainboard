@@ -1,18 +1,42 @@
 /*
  * Brainboard Board Types
- * Beat/Backdrop is NOT a card type — it's a Phase 11 spatial region.
- * Removed from ENTITY_TYPES to reflect this.
+ *
+ * Two distinct concepts on the canvas:
+ *   Card     — a story entity placement (Character, Scene, etc.)
+ *   Backdrop — a spatial region / container (Sequence, Act, Beat-region)
+ *
+ * Phase 11: Backdrops are purely spatial. Membership is computed from
+ * geometry at drag-start; never persisted as explicit card-ID arrays.
+ * The SCF export layer can derive contains: [...] from geometry at save time.
  */
+
+// ---------------------------------------------------------------------------
+// Card entity types
+// ---------------------------------------------------------------------------
 
 export const ENTITY_TYPES = [
   'Character',
   'Location',
   'Scene',
   'Prop',
-  'Sequence',
+  'Beat',
+  'Theme',
+  'Arc',
+  'Thought',
 ] as const
 
 export type EntityType = (typeof ENTITY_TYPES)[number]
+
+// ---------------------------------------------------------------------------
+// Backdrop types
+// ---------------------------------------------------------------------------
+
+export const BACKDROP_TYPES = ['Sequence', 'Act', 'Beat'] as const
+export type BackdropType = (typeof BACKDROP_TYPES)[number]
+
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
 
 export const SWATCH_KEYS = [
   'amber',
@@ -32,12 +56,30 @@ export const TYPE_SWATCH_DEFAULTS: Record<EntityType, SwatchKey> = {
   Location:  'sage',
   Scene:     'sky',
   Prop:      'sand',
-  Sequence:  'violet',
+  Beat:      'rose',
+  Theme:     'violet',
+  Arc:       'slate',
+  Thought:   'fog',
 }
+
+export const BACKDROP_SWATCH_DEFAULTS: Record<BackdropType, SwatchKey> = {
+  Sequence: 'sky',
+  Act:      'violet',
+  Beat:     'rose',
+}
+
+// ---------------------------------------------------------------------------
+// Core data types
+// ---------------------------------------------------------------------------
 
 export interface Position {
   x: number
   y: number
+}
+
+export interface Size {
+  width:  number
+  height: number
 }
 
 export interface Viewport {
@@ -68,6 +110,17 @@ export interface Entity {
   attributes: Record<string, string | string[]>
 }
 
+export interface Backdrop {
+  id:         string
+  type:       BackdropType
+  title:      string
+  position:   Position
+  size:       Size
+  color:      SwatchKey
+  zIndex:     number            // stacking among backdrops only
+  attributes: Record<string, string>
+}
+
 export interface Board {
   schemaVersion: 1
   boardId:       string
@@ -77,7 +130,12 @@ export interface Board {
   viewport:      Viewport
   cards:         Card[]
   entities:      Entity[]
+  backdrops:     Backdrop[]
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 export function getCardNote(card: Card, entities: Entity[]): string {
   if (card.entityId === null) return card.noteRaw
@@ -92,4 +150,31 @@ export function getCardEntity(card: Card, entities: Entity[]): Entity | undefine
 export function isInstance(card: Card, allCards: Card[]): boolean {
   if (card.entityId === null) return false
   return allCards.some(c => c.entityId === card.entityId && c.id !== card.id)
+}
+
+/*
+ * Compute which card IDs are spatially contained within a backdrop.
+ * A card is "contained" when its full bounding box is inside the backdrop bounds.
+ * This is recomputed at drag-start — never stored.
+ */
+export function getContainedCardIds(
+  backdrop: Backdrop,
+  cards:    Card[],
+  cardW:    number,
+  cardH:    number,
+): string[] {
+  const bx1 = backdrop.position.x
+  const by1 = backdrop.position.y
+  const bx2 = bx1 + backdrop.size.width
+  const by2 = by1 + backdrop.size.height
+
+  return cards
+    .filter(c => {
+      const cx1 = c.position.x
+      const cy1 = c.position.y
+      const cx2 = c.position.x + cardW
+      const cy2 = c.position.y + cardH
+      return cx1 >= bx1 && cy1 >= by1 && cx2 <= bx2 && cy2 <= by2
+    })
+    .map(c => c.id)
 }

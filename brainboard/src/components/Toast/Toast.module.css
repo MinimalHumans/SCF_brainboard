@@ -1,0 +1,70 @@
+.stack {
+  position:       fixed;
+  bottom:         calc(28px + var(--space-4));  /* above status bar */
+  right:          var(--space-4);
+  z-index:        var(--z-toast);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-2);
+  align-items:    flex-end;
+  pointer-events: none;  /* stack itself non-interactive */
+}
+
+.toast {
+  display:          flex;
+  align-items:      center;
+  gap:              var(--space-2);
+  padding:          var(--space-2) var(--space-3);
+  border-radius:    var(--radius-md);
+  border:           1px solid var(--color-border-strong);
+  background-color: var(--color-surface-overlay);
+  box-shadow:       var(--shadow-overlay);
+  font-family:      var(--font-ui);
+  font-size:        var(--text-sm);
+  color:            var(--color-text-primary);
+  pointer-events:   all;
+  min-width:        200px;
+  max-width:        320px;
+
+  animation: toastIn var(--duration-normal) var(--easing-spring);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0)    scale(1); }
+}
+
+/* Kind variants — left border accent */
+.success { border-left: 3px solid var(--color-status-success); }
+.info    { border-left: 3px solid var(--color-accent); }
+.warning { border-left: 3px solid var(--color-status-warning); }
+.error   { border-left: 3px solid var(--color-status-error); }
+
+.icon {
+  font-size:  var(--text-xs);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.success .icon { color: var(--color-status-success); }
+.info    .icon { color: var(--color-accent); }
+.warning .icon { color: var(--color-status-warning); }
+.error   .icon { color: var(--color-status-error); }
+
+.message {
+  flex: 1;
+  line-height: var(--leading-snug);
+}
+
+.dismiss {
+  font-size:        16px;
+  line-height:      1;
+  color:            var(--color-text-muted);
+  background:       transparent;
+  border:           none;
+  cursor:           pointer;
+  padding:          0 0 0 var(--space-1);
+  flex-shrink:      0;
+  opacity:          0.5;
+  transition:       opacity var(--duration-fast) var(--easing-out);
+}
+.dismiss:hover { opacity: 1; }
