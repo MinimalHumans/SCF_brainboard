@@ -13,7 +13,7 @@
    ========================================================================== */
 .card {
   position: absolute; left: 0; top: 0;
-  width: 220px; will-change: transform;
+  width: 320px; will-change: transform;
   display: flex; flex-direction: column;
   border-radius: var(--radius-md); overflow: hidden;
   box-shadow: var(--shadow-card); user-select: none; cursor: grab;
@@ -22,7 +22,7 @@
               width var(--duration-normal) var(--easing-standard);
 }
 .card:active { cursor: grabbing; }
-.card.editing { width: 272px; cursor: default; }
+.card.editing { width: 380px; cursor: default; }
 .card:not(.selected):hover { box-shadow: var(--shadow-card-raised); }
 .selected, .selected:hover { box-shadow: var(--shadow-card-selected); }
 .unpublished { outline: 1.5px dashed rgba(255,255,255,0.14); outline-offset: 0; }
@@ -66,7 +66,8 @@
 .title {
   font-size: var(--card-title-size); color: var(--color-text-primary);
   line-height: var(--leading-snug); margin-bottom: var(--space-2);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: none;
+  /* Allow title to wrap — no truncation */
+  word-break: break-word; user-select: none;
 }
 
 /* Attribute display — inline key/value pairs on front face */
@@ -116,7 +117,7 @@
 .noteMarkdown {
   font-family: var(--font-ui); font-size: var(--text-sm); color: var(--color-text-secondary);
   line-height: var(--leading-normal); user-select: none;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 10; overflow: hidden;
 }
 .noteMarkdown p               { margin: 0; }
 .noteMarkdown p + p           { margin-top: var(--space-1); }

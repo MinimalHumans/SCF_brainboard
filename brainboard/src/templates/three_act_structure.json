@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "boardId": "RnbiDyk7ufkYtMMFDW2JX",
+  "name": "Three Act Structure",
+  "createdAt": "2026-04-22T15:52:26.206Z",
+  "updatedAt": "2026-04-22T15:56:38.976Z",
+  "viewport": {
+    "x": 2852.366480341534,
+    "y": 3195.6868254436613,
+    "zoom": 1
+  },
+  "cards": [],
+  "entities": [],
+  "backdrops": [
+    {
+      "id": "vV4zknMSLvZ6G2ZtZZdFb",
+      "type": "Act",
+      "title": "Act One : Setup",
+      "note": "This act introduces the world, main characters, and central conflict. You establish what “normal life” looks like before things change, and then disrupt it with an inciting incident that forces the protagonist to act. By the end of Act 1, the main character makes a key decision that propels them into the story’s core journey—crossing a point of no return.",
+      "position": {
+        "x": 3319.3091327680463,
+        "y": 3251.6329751969183
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "amber",
+      "zIndex": 1,
+      "attributes": {
+        "function": ""
+      }
+    },
+    {
+      "id": "qRgQmQLwqjMb-Oi5BAh1E",
+      "type": "Act",
+      "title": "Act Two : Confrontation",
+      "note": "This is the longest section, where the protagonist faces escalating challenges, obstacles, and opposition. They pursue their goal but encounter setbacks, learn new information, and often struggle internally as well as externally. A midpoint usually shifts the story in a meaningful way, and by the end of Act 2, things reach a low point where the protagonist feels defeated or lost.",
+      "position": {
+        "x": 3931.068258942402,
+        "y": 3250.247954049122
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sage",
+      "zIndex": 2,
+      "attributes": {
+        "function": ""
+      }
+    },
+    {
+      "id": "-y5loNXU6XTv7Q1LaUBYV",
+      "type": "Act",
+      "title": "Act Three : Resolution",
+      "note": "In the final act, the protagonist regroups and confronts the central conflict head-on. This leads to the climax—the decisive moment where the main tension is resolved. Afterward, the story wraps up with falling action and a new normal, showing how the events have changed the character or the world around them.",
+      "position": {
+        "x": 4539.570360794002,
+        "y": 3248.862932901326
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sky",
+      "zIndex": 3,
+      "attributes": {
+        "function": ""
+      }
+    }
+  ]
+}

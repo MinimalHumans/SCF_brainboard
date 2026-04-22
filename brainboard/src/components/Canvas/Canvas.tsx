@@ -141,17 +141,37 @@ export function Canvas() {
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   const frameAll = useCallback(() => {
     const viewer = viewerRef.current
-    if (!viewer || cards.length === 0) return
+    const { cards, backdrops } = useBoardStore.getState().board
+    if (!viewer || (cards.length === 0 && backdrops.length === 0)) return
     const PAD = 80, TH = 76
-    const minX = Math.min(...cards.map(c => c.position.x)) - PAD
-    const minY = Math.min(...cards.map(c => c.position.y)) - PAD
-    const maxX = Math.max(...cards.map(c => c.position.x + CARD_W)) + PAD
-    const maxY = Math.max(...cards.map(c => c.position.y + CARD_H)) + PAD
+
+    // Collect all bounding box corners: cards + backdrops
+    const x1s = [
+      ...cards.map(c => c.position.x),
+      ...backdrops.map(b => b.position.x),
+    ]
+    const y1s = [
+      ...cards.map(c => c.position.y),
+      ...backdrops.map(b => b.position.y),
+    ]
+    const x2s = [
+      ...cards.map(c => c.position.x + CARD_W),
+      ...backdrops.map(b => b.position.x + b.size.width),
+    ]
+    const y2s = [
+      ...cards.map(c => c.position.y + CARD_H),
+      ...backdrops.map(b => b.position.y + b.size.height),
+    ]
+
+    const minX = Math.min(...x1s) - PAD
+    const minY = Math.min(...y1s) - PAD
+    const maxX = Math.max(...x2s) + PAD
+    const maxY = Math.max(...y2s) + PAD
     const vpW  = window.innerWidth
     const vpH  = window.innerHeight - TH
     const z    = Math.min(vpW / (maxX - minX), vpH / (maxY - minY), 1)
     viewer.setTo({ x: (minX+maxX)/2 - vpW/(2*z), y: (minY+maxY)/2 - vpH/(2*z), zoom: z })
-  }, [cards])
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

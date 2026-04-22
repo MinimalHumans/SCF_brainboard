@@ -10,7 +10,7 @@ import {
 
 export const WORLD_SIZE   = 8000
 export const WORLD_CENTER = WORLD_SIZE / 2
-export const CARD_W       = 220
+export const CARD_W       = 320
 export const CARD_H       = 160
 export const BACKDROP_MIN_W = 200
 export const BACKDROP_MIN_H = 120
@@ -66,6 +66,7 @@ interface BoardStore {
   updateBackdropSize:     (id: string, position: Position, size: Size) => void
   updateBackdropContent:  (id: string, patch: Partial<Pick<Backdrop, 'title' | 'color' | 'note'>>) => void
   updateBackdropAttribute:(id: string, key: string, value: string) => void
+  duplicateBackdrop:      (id: string) => void
   deleteBackdrop:         (id: string) => void
   moveBackdropWithCards:  (id: string, backdropPos: Position, cardUpdates: { id: string; position: Position }[]) => void
 
@@ -325,6 +326,19 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         ),
       }),
     })),
+
+  duplicateBackdrop: (id) =>
+    set(s => {
+      const source = s.board.backdrops.find(b => b.id === id)
+      if (!source) return s
+      const copy: Backdrop = {
+        ...source,
+        id:       nanoid(),
+        position: { x: source.position.x + 32, y: source.position.y + 32 },
+        zIndex:   maxZ(s.board.backdrops) + 1,
+      }
+      return { board: touch({ ...s.board, backdrops: [...s.board.backdrops, copy] }) }
+    }),
 
   deleteBackdrop: (id) =>
     set(s => ({

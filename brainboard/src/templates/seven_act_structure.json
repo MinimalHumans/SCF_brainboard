@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "boardId": "ty4Pe5IdVS-SrQUHXzix1",
+  "name": "Seven Act Structure",
+  "createdAt": "2026-04-22T16:04:20.863Z",
+  "updatedAt": "2026-04-22T16:13:18.016Z",
+  "viewport": {
+    "x": 3239.309132768046,
+    "y": 2839.397162296634,
+    "zoom": 0.6359827638787239
+  },
+  "cards": [],
+  "entities": [],
+  "backdrops": [
+    {
+      "note": "This opening act grabs attention and introduces the protagonist in their normal world. It sets tone and genre while hinting at the central conflict to come.",
+      "id": "vV4zknMSLvZ6G2ZtZZdFb",
+      "type": "Act",
+      "title": "Act One : The Hook",
+      "position": {
+        "x": 3319.3091327680463,
+        "y": 3251.6329751969183
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "amber",
+      "zIndex": 1,
+      "attributes": {
+        "function": "Narrative purpose of this act...",
+        "dramatic_question": "The Question this act proposes...",
+        "shift": "What changes by the end..."
+      }
+    },
+    {
+      "note": "A key event disrupts the protagonist’s life and presents a problem or opportunity. This is where the main story truly begins to take shape.",
+      "id": "moCTQgIycQyzX0lKLukMV",
+      "type": "Act",
+      "title": "Act Two : The Inciting Incident",
+      "position": {
+        "x": 3914.303919110661,
+        "y": 3249.787278822644
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sage",
+      "zIndex": 2,
+      "attributes": {
+        "function": "",
+        "dramatic_question": "",
+        "shift": ""
+      }
+    },
+    {
+      "note": "The protagonist makes a decisive choice that commits them to the journey. They leave their comfort zone, and the stakes become clear.",
+      "id": "6PsDmux3rvZtARq-o9GdM",
+      "type": "Act",
+      "title": "Act Three : The First Plot Point",
+      "position": {
+        "x": 4507.6476442602925,
+        "y": 3248.7670374675845
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sky",
+      "zIndex": 3,
+      "attributes": {
+        "function": "",
+        "dramatic_question": "",
+        "shift": ""
+      }
+    },
+    {
+      "note": "The protagonist actively pursues their goal, encountering obstacles, allies, and enemies. Tension builds steadily as complications arise.",
+      "id": "uRQ114UF0kSx74tkbVO0D",
+      "type": "Act",
+      "title": "Act Four : Rising Action",
+      "position": {
+        "x": 5098.514853197727,
+        "y": 3245.270317688966
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sand",
+      "zIndex": 4,
+      "attributes": {
+        "function": "",
+        "dramatic_question": "",
+        "shift": ""
+      }
+    },
+    {
+      "note": "A major turning point shifts the story—often a revelation, reversal, or significant success/failure. It raises the stakes and changes the protagonist’s approach.",
+      "id": "DQN4rkipFIyJZEzJDxDyD",
+      "type": "Act",
+      "title": "Act Five : Midpoint",
+      "position": {
+        "x": 5692.684033366572,
+        "y": 3244.250114122545
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "violet",
+      "zIndex": 5,
+      "attributes": {
+        "function": "",
+        "dramatic_question": "",
+        "shift": ""
+      }
+    },
+    {
+      "note": "Everything seems to fall apart. The protagonist faces their greatest setback or internal conflict, often questioning their ability to succeed.",
+      "id": "h1qrtxZQt98sLtq9UlHmg",
+      "type": "Act",
+      "title": "Act Six : Crisis (or Low Point)",
+      "position": {
+        "x": 6286.027758516204,
+        "y": 3243.2299483447623
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "rose",
+      "zIndex": 6,
+      "attributes": {
+        "function": "",
+        "dramatic_question": "",
+        "shift": ""
+      }
+    },
+    {
+      "note": "The protagonist makes a final push to resolve the conflict, leading to the climax. Afterward, the story concludes with a resolution that shows the outcome and lasting impact of the journey.",
+      "id": "GnXSWayc2-wX8Da30PUlv",
+      "type": "Act",
+      "title": "Act Seven : Climax & Resolution",
+      "position": {
+        "x": 6876.611751316607,
+        "y": 3239.740462839288
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "slate",
+      "zIndex": 7,
+      "attributes": {
+        "function": "",
+        "dramatic_question": "",
+        "shift": ""
+      }
+    }
+  ]
+}

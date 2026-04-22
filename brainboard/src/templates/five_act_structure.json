@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "boardId": "ty4Pe5IdVS-SrQUHXzix1",
+  "name": "Five Act Structure",
+  "createdAt": "2026-04-22T16:04:20.863Z",
+  "updatedAt": "2026-04-22T16:06:33.307Z",
+  "viewport": {
+    "x": 3078.265683120332,
+    "y": 3103.332817735881,
+    "zoom": 0.8075860719786211
+  },
+  "cards": [],
+  "entities": [],
+  "backdrops": [
+    {
+      "note": "This act introduces the main characters, world, and central premise. It establishes the status quo and presents the inciting incident that disrupts it. By the end, the protagonist commits to a course of action, setting the main story in motion.",
+      "id": "vV4zknMSLvZ6G2ZtZZdFb",
+      "type": "Act",
+      "title": "Act One : Setup",
+      "position": {
+        "x": 3319.3091327680463,
+        "y": 3251.6329751969183
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "amber",
+      "zIndex": 1,
+      "attributes": {
+        "function": "Narrative purpose of this act...",
+        "dramatic_question": "The Question this act proposes...",
+        "shift": "What changes by the end..."
+      }
+    },
+    {
+      "note": "The protagonist begins pursuing their goal but encounters early obstacles and complications. Stakes start to build, and relationships and conflicts deepen. This act often ends with a turning point that raises the tension significantly.",
+      "id": "zmMIu3VOHXc6RUyU_PJi6",
+      "type": "Act",
+      "title": "Act Two : Rising Action",
+      "position": {
+        "x": 3915.3091327680463,
+        "y": 3250.9663187027777
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sage",
+      "zIndex": 2,
+      "attributes": {
+        "function": ""
+      }
+    },
+    {
+      "note": "The story reaches a major turning point or revelation that changes the direction of the narrative. This could be a victory, defeat, or major discovery, but it reframes the protagonist’s understanding of the conflict and raises the stakes further.",
+      "id": "ndKkJ6mjf2jcQRtM2-VXh",
+      "type": "Act",
+      "title": "Act Three : Climax (Midpoint)",
+      "position": {
+        "x": 4509.309254838359,
+        "y": 3248.9663187027777
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sky",
+      "zIndex": 3,
+      "attributes": {
+        "function": ""
+      }
+    },
+    {
+      "note": "Consequences of the midpoint unfold, and things begin to spiral or intensify toward a breaking point. The protagonist faces their greatest challenges, often leading to a low moment where success seems out of reach.",
+      "id": "MRjOP30QsIXZ0x_U0xRY6",
+      "type": "Act",
+      "title": "Act Four : Complications",
+      "position": {
+        "x": 5107.975880814922,
+        "y": 3250.9663187027777
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "sand",
+      "zIndex": 4,
+      "attributes": {
+        "function": ""
+      }
+    },
+    {
+      "note": "The protagonist confronts the central conflict in the climax and resolves it. The story then winds down, showing the aftermath and how the characters or world have changed.",
+      "id": "RSRFP78P4vCISYk1RzmZa",
+      "type": "Act",
+      "title": "Act Five : Resolution",
+      "position": {
+        "x": 5702.89094531989,
+        "y": 3250.1461753546696
+      },
+      "size": {
+        "width": 576.8389134392091,
+        "height": 1119.8631944343856
+      },
+      "color": "violet",
+      "zIndex": 5,
+      "attributes": {
+        "function": ""
+      }
+    }
+  ]
+}

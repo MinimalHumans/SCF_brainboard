@@ -293,22 +293,18 @@
 
 /* Note display — lower-right corner of the backdrop body (view mode) */
 .noteDisplay {
-  position:   absolute;
-  bottom:     var(--space-3);
-  right:      var(--space-4);
-  max-width:  45%;
+  position:    absolute;
+  bottom:      var(--space-3);
+  right:       var(--space-4);
+  max-width:   45%;
   font-family: var(--font-ui);
-  font-size:  var(--text-xs);
-  color:      var(--color-text-muted);
-  opacity:    0.65;
+  font-size:   var(--text-xs);
+  color:       var(--color-text-muted);
+  opacity:     0.65;
   line-height: var(--leading-normal);
-  text-align: right;
+  text-align:  right;
   user-select: none;
-  /* Clamp to 3 lines */
-  display:            -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow:           hidden;
+  /* No line clamp — show the full note */
 }
 
 .noteHint {

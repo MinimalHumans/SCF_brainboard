@@ -19,6 +19,7 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
+  const duplicateBackdrop       = useBoardStore(s => s.duplicateBackdrop)
   const updateBackdropContent   = useBoardStore(s => s.updateBackdropContent)
   const updateBackdropSize      = useBoardStore(s => s.updateBackdropSize)
   const updateBackdropAttribute = useBoardStore(s => s.updateBackdropAttribute)
@@ -136,8 +137,9 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
   }, [])
 
   const ctxItems: ContextMenuItem[] = [
-    { label: 'Edit attributes', onClick: () => setIsEditing(v => !v) },
-    { label: 'Delete backdrop', danger: true, divider: true, onClick: () => deleteBackdrop(backdrop.id) },
+    { label: 'Edit attributes',  onClick: () => setIsEditing(v => !v) },
+    { label: 'Duplicate',        onClick: () => duplicateBackdrop(backdrop.id), divider: true },
+    { label: 'Delete backdrop',  danger: true, divider: true, onClick: () => deleteBackdrop(backdrop.id) },
   ]
 
   const filledAttrs = schema
@@ -154,7 +156,8 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
           transform: `translate(${backdrop.position.x}px, ${backdrop.position.y}px)`,
           width:     backdrop.size.width,
           height:    backdrop.size.height,
-          zIndex:    backdrop.zIndex,
+          // Raise above all cards when editing so the panel is never obscured
+          zIndex:    isEditing ? 9999 : backdrop.zIndex,
         }}
       >
         {/* HEADER — pointer-events: auto, full width drag zone */}
