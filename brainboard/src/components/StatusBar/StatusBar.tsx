@@ -6,12 +6,13 @@ import styles from './StatusBar.module.css'
 export function StatusBar() {
   const cards      = useBoardStore(s => s.board.cards)
   const entities   = useBoardStore(s => s.board.entities)
+  const backdrops  = useBoardStore(s => s.board.backdrops)
   const selectedIds = useSelectionStore(s => s.selectedIds)
 
-  const total      = cards.length
-  const published  = cards.filter(c => c.entityId !== null).length
-  const drafts     = total - published
-  const selected   = selectedIds.size
+  const total    = cards.length
+  const published = cards.filter(c => c.entityId !== null).length
+  const drafts   = total - published
+  const selected = selectedIds.size
 
   return (
     <footer className={styles.bar}>
@@ -22,16 +23,22 @@ export function StatusBar() {
           </span>
         ) : (
           <span className={styles.hint}>
-            Double-click canvas to add a card · Double-click card to edit · Right-click for options
+            Double-click to add a card · Right-click for backdrops and more options
           </span>
         )}
       </div>
       <div className={styles.right}>
+        {backdrops.length > 0 && (
+          <>
+            <Stat label="Backdrops" value={backdrops.length} />
+            <span className={styles.sep} />
+          </>
+        )}
         {total > 0 && (
           <>
-            <Stat label="Cards"     value={total}     />
+            <Stat label="Cards"    value={total} />
             <span className={styles.sep} />
-            <Stat label="Entities"  value={entities.length} />
+            <Stat label="Entities" value={entities.length} />
             {drafts > 0 && (
               <>
                 <span className={styles.sep} />

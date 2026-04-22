@@ -134,71 +134,71 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
     e.stopPropagation()
     e.preventDefault()
 
-    const el = document.querySelector<HTMLDivElement>(`[data-backdrop-id="${backdrop.id}"]`)
-    if (!el) return
-    el.setPointerCapture(e.pointerId)
+    // Capture on the handle element that received the event.
+    // Calling setPointerCapture on a different element (e.g. the backdrop root)
+    // is invalid per spec and causes the capture to silently fail.
+    const handleEl  = e.currentTarget
+    handleEl.setPointerCapture(e.pointerId)
 
-    const zoom    = getViewerZoom()
-    const startX  = e.clientX
-    const startY  = e.clientY
-    const origX   = backdrop.position.x
-    const origY   = backdrop.position.y
-    const origW   = backdrop.size.width
-    const origH   = backdrop.size.height
+    // Separate reference to the backdrop root for DOM visual feedback
+    const backdropEl = handleEl.closest('[data-backdrop-id]') as HTMLElement | null
 
-    const onMove = (me: PointerEvent) => {
-      const dx = (me.clientX - startX) / zoom
-      const dy = (me.clientY - startY) / zoom
+    const zoom   = getViewerZoom()
+    const startX = e.clientX
+    const startY = e.clientY
+    const origX  = backdrop.position.x
+    const origY  = backdrop.position.y
+    const origW  = backdrop.size.width
+    const origH  = backdrop.size.height
 
+    // Pure calculation — no side effects, shared by onMove and onUp
+    const calcBounds = (dx: number, dy: number) => {
       let newX = origX, newY = origY, newW = origW, newH = origH
-
       if (pos.includes('e')) newW = Math.max(BACKDROP_MIN_W, origW + dx)
       if (pos.includes('s')) newH = Math.max(BACKDROP_MIN_H, origH + dy)
       if (pos.includes('w')) {
-        const delta = Math.min(dx, origW - BACKDROP_MIN_W)
-        newX = origX + delta
-        newW = origW - delta
+        const d = Math.min(dx, origW - BACKDROP_MIN_W)
+        newX = origX + d; newW = origW - d
       }
       if (pos.includes('n')) {
-        const delta = Math.min(dy, origH - BACKDROP_MIN_H)
-        newY = origY + delta
-        newH = origH - delta
+        const d = Math.min(dy, origH - BACKDROP_MIN_H)
+        newY = origY + d; newH = origH - d
       }
+      return { newX, newY, newW, newH }
+    }
 
-      el.style.transform = `translate(${newX}px, ${newY}px)`
-      el.style.width  = `${newW}px`
-      el.style.height = `${newH}px`
+    const onMove = (me: PointerEvent) => {
+      const { newX, newY, newW, newH } = calcBounds(
+        (me.clientX - startX) / zoom,
+        (me.clientY - startY) / zoom,
+      )
+      if (backdropEl) {
+        backdropEl.style.transform = `translate(${newX}px, ${newY}px)`
+        backdropEl.style.width     = `${newW}px`
+        backdropEl.style.height    = `${newH}px`
+      }
     }
 
     const onUp = (ue: PointerEvent) => {
-      document.removeEventListener('pointermove', onMove)
-      document.removeEventListener('pointerup',   onUp)
+      handleEl.removeEventListener('pointermove', onMove)
+      handleEl.removeEventListener('pointerup',   onUp)
 
-      const dx = (ue.clientX - startX) / zoom
-      const dy = (ue.clientY - startY) / zoom
+      const { newX, newY, newW, newH } = calcBounds(
+        (ue.clientX - startX) / zoom,
+        (ue.clientY - startY) / zoom,
+      )
 
-      let newX = origX, newY = origY, newW = origW, newH = origH
-      if (pos.includes('e')) newW = Math.max(BACKDROP_MIN_W, origW + dx)
-      if (pos.includes('s')) newH = Math.max(BACKDROP_MIN_H, origH + dy)
-      if (pos.includes('w')) {
-        const delta = Math.min(dx, origW - BACKDROP_MIN_W)
-        newX = origX + delta; newW = origW - delta
-      }
-      if (pos.includes('n')) {
-        const delta = Math.min(dy, origH - BACKDROP_MIN_H)
-        newY = origY + delta; newH = origH - delta
-      }
-
-      // Reset inline styles — store commit will drive the final position
-      el.style.transform = ''
-      el.style.width     = ''
-      el.style.height    = ''
-
+      // Do NOT reset inline styles here. Resetting them causes a one-frame
+      // flash where the backdrop collapses to 0 size while React re-renders.
+      // React's reconciliation will overwrite the inline styles with the
+      // correct store-derived values on the next render pass.
       updateBackdropSize(backdrop.id, { x: newX, y: newY }, { width: newW, height: newH })
     }
 
-    document.addEventListener('pointermove', onMove)
-    document.addEventListener('pointerup',   onUp)
+    // Attach to the capturing element — events follow the pointer regardless
+    // of where it moves, because we set pointer capture above.
+    handleEl.addEventListener('pointermove', onMove)
+    handleEl.addEventListener('pointerup',   onUp)
   }, [backdrop, getViewerZoom, updateBackdropSize])
 
   // ── Context menu ─────────────────────────────────────────────────────────
