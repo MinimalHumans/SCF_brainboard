@@ -26,20 +26,15 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
   const [ctxMenu, setCtxMenu]      = useState<{ x: number; y: number } | null>(null)
   const titleInputRef              = useRef<HTMLInputElement>(null)
 
-  const {
-    updateBackdropPosition, updateBackdropSize,
-    updateBackdropContent, updateBackdropAttribute,
-    moveBackdropWithCards, deleteBackdrop,
-    board,
-  } = useBoardStore(s => ({
-    updateBackdropPosition:  s.updateBackdropPosition,
-    updateBackdropSize:      s.updateBackdropSize,
-    updateBackdropContent:   s.updateBackdropContent,
-    updateBackdropAttribute: s.updateBackdropAttribute,
-    moveBackdropWithCards:   s.moveBackdropWithCards,
-    deleteBackdrop:          s.deleteBackdrop,
-    board:                   s.board,
-  }))
+  // Separate selectors — never return object literals from useBoardStore
+  // (new object reference every render → infinite loop)
+  const updateBackdropPosition  = useBoardStore(s => s.updateBackdropPosition)
+  const updateBackdropSize      = useBoardStore(s => s.updateBackdropSize)
+  const updateBackdropContent   = useBoardStore(s => s.updateBackdropContent)
+  const updateBackdropAttribute = useBoardStore(s => s.updateBackdropAttribute)
+  const moveBackdropWithCards   = useBoardStore(s => s.moveBackdropWithCards)
+  const deleteBackdrop          = useBoardStore(s => s.deleteBackdrop)
+  const board                   = useBoardStore(s => s.board)
 
   const schema = BACKDROP_SCHEMAS[backdrop.type] ?? []
 
