@@ -84,7 +84,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   // ── Cards ────────────────────────────────────────────────────────────────
 
-  createCard: (position, type = 'Character') => {
+  createCard: (position, type: EntityType = 'Thought') => {
     const card: Card = {
       id:           nanoid(),
       entityId:     null,

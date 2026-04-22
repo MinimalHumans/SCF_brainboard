@@ -143,7 +143,7 @@
    *  grid-dot  → dot pattern on the board background
    *  grid-size → dot spacing
    */
-  --color-grid-dot:  rgba(255, 255, 255, 0.055);
+  --color-grid-dot:  rgba(255, 255, 255, 0.09);
   --color-grid-size: 24px;
 
   /* --- Shadows ---

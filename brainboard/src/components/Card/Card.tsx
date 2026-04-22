@@ -195,7 +195,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
               <label className={styles.label}>Type</label>
               <select className={styles.select} value={card.type}
                 onChange={e => setType(e.target.value)} onClick={e => e.stopPropagation()}>
-                {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
 
