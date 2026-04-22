@@ -114,10 +114,11 @@ export interface Backdrop {
   id:         string
   type:       BackdropType
   title:      string
+  note:       string            // displayed in lower-right of backdrop body
   position:   Position
   size:       Size
   color:      SwatchKey
-  zIndex:     number            // stacking among backdrops only
+  zIndex:     number
   attributes: Record<string, string>
 }
 

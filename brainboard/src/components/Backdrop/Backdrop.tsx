@@ -16,15 +16,11 @@ interface BackdropProps {
 }
 
 export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
-  const [isEditing, setIsEditing]   = useState(false)
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [draftTitle, setDraftTitle] = useState('')
-  const [ctxMenu, setCtxMenu]       = useState<{ x: number; y: number } | null>(null)
-  const titleInputRef               = useRef<HTMLInputElement>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
-  const updateBackdropPosition  = useBoardStore(s => s.updateBackdropPosition)
-  const updateBackdropSize      = useBoardStore(s => s.updateBackdropSize)
   const updateBackdropContent   = useBoardStore(s => s.updateBackdropContent)
+  const updateBackdropSize      = useBoardStore(s => s.updateBackdropSize)
   const updateBackdropAttribute = useBoardStore(s => s.updateBackdropAttribute)
   const moveBackdropWithCards   = useBoardStore(s => s.moveBackdropWithCards)
   const deleteBackdrop          = useBoardStore(s => s.deleteBackdrop)
@@ -32,34 +28,19 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
 
   const schema = BACKDROP_SCHEMAS[backdrop.type] ?? []
 
-  const startRename = useCallback(() => {
-    setDraftTitle(backdrop.title)
-    setIsRenaming(true)
-    requestAnimationFrame(() => titleInputRef.current?.select())
-  }, [backdrop.title])
-
-  const commitRename = useCallback(() => {
-    const t = draftTitle.trim()
-    if (t) updateBackdropContent(backdrop.id, { title: t })
-    setIsRenaming(false)
-  }, [draftTitle, backdrop.id, updateBackdropContent])
-
-  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter')  { e.preventDefault(); commitRename() }
-    if (e.key === 'Escape') { e.preventDefault(); setIsRenaming(false) }
-  }, [commitRename])
+  // ── Header drag ────────────────────────────────────────────────────────────
 
   const handleHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
-    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT') return
+    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
 
     e.stopPropagation()
-    const headerEl = e.currentTarget
+    const headerEl   = e.currentTarget
     headerEl.setPointerCapture(e.pointerId)
     const backdropEl = headerEl.closest('[data-backdrop-id]') as HTMLElement | null
 
-    const zoom = getViewerZoom()
+    const zoom   = getViewerZoom()
     const startX = e.clientX, startY = e.clientY
     const startBX = backdrop.position.x, startBY = backdrop.position.y
 
@@ -94,7 +75,9 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
       moveBackdropWithCards(
         backdrop.id,
         { x: startBX + dx, y: startBY + dy },
-        [...cardStartPos.entries()].map(([id, start]) => ({ id, position: { x: start.x + dx, y: start.y + dy } }))
+        [...cardStartPos.entries()].map(([id, start]) => ({
+          id, position: { x: start.x + dx, y: start.y + dy },
+        }))
       )
     }
 
@@ -102,17 +85,19 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
     headerEl.addEventListener('pointerup',   onUp)
   }, [backdrop, board.cards, getViewerZoom, moveBackdropWithCards])
 
+  // ── Resize handles ─────────────────────────────────────────────────────────
+
   const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, pos: HandlePos) => {
     e.stopPropagation()
     e.preventDefault()
-    const handleEl = e.currentTarget
+    const handleEl   = e.currentTarget
     handleEl.setPointerCapture(e.pointerId)
     const backdropEl = handleEl.closest('[data-backdrop-id]') as HTMLElement | null
 
-    const zoom = getViewerZoom()
+    const zoom   = getViewerZoom()
     const startX = e.clientX, startY = e.clientY
-    const origX = backdrop.position.x, origY = backdrop.position.y
-    const origW = backdrop.size.width,  origH = backdrop.size.height
+    const origX  = backdrop.position.x, origY = backdrop.position.y
+    const origW  = backdrop.size.width,  origH = backdrop.size.height
 
     const calc = (dx: number, dy: number) => {
       let newX = origX, newY = origY, newW = origW, newH = origH
@@ -143,6 +128,8 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
     handleEl.addEventListener('pointerup',   onUp)
   }, [backdrop, getViewerZoom, updateBackdropSize])
 
+  // ── Context menu ───────────────────────────────────────────────────────────
+
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
     setCtxMenu({ x: e.clientX, y: e.clientY })
@@ -170,63 +157,76 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
           zIndex:    backdrop.zIndex,
         }}
       >
-        {/* HEADER — pointer-events: auto, full width, grabbable */}
+        {/* HEADER — pointer-events: auto, full width drag zone */}
         <div className={styles.header} onPointerDown={handleHeaderPointerDown} onContextMenu={handleContextMenu}>
           <span className={styles.typeBadge}>{backdrop.type}</span>
           <div className={styles.headerActions}>
             <button
               className={styles.iconBtn}
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(v => !v) }}
-              title={isEditing ? 'Close' : 'Edit attributes'}
+              title={isEditing ? 'Close' : 'Edit'}
             >
               {isEditing ? <CloseIcon /> : <EditIcon />}
             </button>
           </div>
         </div>
 
-        {/* BODY — pointer-events: none so clicks fall through to canvas/cards */}
+        {/* BODY — pointer-events: none so clicks fall through */}
         <div className={styles.body}>
-          {/* Title in the body, larger than card titles */}
-          <div className={styles.titleArea}>
-            {isRenaming ? (
-              <input
-                ref={titleInputRef}
-                className={styles.titleInput}
-                value={draftTitle}
-                onChange={e => setDraftTitle(e.target.value)}
-                onBlur={commitRename}
-                onKeyDown={handleTitleKeyDown}
-                autoFocus
-                style={{ pointerEvents: 'auto' }}
-                onClick={e => e.stopPropagation()}
-              />
-            ) : (
-              <span
-                className={`${styles.title} text-display`}
-                onDoubleClick={e => { e.stopPropagation(); startRename() }}
-                style={{ pointerEvents: 'auto' }}
-                title="Double-click to rename"
-              >
-                {backdrop.title}
-              </span>
-            )}
-          </div>
 
-          {/* Filled attribute display */}
-          {!isEditing && filledAttrs.length > 0 && (
-            <div className={styles.attrDisplay}>
-              {filledAttrs.map(({ field, value }) => (
-                <div key={field.key} className={styles.attrRow}>
-                  <span className={styles.attrKey}>{field.label}</span>
-                  <span className={styles.attrVal}>{value}</span>
+          {/* ── VIEW MODE ── */}
+          {!isEditing && (
+            <>
+              <div className={styles.titleArea}>
+                <span
+                  className={`${styles.title} text-display`}
+                  style={{ pointerEvents: 'auto' }}
+                  onDoubleClick={e => { e.stopPropagation(); setIsEditing(true) }}
+                  title="Double-click to edit"
+                >
+                  {backdrop.title}
+                </span>
+              </div>
+
+              {filledAttrs.length > 0 && (
+                <div className={styles.attrDisplay}>
+                  {filledAttrs.map(({ field, value }) => (
+                    <div key={field.key} className={styles.attrRow}>
+                      <span className={styles.attrKey}>{field.label}</span>
+                      <span className={styles.attrVal}>{value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              {backdrop.note && (
+                <div className={styles.noteDisplay}>
+                  {backdrop.note}
+                </div>
+              )}
+            </>
           )}
 
-          {/* Edit panel — pointer-events restored for inputs */}
+          {/* ── EDIT MODE ── */}
           {isEditing && (
-            <div className={styles.editPanel} style={{ pointerEvents: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div
+              className={styles.editPanel}
+              style={{ pointerEvents: 'auto' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Title — editable at the top of the panel */}
+              <div className={styles.field}>
+                <label className={styles.label}>Title</label>
+                <input
+                  className={styles.input}
+                  value={backdrop.title}
+                  onChange={e => updateBackdropContent(backdrop.id, { title: e.target.value })}
+                  placeholder={backdrop.type}
+                  autoFocus
+                />
+              </div>
+
+              {/* Type-specific attribute fields */}
               {schema.map(field => (
                 <div key={field.key} className={styles.field}>
                   <label className={styles.label}>{field.label}</label>
@@ -248,6 +248,20 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
                   )}
                 </div>
               ))}
+
+              {/* Note — appears in lower-right when filled */}
+              <div className={styles.field}>
+                <label className={styles.label}>Note <span className={styles.noteHint}>· shown in lower-right</span></label>
+                <textarea
+                  className={styles.textarea}
+                  value={backdrop.note ?? ''}
+                  onChange={e => updateBackdropContent(backdrop.id, { note: e.target.value } as any)}
+                  placeholder="Add a note…"
+                  rows={2}
+                />
+              </div>
+
+              {/* Color */}
               <div className={styles.field}>
                 <label className={styles.label}>Color</label>
                 <div className={styles.swatches}>
@@ -268,7 +282,7 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
           )}
         </div>
 
-        {/* RESIZE HANDLES — pointer-events: auto, visible on edge/handle hover only */}
+        {/* RESIZE HANDLES */}
         {HANDLES.map(pos => (
           <div
             key={pos}

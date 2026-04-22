@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "boardId": "template-arcadia-01",
+  "name": "Arcadia — Western Mystery",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "viewport": { "x": 3900, "y": 3900, "zoom": 0.9 },
+  "backdrops": [
+    {
+      "id": "bd-act1",
+      "type": "Act",
+      "title": "Act One",
+      "note": "Establish the world and the problem",
+      "position": { "x": 3920, "y": 3940 },
+      "size": { "width": 520, "height": 340 },
+      "color": "violet",
+      "zIndex": 1,
+      "attributes": {
+        "function": "Establish the world, introduce the protagonist and the disruption",
+        "dramatic_question": "Who is responsible for the disappearances?",
+        "shift": "Ezra accepts he cannot ignore what is happening"
+      }
+    },
+    {
+      "id": "bd-act2",
+      "type": "Act",
+      "title": "Act Two",
+      "note": "Escalation and confrontation",
+      "position": { "x": 4460, "y": 3940 },
+      "size": { "width": 520, "height": 340 },
+      "color": "rose",
+      "zIndex": 1,
+      "attributes": {
+        "function": "Escalation — the threat grows, alliances form and fracture",
+        "dramatic_question": "Can Ezra trust anyone in Harrow Creek?",
+        "shift": "The truth about the Tillamook land is exposed"
+      }
+    }
+  ],
+  "cards": [
+    {
+      "id": "card-ezra",
+      "entityId": "entity-ezra",
+      "type": "Character",
+      "title": "Ezra Cade",
+      "noteRaw": "Confederate veteran, former Pinkerton agent. Haunted by what he did during the war and what he enabled after it.",
+      "instanceNote": "",
+      "position": { "x": 3940, "y": 3980 },
+      "rotation": 0,
+      "color": "amber",
+      "zIndex": 10,
+      "isFlipped": false
+    },
+    {
+      "id": "card-harrow",
+      "entityId": "entity-harrow",
+      "type": "Location",
+      "title": "Harrow Creek",
+      "noteRaw": "A dying timber town in 1870s Oregon. The surrounding forest belongs — by treaty — to the Tillamook people.",
+      "instanceNote": "",
+      "position": { "x": 4120, "y": 3980 },
+      "rotation": 0,
+      "color": "sage",
+      "zIndex": 10,
+      "isFlipped": false
+    },
+    {
+      "id": "card-opening",
+      "entityId": "entity-opening",
+      "type": "Scene",
+      "title": "The Body in the Mill",
+      "noteRaw": "Ezra arrives in Harrow Creek. A body has been found — partially consumed. The sheriff wants it buried quietly.",
+      "instanceNote": "",
+      "position": { "x": 4300, "y": 3980 },
+      "rotation": 0,
+      "color": "sky",
+      "zIndex": 10,
+      "isFlipped": false
+    },
+    {
+      "id": "card-theme-guilt",
+      "entityId": "entity-theme-guilt",
+      "type": "Theme",
+      "title": "Complicity",
+      "noteRaw": "The story asks what we owe to the harms we enabled, even at a distance.",
+      "instanceNote": "",
+      "position": { "x": 4480, "y": 3980 },
+      "rotation": 0,
+      "color": "violet",
+      "zIndex": 10,
+      "isFlipped": false
+    }
+  ],
+  "entities": [
+    {
+      "id": "entity-ezra",
+      "type": "Character",
+      "title": "Ezra Cade",
+      "noteRaw": "Confederate veteran, former Pinkerton agent. Haunted by what he did during the war and what he enabled after it.",
+      "attributes": {
+        "pronouns": "he/him",
+        "role": "Protagonist",
+        "occupation": "Former Pinkerton agent, drifter",
+        "age": "42",
+        "summary": "A man who enforced injustice for pay and is not sure he deserves redemption — but keeps trying anyway."
+      }
+    },
+    {
+      "id": "entity-harrow",
+      "type": "Location",
+      "title": "Harrow Creek",
+      "noteRaw": "A dying timber town in 1870s Oregon. The surrounding forest belongs — by treaty — to the Tillamook people.",
+      "attributes": {
+        "type": "Exterior",
+        "period": "1870s Oregon",
+        "mood": "Desolate, paranoid, secretive",
+        "description": "Muddy main street, a half-built church, a mill that barely runs. Everyone is watching everyone else."
+      }
+    },
+    {
+      "id": "entity-opening",
+      "type": "Scene",
+      "title": "The Body in the Mill",
+      "noteRaw": "Ezra arrives in Harrow Creek. A body has been found — partially consumed. The sheriff wants it buried quietly.",
+      "attributes": {
+        "goal": "Establish Ezra's arrival and the inciting disruption",
+        "conflict": "The sheriff actively obstructs any investigation",
+        "outcome": "Ezra decides to stay — he has seen this kind of cover-up before"
+      }
+    },
+    {
+      "id": "entity-theme-guilt",
+      "type": "Theme",
+      "title": "Complicity",
+      "noteRaw": "The story asks what we owe to the harms we enabled, even at a distance.",
+      "attributes": {
+        "statement": "Silence in the face of injustice is its own form of violence",
+        "expression": "Ezra's reluctant investigation mirrors his own reckoning",
+        "opposition": "Some harms cannot be undone — only witnessed"
+      }
+    }
+  ]
+}

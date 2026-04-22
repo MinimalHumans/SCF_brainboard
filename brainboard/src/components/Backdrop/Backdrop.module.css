@@ -290,3 +290,32 @@
 .handle_s  { bottom: -6px; left: calc(50% - 6px); cursor: s-resize; }
 .handle_sw { bottom: -6px; left: -6px;            cursor: sw-resize; }
 .handle_w  { top: calc(50% - 6px); left: -6px;   cursor: w-resize; }
+
+/* Note display — lower-right corner of the backdrop body (view mode) */
+.noteDisplay {
+  position:   absolute;
+  bottom:     var(--space-3);
+  right:      var(--space-4);
+  max-width:  45%;
+  font-family: var(--font-ui);
+  font-size:  var(--text-xs);
+  color:      var(--color-text-muted);
+  opacity:    0.65;
+  line-height: var(--leading-normal);
+  text-align: right;
+  user-select: none;
+  /* Clamp to 3 lines */
+  display:            -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow:           hidden;
+}
+
+.noteHint {
+  font-weight:    var(--weight-regular);
+  color:          var(--color-text-muted);
+  opacity:        0.6;
+  font-size:      var(--text-2xs);
+  letter-spacing: 0;
+  text-transform: none;
+}

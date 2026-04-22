@@ -64,7 +64,7 @@ interface BoardStore {
   createBackdrop:         (position: Position, size: Size, type: BackdropType) => Backdrop
   updateBackdropPosition: (id: string, position: Position) => void
   updateBackdropSize:     (id: string, position: Position, size: Size) => void
-  updateBackdropContent:  (id: string, patch: Partial<Pick<Backdrop, 'title' | 'color'>>) => void
+  updateBackdropContent:  (id: string, patch: Partial<Pick<Backdrop, 'title' | 'color' | 'note'>>) => void
   updateBackdropAttribute:(id: string, key: string, value: string) => void
   deleteBackdrop:         (id: string) => void
   moveBackdropWithCards:  (id: string, backdropPos: Position, cardUpdates: { id: string; position: Position }[]) => void
@@ -268,7 +268,8 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     const backdrop: Backdrop = {
       id:         nanoid(),
       type,
-      title:      type,  // default title is just the type name
+      title:      type,
+      note:       '',
       position,
       size: {
         width:  Math.max(size.width,  BACKDROP_MIN_W),
@@ -349,7 +350,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   // ── Persistence ───────────────────────────────────────────────────────────
 
   loadBoard: (board) => set({
-    // Ensure backdrops array exists for boards saved before Phase 11
-    board: { ...board, backdrops: board.backdrops ?? [] },
+    board: {
+      ...board,
+      backdrops: (board.backdrops ?? []).map(b => ({ note: '', ...b })),
+    },
   }),
 }))

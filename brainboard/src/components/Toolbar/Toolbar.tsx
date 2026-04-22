@@ -9,6 +9,8 @@ interface ToolbarProps {
   onPublishSelected?: () => void
   onExport?:          () => void
   onImport?:          () => void
+  onTemplates?:       () => void
+  onHelp?:            () => void
 }
 
 export function Toolbar({
@@ -17,6 +19,8 @@ export function Toolbar({
   onPublishSelected,
   onExport,
   onImport,
+  onTemplates,
+  onHelp,
 }: ToolbarProps) {
   const boardName    = useBoardStore(s => s.board.name)
   const zoom         = useBoardStore(s => s.board.viewport.zoom)
@@ -37,8 +41,8 @@ export function Toolbar({
   }, [isRenaming])
 
   const commitRename = useCallback(() => {
-    const trimmed = draft.trim()
-    if (trimmed) setBoardName(trimmed)
+    const t = draft.trim()
+    if (t) setBoardName(t)
     setIsRenaming(false)
   }, [draft, setBoardName])
 
@@ -53,6 +57,7 @@ export function Toolbar({
 
   return (
     <header className={styles.toolbar}>
+      {/* Left: wordmark + board name */}
       <div className={styles.left}>
         <span className={`${styles.wordmark} text-display`}>Brainboard</span>
         <span className={styles.divider} aria-hidden="true" />
@@ -74,19 +79,23 @@ export function Toolbar({
         )}
       </div>
 
+      {/* Center: zoom HUD */}
       <div className={styles.center}>
         <div className={styles.zoomHud}>
           <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'out' })} title="Zoom out">−</button>
-          <button className={styles.zoomPct} onClick={() => requestZoom({ type: 'reset' })} title="Reset zoom to 100%">
+          <button className={styles.zoomPct} onClick={() => requestZoom({ type: 'reset' })} title="Reset zoom">
             {zoomPct}%
           </button>
           <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'in' })} title="Zoom in">+</button>
         </div>
       </div>
 
+      {/* Right: actions */}
       <div className={styles.right}>
-        <button className={styles.action} onClick={onImport}>Import</button>
-        <button className={styles.action} onClick={onExport}>Export</button>
+        <button className={styles.action} onClick={onImport}    title="Import board from file">Import</button>
+        <button className={styles.action} onClick={onExport}    title="Export board to file">Export</button>
+        <button className={styles.templatesBtn} onClick={onTemplates} title="Browse templates">Templates</button>
+
         <div className={styles.publishGroup}>
           {hasSelection && onPublishSelected && (
             <button className={styles.action} onClick={onPublishSelected}>Publish Selected</button>
@@ -99,6 +108,10 @@ export function Toolbar({
             Publish All
           </button>
         </div>
+
+        <button className={styles.helpBtn} onClick={onHelp} title="Help & keyboard shortcuts" aria-label="Help">
+          ?
+        </button>
       </div>
     </header>
   )
