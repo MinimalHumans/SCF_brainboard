@@ -17,6 +17,11 @@ export function Canvas() {
   const canvasShellRef = useRef<HTMLDivElement>(null)
   const isSpaceDownRef = useRef(false)
 
+  // After Selecto finishes a drag, the browser fires a click event on the
+  // world div. That click would immediately call clearSelection(). This flag
+  // suppresses the next world click if Selecto just completed a selection.
+  const suppressNextClickRef = useRef(false)
+
   const [shellEl, setShellEl] = useState<HTMLDivElement | null>(null)
 
   const { board, createCard, setViewport } = useBoardStore()
@@ -43,27 +48,17 @@ export function Canvas() {
   }, [])
 
   // -------------------------------------------------------------------------
-  // Space key: track state + prevent viewer's internal handler.
-  //
-  // CRITICAL FIX: only preventDefault when the focused element is NOT a text
-  // input. Without this check, space is swallowed globally and users can't
-  // type spaces in card title/note fields.
+  // Space: track + prevent viewer handler.
+  // Only preventDefault when NOT focused in an input — allows typing spaces.
   // -------------------------------------------------------------------------
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return
       const active = document.activeElement
-      const inInput =
-        active instanceof HTMLInputElement ||
-        active instanceof HTMLTextAreaElement
-      if (!inInput) {
-        e.preventDefault()
-        isSpaceDownRef.current = true
-      }
+      const inInput = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
+      if (!inInput) { e.preventDefault(); isSpaceDownRef.current = true }
     }
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') isSpaceDownRef.current = false
-    }
+    const onKeyUp = (e: KeyboardEvent) => { if (e.code === 'Space') isSpaceDownRef.current = false }
     window.addEventListener('keydown', onKeyDown, { passive: false })
     window.addEventListener('keyup',   onKeyUp)
     return () => {
@@ -86,69 +81,45 @@ export function Canvas() {
   // -------------------------------------------------------------------------
   // Wheel → zoom toward cursor
   //
-  // Correct zoom-to-cursor math:
-  //   The point in world-space under the cursor must remain fixed after zoom.
-  //
-  //   InfiniteViewer convention (verified from source):
-  //     screenX = (worldX - scrollLeft) * zoom
-  //     → worldX = screenX / zoom + scrollLeft
-  //
-  //   After applying newZoom, to keep worldX fixed under cursor:
-  //     newScrollLeft = worldX - screenX / newZoom
-  //                   = (screenX / oldZoom + scrollLeft) - screenX / newZoom
-  //
-  //   setTo({ x, y, zoom }) sets scroll + zoom atomically.
-  //   This avoids the one-frame lag of separate scrollTo + setZoom calls.
+  // Math: the world point under the cursor must stay fixed after zoom.
+  //   worldX     = screenX / oldZoom + scrollLeft
+  //   newScrollX = worldX  - screenX / newZoom
   // -------------------------------------------------------------------------
   useEffect(() => {
     const el = canvasShellRef.current
     if (!el) return
-
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const viewer = viewerRef.current
       if (!viewer) return
 
-      const rawDelta  = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY
-      const oldZoom   = viewer.getZoom()
-      const newZoom   = Math.max(0.1, Math.min(4, oldZoom * Math.exp(-rawDelta / 500)))
+      const rawDelta   = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY
+      const oldZoom    = viewer.getZoom()
+      const newZoom    = Math.max(0.1, Math.min(4, oldZoom * Math.exp(-rawDelta / 500)))
+      const rect       = el.getBoundingClientRect()
+      const screenX    = e.clientX - rect.left
+      const screenY    = e.clientY - rect.top
+      const worldX     = screenX / oldZoom + viewer.getScrollLeft()
+      const worldY     = screenY / oldZoom + viewer.getScrollTop()
 
-      const rect    = el.getBoundingClientRect()
-      const screenX = e.clientX - rect.left   // cursor in viewport coords
-      const screenY = e.clientY - rect.top
-
-      const scrollLeft = viewer.getScrollLeft()
-      const scrollTop  = viewer.getScrollTop()
-
-      // World point under cursor at current zoom
-      const worldX = screenX / oldZoom + scrollLeft
-      const worldY = screenY / oldZoom + scrollTop
-
-      // New scroll such that worldX stays under cursor at newZoom
-      const newScrollX = worldX - screenX / newZoom
-      const newScrollY = worldY - screenY / newZoom
-
-      viewer.setTo({ x: newScrollX, y: newScrollY, zoom: newZoom })
+      viewer.setTo({
+        x:    worldX - screenX / newZoom,
+        y:    worldY - screenY / newZoom,
+        zoom: newZoom,
+      })
     }
-
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
   // -------------------------------------------------------------------------
-  // Keyboard shortcuts: Ctrl+A, Escape, F
+  // Keyboard shortcuts
   // -------------------------------------------------------------------------
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const inInput =
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
+      const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
       if (inInput) return
-
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault()
-        selectMany(cards.map(c => c.id))
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); selectMany(cards.map(c => c.id)) }
       if (e.key === 'Escape') clearSelection()
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); frameAll() }
     }
@@ -158,7 +129,7 @@ export function Canvas() {
   }, [cards, selectMany, clearSelection])
 
   // -------------------------------------------------------------------------
-  // Frame all cards (F) — uses same world-math as wheel zoom
+  // Frame all (F)
   // -------------------------------------------------------------------------
   const frameAll = useCallback(() => {
     const viewer = viewerRef.current
@@ -179,12 +150,11 @@ export function Canvas() {
   }, [cards])
 
   // -------------------------------------------------------------------------
-  // Pan — space + left-drag OR middle-mouse drag on world layer
+  // Pan — space+left-drag or middle-mouse drag
   // -------------------------------------------------------------------------
   const handleWorldPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.target !== e.currentTarget) return
-
       const isPan = e.button === 1 || (e.button === 0 && isSpaceDownRef.current)
       if (!isPan) return
 
@@ -198,7 +168,10 @@ export function Canvas() {
 
       const onMove = (me: PointerEvent) => {
         const zoom = viewer.getZoom()
-        viewer.scrollTo(startSX - (me.clientX - startX) / zoom, startSY - (me.clientY - startY) / zoom)
+        viewer.scrollTo(
+          startSX - (me.clientX - startX) / zoom,
+          startSY - (me.clientY - startY) / zoom
+        )
       }
       const onUp = () => {
         target.style.cursor = ''
@@ -221,13 +194,28 @@ export function Canvas() {
       if (!viewer) return
       const zoom = viewer.getZoom()
       const rect = worldRef.current!.getBoundingClientRect()
-      createCard({ x: (e.clientX - rect.left) / zoom - CARD_W / 2, y: (e.clientY - rect.top) / zoom - CARD_H / 2 })
+      createCard({
+        x: (e.clientX - rect.left) / zoom - CARD_W / 2,
+        y: (e.clientY - rect.top)  / zoom - CARD_H / 2,
+      })
     },
     [createCard]
   )
 
+  // -------------------------------------------------------------------------
+  // Click empty world → clear selection.
+  // Suppressed for one tick after Selecto completes, to prevent the
+  // pointer-up click from immediately wiping the rubber-band selection.
+  // -------------------------------------------------------------------------
   const handleWorldClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => { if (e.target === e.currentTarget) clearSelection() },
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.target !== e.currentTarget) return
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false
+        return
+      }
+      clearSelection()
+    },
     [clearSelection]
   )
 
@@ -270,9 +258,6 @@ export function Canvas() {
         </div>
       </InfiniteViewer>
 
-      {/* Selecto rubber-band.
-          onSelectEnd fires on pointer-up with the final set of hit elements.
-          (onSelect fires during drag for live preview — not what we want.) */}
       {shellEl && (
         <Selecto
           container={shellEl}
@@ -281,19 +266,25 @@ export function Canvas() {
           hitRate={0}
           selectByClick={false}
           continueSelect={false}
-          dragCondition={(e) => {
+          dragCondition={e => {
             const target = (e.inputEvent as MouseEvent).target as Element
             if (target.closest('[data-card-id]')) return false
             if (isSpaceDownRef.current) return false
             return true
           }}
           onSelectEnd={({ selected }) => {
-            if (selected.length === 0) return
-            selectMany(
-              selected
-                .map(el => (el as HTMLElement).dataset.cardId)
-                .filter(Boolean) as string[]
-            )
+            // Set flag BEFORE the click event fires (same pointer-up sequence)
+            suppressNextClickRef.current = true
+            if (selected.length > 0) {
+              selectMany(
+                selected
+                  .map(el => (el as HTMLElement).dataset.cardId)
+                  .filter(Boolean) as string[]
+              )
+            } else {
+              // Empty selection: let the click clear normally
+              suppressNextClickRef.current = false
+            }
           }}
         />
       )}
@@ -335,7 +326,6 @@ function EmptyState() {
       <p className={styles.emptySecondary}>Double-click anywhere to add a card</p>
       <div className={styles.shortcuts}>
         <Shortcut keys={['Double-click']}  label="New card"    />
-        <Shortcut keys={['Double-click']}  label="Edit card"   />
         <Shortcut keys={['Drag']}          label="Select"      />
         <Shortcut keys={['Space', 'Drag']} label="Pan"         />
         <Shortcut keys={['Scroll']}        label="Zoom"        />

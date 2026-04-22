@@ -10,17 +10,18 @@ import styles from './Card.module.css'
 marked.use({ breaks: true, gfm: true })
 
 // ---------------------------------------------------------------------------
-// Card mode state machine
+// State machine: front ↔ edit
 //
-//   closed  ←→  flipped    (flip button toggles between these)
-//   closed  →   open       (double-click)
-//   open    →   closed     (close button or Escape)
+// front  = compact display face. Drag from anywhere on the card.
+//          Shows: colored handle bar, title (Fraunces), type badge,
+//          note preview, instance note preview. Read-only.
 //
-// The flip animation only runs between 'closed' and 'flipped'.
-// 'open' is a separate expanded edit state — no flip in edit mode.
-// This sidesteps the CSS preserve-3d / InfiniteViewer transform conflict.
+// edit   = full editing face. Drag from handle bar only.
+//          Shows: all editable fields, swatch picker, publish button.
+//
+// The flip button (top-right of handle bar) is the only toggle.
+// Escape also exits edit → front.
 // ---------------------------------------------------------------------------
-type CardMode = 'closed' | 'open' | 'flipped'
 
 interface CardProps {
   card:          Card
@@ -29,7 +30,7 @@ interface CardProps {
 }
 
 export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
-  const [mode, setMode] = useState<CardMode>('closed')
+  const [isEditing, setIsEditing] = useState(false)
 
   const updateCardContent = useBoardStore(s => s.updateCardContent)
   const publishCard       = useBoardStore(s => s.publishCard)
@@ -38,53 +39,34 @@ export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
   )
   const isSelected = useSelectionStore(s => s.selectedIds.has(card.id))
 
-  const isOpen     = mode === 'open'
-  const isFlipped  = mode === 'flipped'
-  const published  = card.entityId !== null
+  const published   = card.entityId !== null
   const hasInstance = allCards.some(
     c => c.entityId === card.entityId && c.id !== card.id && published
   )
 
-  const handlePointerDown = useCardDrag(card.id, getViewerZoom, isOpen)
+  const handlePointerDown = useCardDrag(card.id, getViewerZoom, isEditing)
 
-  // Double-click on closed card → open edit mode
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    if (mode === 'closed') {
-      e.stopPropagation()
-      setMode('open')
-    }
-  }, [mode])
-
-  // Escape anywhere on the card → close
+  // Escape → exit edit
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape' && mode === 'open') {
+    if (e.key === 'Escape' && isEditing) {
       e.stopPropagation()
-      setMode('closed')
+      setIsEditing(false)
     }
-  }, [mode])
+  }, [isEditing])
 
-  // Flip button — single click, uses onPointerDown to avoid drag conflict
+  // Flip button: single pointer-down to avoid conflict with drag
   const handleFlipPointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation()
-    e.preventDefault()  // prevent card drag from starting
-    if (mode === 'closed')  setMode('flipped')
-    if (mode === 'flipped') setMode('closed')
-    // In open mode, flip button is not shown
-  }, [mode])
-
-  const handleClose = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation()
     e.preventDefault()
-    setMode('closed')
+    setIsEditing(v => !v)
   }, [])
 
-  // Field updates
+  // Field updaters
   const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
   const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
   const setInstanceNote = useCallback((v: string) => updateCardContent(card.id, { instanceNote: v }), [card.id, updateCardContent])
   const setType         = useCallback((v: string) => updateCardContent(card.id, { type: v as any }),  [card.id, updateCardContent])
 
-  // Swatch: use onPointerDown with stopPropagation to prevent card drag stealing
   const handleSwatchPointerDown = useCallback((e: React.PointerEvent, swatch: string) => {
     e.stopPropagation()
     e.preventDefault()
@@ -95,204 +77,169 @@ export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
     e.stopPropagation()
     e.preventDefault()
     publishCard(card.id)
-    setMode('closed')
+    setIsEditing(false)
   }, [card.id, publishCard])
 
-  // Markdown for back face
+  // Note text for front face — shared entity note or draft
+  const displayNote = entity?.noteRaw ?? card.noteRaw
+
+  // Markdown render for front face note preview
   const noteHtml = useMemo(() => {
-    const source = entity?.noteRaw ?? card.noteRaw
-    return source ? marked.parse(source) as string : ''
-  }, [entity?.noteRaw, card.noteRaw])
+    return displayNote ? marked.parse(displayNote) as string : ''
+  }, [displayNote])
 
   return (
     <div
       data-card-id={card.id}
       className={[
         styles.card,
-        styles[mode],
+        isEditing  ? styles.editing  : styles.front,
         isSelected ? styles.selected : '',
-        published  ? '' : styles.unpublished,
+        published  ? ''              : styles.unpublished,
       ].join(' ').trim()}
       data-swatch={card.color}
-      style={{ transform: `translate(${card.position.x}px, ${card.position.y}px)`, zIndex: card.zIndex }}
+      style={{
+        transform: `translate(${card.position.x}px, ${card.position.y}px)`,
+        zIndex:    card.zIndex,
+      }}
       onPointerDown={handlePointerDown}
-      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
     >
-      {/* ====== DRAG HANDLE (always present, primary drag target when open) ====== */}
-      <div
-        className={styles.dragHandle}
-        data-drag-handle="true"
-        style={{ '--handle-color': `var(--swatch-${card.color})` } as React.CSSProperties}
-      >
-        <span className={styles.typeBadge}>{card.type}</span>
-        {hasInstance && <span className={styles.instanceGlyph} title="Multiple instances">◈</span>}
-        {!published  && <span className={styles.draftLabel}>Draft</span>}
 
-        <div className={styles.handleActions}>
-          {/* Flip button: closed ↔ flipped. Not shown in open mode. */}
-          {mode !== 'open' && (
-            <button
-              className={styles.iconBtn}
-              onPointerDown={handleFlipPointerDown}
-              title={isFlipped ? 'Show front' : 'Show attributes'}
-              aria-label={isFlipped ? 'Show front' : 'Show attributes'}
-            >
-              <FlipIcon flipped={isFlipped} />
-            </button>
+      {/* ── HANDLE BAR ─────────────────────────────────────────────────── */}
+      {/* Always present. Primary drag target when editing. */}
+      <div className={styles.handle} data-drag-handle="true">
+        <span className={styles.typeBadge}>{card.type}</span>
+        {hasInstance && (
+          <span className={styles.instanceGlyph} title="Multiple instances on board">◈</span>
+        )}
+        {!published && (
+          <span className={styles.draftLabel}>Draft</span>
+        )}
+        <button
+          className={styles.flipBtn}
+          onPointerDown={handleFlipPointerDown}
+          title={isEditing ? 'Back to card view' : 'Edit card'}
+          aria-label={isEditing ? 'Back to card view' : 'Edit card'}
+        >
+          {isEditing ? <ViewIcon /> : <EditIcon />}
+        </button>
+      </div>
+
+      {/* ── FRONT FACE ─────────────────────────────────────────────────── */}
+      {/* Compact display. Visible when not editing. */}
+      {!isEditing && (
+        <div className={styles.frontContent}>
+          {/* Title */}
+          <div className={`${styles.title} text-display-card`}>
+            {card.title || `New ${card.type}`}
+          </div>
+
+          {/* Note — rendered as markdown */}
+          {noteHtml ? (
+            <div
+              className={styles.noteMarkdown}
+              dangerouslySetInnerHTML={{ __html: noteHtml }}
+            />
+          ) : (
+            <p className={styles.emptyNote}>No note — click ✎ to edit</p>
           )}
-          {/* Close button: only in open mode */}
-          {mode === 'open' && (
-            <button
-              className={styles.iconBtn}
-              onPointerDown={handleClose}
-              title="Close edit mode"
-              aria-label="Close"
-            >
-              <CloseIcon />
-            </button>
+
+          {/* Instance note (local placement context) */}
+          {card.instanceNote && (
+            <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
           )}
         </div>
-      </div>
+      )}
 
-      {/* ====== FRONT FACE ====== */}
-      <div className={`${styles.face} ${styles.front} ${isFlipped ? styles.faceHidden : ''}`}>
-        {mode === 'closed' && (
-          /* Closed: compact read-only view */
-          <div className={styles.closedContent}>
-            <div className={`${styles.title} text-display-card`}>
-              {card.title || `New ${card.type}`}
-            </div>
-            {card.noteRaw && (
-              <p className={styles.notePreview}>{card.noteRaw}</p>
-            )}
-            {card.instanceNote && (
-              <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
-            )}
+      {/* ── EDIT FACE ──────────────────────────────────────────────────── */}
+      {/* Full fields. Visible when editing. */}
+      {isEditing && (
+        <div className={styles.editContent}>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Type</label>
+            <select
+              className={styles.select}
+              value={card.type}
+              onChange={e => setType(e.target.value)}
+              onClick={e => e.stopPropagation()}
+            >
+              {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
-        )}
 
-        {mode === 'open' && (
-          /* Open: full edit fields */
-          <div className={styles.openContent}>
-            {/* Type */}
-            <div className={styles.fieldRow}>
-              <label className={styles.fieldLabel}>Type</label>
-              <select
-                className={styles.typeSelect}
-                value={card.type}
-                onChange={e => setType(e.target.value)}
-                onClick={e => e.stopPropagation()}
-              >
-                {ENTITY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-
-            {/* Title */}
-            <div className={styles.fieldRow}>
-              <label className={styles.fieldLabel}>Name</label>
-              <input
-                className={styles.titleInput}
-                value={card.title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder={`New ${card.type}`}
-                onClick={e => e.stopPropagation()}
-                autoFocus
-              />
-            </div>
-
-            {/* Note */}
-            <div className={styles.fieldRow}>
-              <label className={styles.fieldLabel}>
-                Note
-                {published && <span className={styles.sharedTag}> · shared</span>}
-              </label>
-              <textarea
-                className={styles.textarea}
-                value={card.noteRaw}
-                onChange={e => setNoteRaw(e.target.value)}
-                placeholder="Add a note… (markdown supported)"
-                rows={4}
-                onClick={e => e.stopPropagation()}
-              />
-            </div>
-
-            {/* Instance note */}
-            <div className={styles.fieldRow}>
-              <label className={styles.fieldLabel}>
-                Placement note
-                <span className={styles.sharedTag}> · this card only</span>
-              </label>
-              <textarea
-                className={styles.textarea}
-                value={card.instanceNote}
-                onChange={e => setInstanceNote(e.target.value)}
-                placeholder="Context for this placement…"
-                rows={2}
-                onClick={e => e.stopPropagation()}
-              />
-            </div>
-
-            {/* Swatch picker */}
-            <div className={styles.fieldRow}>
-              <label className={styles.fieldLabel}>Color</label>
-              <div className={styles.swatchRow}>
-                {SWATCH_KEYS.map(swatch => (
-                  <div
-                    key={swatch}
-                    role="button"
-                    tabIndex={0}
-                    className={`${styles.swatchDot} ${card.color === swatch ? styles.swatchActive : ''}`}
-                    style={{ '--dot-color': `var(--swatch-${swatch})` } as React.CSSProperties}
-                    onPointerDown={e => handleSwatchPointerDown(e, swatch)}
-                    aria-label={swatch}
-                    title={swatch}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Publish (if unpublished) */}
-            {!published && (
-              <div className={styles.publishRow}>
-                <button
-                  className={styles.publishBtn}
-                  onPointerDown={handlePublishPointerDown}
-                >
-                  Publish entity
-                </button>
-              </div>
-            )}
+          <div className={styles.field}>
+            <label className={styles.label}>Name</label>
+            <input
+              className={styles.input}
+              value={card.title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={`New ${card.type}`}
+              onClick={e => e.stopPropagation()}
+              autoFocus
+            />
           </div>
-        )}
-      </div>
 
-      {/* ====== BACK FACE (attributes) ====== */}
-      <div className={`${styles.face} ${styles.back} ${!isFlipped ? styles.faceHidden : ''}`}>
-        {published && entity ? (
-          <div className={styles.backContent}>
-            <div className={`${styles.backTitle} text-display-card`}>{entity.title}</div>
-            {noteHtml ? (
-              <div
-                className={styles.markdown}
-                dangerouslySetInnerHTML={{ __html: noteHtml }}
-              />
-            ) : (
-              <p className={styles.emptyNote}>No note yet — double-click to edit.</p>
-            )}
-            <p className={styles.attributePlaceholder}>Attributes · Phase 6</p>
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Note
+              {published && <span className={styles.tag}> · shared across instances</span>}
+            </label>
+            <textarea
+              className={styles.textarea}
+              value={card.noteRaw}
+              onChange={e => setNoteRaw(e.target.value)}
+              placeholder="Add a note… (markdown supported)"
+              rows={4}
+              onClick={e => e.stopPropagation()}
+            />
           </div>
-        ) : (
-          <div className={styles.unpublishedBack}>
-            <p className={styles.unpublishedMsg}>
-              Publish this card to unlock the attribute side.
-            </p>
-            <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
-              Publish
-            </button>
+
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Placement note
+              <span className={styles.tag}> · this card only</span>
+            </label>
+            <textarea
+              className={styles.textarea}
+              value={card.instanceNote}
+              onChange={e => setInstanceNote(e.target.value)}
+              placeholder="Context for this placement…"
+              rows={2}
+              onClick={e => e.stopPropagation()}
+            />
           </div>
-        )}
-      </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Color</label>
+            <div className={styles.swatches}>
+              {SWATCH_KEYS.map(swatch => (
+                <div
+                  key={swatch}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={swatch}
+                  title={swatch}
+                  className={`${styles.swatch} ${card.color === swatch ? styles.swatchActive : ''}`}
+                  style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
+                  onPointerDown={e => handleSwatchPointerDown(e, swatch)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {!published && (
+            <div className={styles.publishRow}>
+              <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
+                Publish entity
+              </button>
+            </div>
+          )}
+
+        </div>
+      )}
+
     </div>
   )
 }
@@ -301,24 +248,27 @@ export function CardComponent({ card, allCards, getViewerZoom }: CardProps) {
 // Icons
 // ---------------------------------------------------------------------------
 
-function FlipIcon({ flipped }: { flipped: boolean }) {
-  return flipped ? (
+function EditIcon() {
+  // Pencil — signals "enter edit mode"
+  return (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-      <path d="M9.5 2L7 4.5M7 4.5L4.5 2M7 4.5V10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ) : (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-      <rect x="1.5" y="2.5" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-      <line x1="1.5" y1="5.5" x2="11.5" y2="5.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path
+        d="M2 10.5h1.5L9 5 8 4l-5.5 5.5V10.5zM8 4l1-1 1 1-1 1L8 4z"
+        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+        fill="none"
+      />
     </svg>
   )
 }
 
-function CloseIcon() {
+function ViewIcon() {
+  // Card/view icon — signals "back to card view"
   return (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-      <line x1="3" y1="3" x2="10" y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-      <line x1="10" y1="3" x2="3"  y2="10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <rect x="1.5" y="2" width="10" height="9" rx="1.5"
+        stroke="currentColor" strokeWidth="1.3"/>
+      <line x1="1.5" y1="5" x2="11.5" y2="5" stroke="currentColor" strokeWidth="1.3"/>
+      <line x1="4"   y1="7.5" x2="9" y2="7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
     </svg>
   )
 }
