@@ -22,7 +22,7 @@
               width var(--duration-normal) var(--easing-standard);
 }
 .card:active { cursor: grabbing; }
-.card.editing { width: 380px; cursor: default; }
+/* .card.editing removed — edit panel is now a portal, card stays at front width */
 .card:not(.selected):hover { box-shadow: var(--shadow-card-raised); }
 .selected, .selected:hover { box-shadow: var(--shadow-card-selected); }
 .unpublished { outline: 1.5px dashed rgba(255,255,255,0.14); outline-offset: 0; }
@@ -241,3 +241,134 @@
   transition: background-color var(--duration-fast) var(--easing-out);
 }
 .publishBtn:hover { background-color: var(--color-accent-hover); }
+
+/* ==========================================================================
+   Card edit panel — portal-rendered, fixed position, always above everything
+   ========================================================================== */
+
+.editPanel {
+  /* World-space positioning — set via inline style from card.position.
+     position:absolute is set inline so it participates in world-div layout.
+     Portalled into worldRef so it pans/zooms with the canvas. */
+  width:            300px;
+  padding:          var(--space-3);
+  background-color: var(--color-surface-overlay);
+  border:           1px solid var(--color-border-strong);
+  border-radius:    var(--radius-lg);
+  box-shadow:       var(--shadow-overlay);
+  display:          flex;
+  flex-direction:   column;
+  gap:              var(--space-3);
+  animation:        cardPanelIn var(--duration-fast) var(--easing-standard);
+}
+
+@keyframes cardPanelIn {
+  from { opacity: 0; transform: translateX(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.editPanel .field { display: flex; flex-direction: column; gap: var(--space-1); }
+
+.editPanel .label {
+  font-family:    var(--font-ui);
+  font-size:      var(--text-xs);
+  font-weight:    var(--weight-medium);
+  color:          var(--color-text-muted);
+  letter-spacing: 0.02em;
+  user-select:    none;
+}
+
+.editPanel .select {
+  font-family:   var(--font-ui);
+  font-size:     var(--text-sm);
+  font-weight:   var(--weight-medium);
+  color:         var(--color-text-primary);
+  background:    var(--color-surface-inset);
+  border:        1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding:       var(--space-1) var(--space-2);
+  cursor:        pointer;
+}
+.editPanel .select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.editPanel .input {
+  display:          block;
+  width:            100%;
+  font-family:      var(--font-ui);
+  font-size:        var(--text-sm);
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-inset);
+  border:           1px solid var(--color-border);
+  border-radius:    var(--radius-sm);
+  padding:          var(--space-2);
+  cursor:           text;
+  user-select:      text;
+  transition:       border-color var(--duration-fast) var(--easing-out);
+}
+.editPanel .input:focus        { border-color: var(--color-accent); outline: none; }
+.editPanel .input::placeholder { color: var(--color-text-muted); opacity: 0.5; }
+.editPanel .input:disabled     { opacity: 0.4; cursor: not-allowed; }
+
+.editPanel .textarea {
+  display:          block;
+  width:            100%;
+  font-family:      var(--font-ui);
+  font-size:        var(--text-sm);
+  line-height:      var(--leading-normal);
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-inset);
+  border:           1px solid var(--color-border);
+  border-radius:    var(--radius-sm);
+  padding:          var(--space-2);
+  resize:           vertical;
+  min-height:       52px;
+  cursor:           text;
+  user-select:      text;
+  transition:       border-color var(--duration-fast) var(--easing-out);
+}
+.editPanel .textarea:focus        { border-color: var(--color-accent); outline: none; }
+.editPanel .textarea::placeholder { color: var(--color-text-muted); opacity: 0.5; }
+.editPanel .textarea:disabled     { opacity: 0.4; cursor: not-allowed; }
+
+.panelHeader {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--space-2);
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panelTitle {
+  font-family:   var(--font-display);
+  font-size:     var(--text-sm);
+  font-weight:   var(--weight-semibold);
+  font-variation-settings: 'wght' 600, 'WONK' 0.3, 'opsz' 13;
+  color:         var(--color-text-primary);
+  flex:          1;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  white-space:   nowrap;
+}
+
+.panelClose {
+  font-size:        18px;
+  line-height:      1;
+  width:            24px;
+  height:           24px;
+  display:          flex;
+  align-items:      center;
+  justify-content:  center;
+  border-radius:    var(--radius-xs);
+  color:            var(--color-text-muted);
+  background:       transparent;
+  border:           none;
+  cursor:           pointer;
+  flex-shrink:      0;
+  transition:       color            var(--duration-fast) var(--easing-out),
+                    background-color var(--duration-fast) var(--easing-out);
+}
+.panelClose:hover {
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+}

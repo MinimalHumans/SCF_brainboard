@@ -121,9 +121,10 @@ export function TabMenu({ worldX, worldY, screenX, screenY, onClose, getViewerZo
       )
     } else {
       createBackdrop(
-        { x: worldX - BACKDROP_MIN_W, y: worldY - BACKDROP_MIN_H },
-        { width: BACKDROP_MIN_W * 3, height: BACKDROP_MIN_H * 3 },
-        item.type
+        { x: worldX - 300, y: worldY - 200 },
+        { width: 600, height: 400 },
+        item.type,
+        true  // fromMenu — uses larger preset size
       )
     }
     onClose()

@@ -29,4 +29,9 @@ export const BACKDROP_SCHEMAS: Record<BackdropType, BackdropFieldDef[]> = {
   Beat: [
     { key: 'description', label: 'Description', type: 'textarea', hint: 'What happens in this beat…' },
   ],
+
+  // Custom: free-form organizer, not mapped to SCF on export
+  Custom: [
+    { key: 'description', label: 'Description', type: 'textarea', hint: 'What this group contains or represents…' },
+  ],
 }

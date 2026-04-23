@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { marked } from 'marked'
 import { useBoardStore } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
@@ -17,9 +18,10 @@ interface CardProps {
   allCards:         Card[]
   getViewerZoom:    () => number
   onCreateInstance: (cardId: string) => void
+  worldRef:         React.RefObject<HTMLDivElement>
 }
 
-export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance }: CardProps) {
+export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance, worldRef }: CardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
@@ -41,6 +43,9 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
   const hasInstance = allCards.some(c => c.entityId === card.entityId && c.id !== card.id && published)
   const attrSchema  = ATTRIBUTE_SCHEMAS[card.type] ?? []
 
+  // For published cards, always display entity title to keep instances in sync
+  const displayTitle = published && entity ? entity.title : card.title
+
   const handlePointerDown = useCardDrag(card.id, getViewerZoom, isEditing)
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -54,10 +59,9 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
 
   const handleFlipPointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation(); e.preventDefault()
-    setIsEditing(v => !v)
+    setIsEditing(true)
   }, [])
 
-  // Right-click context menu
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
     if (!selectedIds.has(card.id)) select(card.id)
@@ -80,7 +84,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
     ]
   }, [card.id, published, selectedIds, duplicateCard, deleteCard, onCreateInstance, clearSelection])
 
-  // Field updaters
   const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
   const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
   const setInstanceNote = useCallback((v: string) => updateCardContent(card.id, { instanceNote: v }), [card.id, updateCardContent])
@@ -102,27 +105,22 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
     setIsEditing(false)
   }, [card.id, publishCard])
 
-  // For published cards, always read title from entity (prevents instance title drift).
-  // Unpublished cards read from card.title directly.
-  const displayTitle = published && entity ? entity.title : card.title
-
-  // Note for front face
   const displayNote = entity?.noteRaw ?? card.noteRaw
   const noteHtml    = useMemo(() =>
     displayNote ? marked.parse(displayNote) as string : '',
   [displayNote])
 
-  // Filled attributes for front face display
-  // Only show fields that have a non-empty value
   const filledAttrs = useMemo(() => {
     if (!entity || attrSchema.length === 0) return []
     return attrSchema
-      .map(field => ({
-        field,
-        value: (entity.attributes[field.key] as string) ?? '',
-      }))
+      .map(field => ({ field, value: (entity.attributes[field.key] as string) ?? '' }))
       .filter(({ value }) => value.trim() !== '')
   }, [entity, attrSchema])
+
+  // Edit panel world position: to the right of the card
+  const CARD_W = 320
+  const panelLeft = card.position.x + CARD_W + 8
+  const panelTop  = card.position.y
 
   return (
     <>
@@ -130,7 +128,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
         data-card-id={card.id}
         className={[
           styles.card,
-          isEditing  ? styles.editing  : styles.front,
+          styles.front,
           isSelected ? styles.selected : '',
           published  ? ''              : styles.unpublished,
         ].join(' ').trim()}
@@ -141,172 +139,159 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
       >
-        {/* ── HANDLE BAR ── */}
+        {/* Handle bar */}
         <div className={styles.handle} data-drag-handle="true">
           <span className={styles.typeBadge}>{card.type}</span>
           {hasInstance && (
-            <span className={styles.instanceBadge} title="Instance — shares entity with other cards on this board">
+            <span className={styles.instanceBadge} title="Instance — shares entity with other cards">
               <InstanceIcon />
             </span>
           )}
-          {!published  && <span className={styles.draftLabel}>Draft</span>}
-          <button
-            className={styles.flipBtn}
-            onPointerDown={handleFlipPointerDown}
-            title={isEditing ? 'Back to card view' : 'Edit card'}
-          >
-            {isEditing ? <ViewIcon /> : <EditIcon />}
-          </button>
+          {!published && <span className={styles.draftLabel}>Draft</span>}
+          {/* Edit button hidden while panel is open */}
+          {!isEditing && (
+            <button className={styles.flipBtn} onPointerDown={handleFlipPointerDown} title="Edit card">
+              <EditIcon />
+            </button>
+          )}
         </div>
 
-        {/* ── FRONT FACE ── */}
-        {!isEditing && (
-          <div className={styles.frontContent}>
-            {/* Title */}
-            <div className={`${styles.title} text-display-card`}>
-              {displayTitle || `New ${card.type}`}
-            </div>
-
-            {/* Filled attributes — shown inline, card grows to fit */}
-            {filledAttrs.length > 0 && (
-              <div className={styles.attrDisplay}>
-                {filledAttrs.map(({ field, value }) => (
-                  <div key={field.key} className={styles.attrRow}>
-                    <span className={styles.attrKey}>{field.label}</span>
-                    <span className={styles.attrVal}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Note — only shown if non-empty */}
-            {noteHtml && (
-              <div
-                className={styles.noteMarkdown}
-                dangerouslySetInnerHTML={{ __html: noteHtml }}
-              />
-            )}
-
-            {/* Instance note — only if non-empty */}
-            {card.instanceNote && (
-              <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
-            )}
+        {/* Front face — always shown */}
+        <div className={styles.frontContent}>
+          <div className={`${styles.title} text-display-card`}>
+            {displayTitle || `New ${card.type}`}
           </div>
-        )}
-
-        {/* ── EDIT FACE ── */}
-        {/* Field order: Type → Name → Attributes → Note → Placement Note → Color → Publish */}
-        {isEditing && (
-          <div className={styles.editContent}>
-
-            <div className={styles.field}>
-              <label className={styles.label}>Type</label>
-              <select className={styles.select} value={card.type}
-                onChange={e => setType(e.target.value)} onClick={e => e.stopPropagation()}>
-                {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>Name</label>
-              <input className={styles.input} value={displayTitle}
-                onChange={e => setTitle(e.target.value)}
-                placeholder={`New ${card.type}`}
-                onClick={e => e.stopPropagation()} autoFocus />
-            </div>
-
-            {/* Attribute fields — between Name and Note */}
-            {attrSchema.length > 0 && (
-              <div className={styles.attrSection}>
-                <div className={styles.attrSectionHeader}>
-                  Attributes
-                  {!published && <span className={styles.attrLock}> · publish to save</span>}
+          {filledAttrs.length > 0 && (
+            <div className={styles.attrDisplay}>
+              {filledAttrs.map(({ field, value }) => (
+                <div key={field.key} className={styles.attrRow}>
+                  <span className={styles.attrKey}>{field.label}</span>
+                  <span className={styles.attrVal}>{value}</span>
                 </div>
-                {attrSchema.map(field => (
-                  <div key={field.key} className={styles.field}>
-                    <label className={styles.label}>{field.label}</label>
-                    {field.type === 'select' ? (
-                      <select
-                        className={styles.select}
-                        value={(entity?.attributes[field.key] as string) ?? ''}
-                        onChange={e => setAttr(field.key, e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                        disabled={!published}
-                      >
-                        <option value="">—</option>
-                        {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : field.type === 'textarea' ? (
-                      <textarea
-                        className={styles.textarea}
-                        value={(entity?.attributes[field.key] as string) ?? ''}
-                        onChange={e => setAttr(field.key, e.target.value)}
-                        placeholder={field.hint}
-                        rows={2}
-                        onClick={e => e.stopPropagation()}
-                        disabled={!published}
-                      />
-                    ) : (
-                      <input
-                        className={styles.input}
-                        value={(entity?.attributes[field.key] as string) ?? ''}
-                        onChange={e => setAttr(field.key, e.target.value)}
-                        placeholder={field.hint}
-                        onClick={e => e.stopPropagation()}
-                        disabled={!published}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Note — at the bottom of content fields */}
-            <div className={styles.field}>
-              <label className={styles.label}>
-                Note {published && <span className={styles.tag}> · shared</span>}
-              </label>
-              <textarea className={styles.textarea} value={card.noteRaw}
-                onChange={e => setNoteRaw(e.target.value)}
-                placeholder="Add a note… (markdown supported)"
-                rows={3} onClick={e => e.stopPropagation()} />
+              ))}
             </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>
-                Placement note <span className={styles.tag}> · this card only</span>
-              </label>
-              <textarea className={styles.textarea} value={card.instanceNote}
-                onChange={e => setInstanceNote(e.target.value)}
-                placeholder="Context for this placement…"
-                rows={2} onClick={e => e.stopPropagation()} />
-            </div>
-
-            {/* Color */}
-            <div className={styles.field}>
-              <label className={styles.label}>Color</label>
-              <div className={styles.swatches}>
-                {SWATCH_KEYS.map(swatch => (
-                  <div key={swatch} role="button" tabIndex={0}
-                    className={`${styles.swatch} ${card.color === swatch ? styles.swatchActive : ''}`}
-                    style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
-                    onPointerDown={e => handleSwatchPointerDown(e, swatch)}
-                    aria-label={swatch} title={swatch} />
-                ))}
-              </div>
-            </div>
-
-            {!published && (
-              <div className={styles.publishRow}>
-                <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
-                  Publish entity
-                </button>
-              </div>
-            )}
-
-          </div>
-        )}
+          )}
+          {noteHtml && (
+            <div className={styles.noteMarkdown} dangerouslySetInnerHTML={{ __html: noteHtml }} />
+          )}
+          {card.instanceNote && (
+            <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
+          )}
+        </div>
       </div>
+
+      {/* Edit panel — portalled into world div so it moves with the canvas */}
+      {isEditing && worldRef.current && createPortal(
+        <div
+          className={styles.editPanel}
+          style={{
+            position: 'absolute',
+            left:     panelLeft,
+            top:      panelTop,
+            zIndex:   card.zIndex + 1000,
+          }}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Panel header with close button */}
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>{displayTitle || card.type}</span>
+            <button
+              className={styles.panelClose}
+              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(false) }}
+              title="Close"
+            >×</button>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Type</label>
+            <select className={styles.select} value={card.type} onChange={e => setType(e.target.value)}>
+              {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Name</label>
+            <input className={styles.input} value={displayTitle}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={`New ${card.type}`}
+              autoFocus />
+          </div>
+
+          {attrSchema.length > 0 && (
+            <div className={styles.attrSection}>
+              <div className={styles.attrSectionHeader}>
+                Attributes
+                {!published && <span className={styles.attrLock}> · publish to save</span>}
+              </div>
+              {attrSchema.map(field => (
+                <div key={field.key} className={styles.field}>
+                  <label className={styles.label}>{field.label}</label>
+                  {field.type === 'select' ? (
+                    <select className={styles.select}
+                      value={(entity?.attributes[field.key] as string) ?? ''}
+                      onChange={e => setAttr(field.key, e.target.value)}
+                      disabled={!published}>
+                      <option value="">—</option>
+                      {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : field.type === 'textarea' ? (
+                    <textarea className={styles.textarea}
+                      value={(entity?.attributes[field.key] as string) ?? ''}
+                      onChange={e => setAttr(field.key, e.target.value)}
+                      placeholder={field.hint} rows={2} disabled={!published} />
+                  ) : (
+                    <input className={styles.input}
+                      value={(entity?.attributes[field.key] as string) ?? ''}
+                      onChange={e => setAttr(field.key, e.target.value)}
+                      placeholder={field.hint} disabled={!published} />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Note {published && <span className={styles.tag}> · shared</span>}
+            </label>
+            <textarea className={styles.textarea} value={card.noteRaw}
+              onChange={e => setNoteRaw(e.target.value)}
+              placeholder="Add a note… (markdown supported)" rows={3} />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>
+              Placement note <span className={styles.tag}> · this card only</span>
+            </label>
+            <textarea className={styles.textarea} value={card.instanceNote}
+              onChange={e => setInstanceNote(e.target.value)}
+              placeholder="Context for this placement…" rows={2} />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Color</label>
+            <div className={styles.swatches}>
+              {SWATCH_KEYS.map(swatch => (
+                <div key={swatch} role="button" tabIndex={0}
+                  className={`${styles.swatch} ${card.color === swatch ? styles.swatchActive : ''}`}
+                  style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
+                  onPointerDown={e => handleSwatchPointerDown(e, swatch)}
+                  aria-label={swatch} title={swatch} />
+              ))}
+            </div>
+          </div>
+
+          {!published && (
+            <div className={styles.publishRow}>
+              <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
+                Publish entity
+              </button>
+            </div>
+          )}
+        </div>,
+        worldRef.current
+      )}
 
       {ctxMenu && (
         <ContextMenu
@@ -328,18 +313,7 @@ function EditIcon() {
   )
 }
 
-function ViewIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-      <rect x="1.5" y="2" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-      <line x1="1.5" y1="5" x2="11.5" y2="5" stroke="currentColor" strokeWidth="1.3"/>
-      <line x1="4" y1="7.5" x2="9" y2="7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
 function InstanceIcon() {
-  // Two overlapping cards with a link indicator
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
       <rect x="1" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>

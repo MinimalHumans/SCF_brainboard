@@ -32,7 +32,7 @@ export type EntityType = (typeof ENTITY_TYPES)[number]
 // Backdrop types
 // ---------------------------------------------------------------------------
 
-export const BACKDROP_TYPES = ['Sequence', 'Act', 'Beat', 'Scene'] as const
+export const BACKDROP_TYPES = ['Sequence', 'Act', 'Beat', 'Scene', 'Custom'] as const
 export type BackdropType = (typeof BACKDROP_TYPES)[number]
 
 // ---------------------------------------------------------------------------
@@ -69,6 +69,7 @@ export const BACKDROP_SWATCH_DEFAULTS: Record<BackdropType, SwatchKey> = {
   Act:      'violet',
   Beat:     'rose',
   Scene:    'sky',
+  Custom:   'fog',
 }
 
 // ---------------------------------------------------------------------------

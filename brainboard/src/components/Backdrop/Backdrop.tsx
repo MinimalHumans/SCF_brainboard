@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useBoardStore, CARD_W, CARD_H, BACKDROP_MIN_W, BACKDROP_MIN_H } from '@/store/boardStore'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { Backdrop } from '@/types/board'
-import { SWATCH_KEYS, getContainedCardIds } from '@/types/board'
+import { SWATCH_KEYS, BACKDROP_TYPES, getContainedCardIds } from '@/types/board'
 import { BACKDROP_SCHEMAS } from '@/config/backdropSchemas'
 import styles from './Backdrop.module.css'
 
@@ -13,13 +14,14 @@ const HANDLES: HandlePos[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 interface BackdropProps {
   backdrop:      Backdrop
   getViewerZoom: () => number
+  worldRef:      React.RefObject<HTMLDivElement>
 }
 
-export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
+export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: BackdropProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
-  const duplicateBackdrop       = useBoardStore(s => s.duplicateBackdrop)
+  const updateBackdropType      = useBoardStore(s => s.updateBackdropType)
   const updateBackdropContent   = useBoardStore(s => s.updateBackdropContent)
   const updateBackdropSize      = useBoardStore(s => s.updateBackdropSize)
   const updateBackdropAttribute = useBoardStore(s => s.updateBackdropAttribute)
@@ -28,6 +30,8 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
   const board                   = useBoardStore(s => s.board)
 
   const schema = BACKDROP_SCHEMAS[backdrop.type] ?? []
+
+
 
   // ── Header drag ────────────────────────────────────────────────────────────
 
@@ -137,9 +141,8 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
   }, [])
 
   const ctxItems: ContextMenuItem[] = [
-    { label: 'Edit attributes',  onClick: () => setIsEditing(v => !v) },
-    { label: 'Duplicate',        onClick: () => duplicateBackdrop(backdrop.id), divider: true },
-    { label: 'Delete backdrop',  danger: true, divider: true, onClick: () => deleteBackdrop(backdrop.id) },
+    { label: 'Edit attributes', onClick: () => setIsEditing(v => !v) },
+    { label: 'Delete backdrop', danger: true, divider: true, onClick: () => deleteBackdrop(backdrop.id) },
   ]
 
   const filledAttrs = schema
@@ -156,21 +159,22 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
           transform: `translate(${backdrop.position.x}px, ${backdrop.position.y}px)`,
           width:     backdrop.size.width,
           height:    backdrop.size.height,
-          // Raise above all cards when editing so the panel is never obscured
-          zIndex:    isEditing ? 9999 : backdrop.zIndex,
+          zIndex:    backdrop.zIndex,
         }}
       >
         {/* HEADER — pointer-events: auto, full width drag zone */}
         <div className={styles.header} onPointerDown={handleHeaderPointerDown} onContextMenu={handleContextMenu}>
           <span className={styles.typeBadge}>{backdrop.type}</span>
           <div className={styles.headerActions}>
-            <button
-              className={styles.iconBtn}
-              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(v => !v) }}
-              title={isEditing ? 'Close' : 'Edit'}
-            >
-              {isEditing ? <CloseIcon /> : <EditIcon />}
-            </button>
+            {!isEditing && (
+              <button
+                className={styles.iconBtn}
+                onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(true) }}
+                title="Edit"
+              >
+                <EditIcon />
+              </button>
+            )}
           </div>
         </div>
 
@@ -210,79 +214,6 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
             </>
           )}
 
-          {/* ── EDIT MODE ── */}
-          {isEditing && (
-            <div
-              className={styles.editPanel}
-              style={{ pointerEvents: 'auto' }}
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Title — editable at the top of the panel */}
-              <div className={styles.field}>
-                <label className={styles.label}>Title</label>
-                <input
-                  className={styles.input}
-                  value={backdrop.title}
-                  onChange={e => updateBackdropContent(backdrop.id, { title: e.target.value })}
-                  placeholder={backdrop.type}
-                  autoFocus
-                />
-              </div>
-
-              {/* Type-specific attribute fields */}
-              {schema.map(field => (
-                <div key={field.key} className={styles.field}>
-                  <label className={styles.label}>{field.label}</label>
-                  {field.type === 'textarea' ? (
-                    <textarea
-                      className={styles.textarea}
-                      value={backdrop.attributes[field.key] ?? ''}
-                      onChange={e => updateBackdropAttribute(backdrop.id, field.key, e.target.value)}
-                      placeholder={field.hint}
-                      rows={2}
-                    />
-                  ) : (
-                    <input
-                      className={styles.input}
-                      value={backdrop.attributes[field.key] ?? ''}
-                      onChange={e => updateBackdropAttribute(backdrop.id, field.key, e.target.value)}
-                      placeholder={field.hint}
-                    />
-                  )}
-                </div>
-              ))}
-
-              {/* Note — appears in lower-right when filled */}
-              <div className={styles.field}>
-                <label className={styles.label}>Note <span className={styles.noteHint}>· shown in lower-right</span></label>
-                <textarea
-                  className={styles.textarea}
-                  value={backdrop.note ?? ''}
-                  onChange={e => updateBackdropContent(backdrop.id, { note: e.target.value } as any)}
-                  placeholder="Add a note…"
-                  rows={2}
-                />
-              </div>
-
-              {/* Color */}
-              <div className={styles.field}>
-                <label className={styles.label}>Color</label>
-                <div className={styles.swatches}>
-                  {SWATCH_KEYS.map(swatch => (
-                    <div key={swatch} role="button"
-                      className={`${styles.swatch} ${backdrop.color === swatch ? styles.swatchActive : ''}`}
-                      style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
-                      onPointerDown={e => {
-                        e.stopPropagation(); e.preventDefault()
-                        updateBackdropContent(backdrop.id, { color: swatch as any })
-                      }}
-                      title={swatch}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* RESIZE HANDLES */}
@@ -297,6 +228,97 @@ export function BackdropComponent({ backdrop, getViewerZoom }: BackdropProps) {
 
       {ctxMenu && (
         <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={ctxItems} onClose={() => setCtxMenu(null)} />
+      )}
+
+      {/* Edit panel — portal so it's above ALL cards regardless of stacking context */}
+      {isEditing && worldRef.current && createPortal(
+        <div
+          className={styles.editPanel}
+          style={{
+            position: 'absolute',
+            // Anchor top-right of backdrop in world space
+            left: backdrop.position.x + backdrop.size.width + 8,
+            top:  backdrop.position.y,
+            zIndex: backdrop.zIndex + 1000,
+          }}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>{backdrop.title}</span>
+            <button className={styles.panelClose} onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(false) }} title="Close">×</button>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Type</label>
+            <select
+              className={styles.select}
+              value={backdrop.type}
+              onChange={e => updateBackdropType(backdrop.id, e.target.value as any)}
+            >
+              {[...BACKDROP_TYPES].sort().map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Title</label>
+            <input
+              className={styles.input}
+              value={backdrop.title}
+              onChange={e => updateBackdropContent(backdrop.id, { title: e.target.value })}
+              placeholder={backdrop.type}
+              autoFocus
+            />
+          </div>
+          {schema.map(field => (
+            <div key={field.key} className={styles.field}>
+              <label className={styles.label}>{field.label}</label>
+              {field.type === 'textarea' ? (
+                <textarea
+                  className={styles.textarea}
+                  value={backdrop.attributes[field.key] ?? ''}
+                  onChange={e => updateBackdropAttribute(backdrop.id, field.key, e.target.value)}
+                  placeholder={field.hint}
+                  rows={2}
+                />
+              ) : (
+                <input
+                  className={styles.input}
+                  value={backdrop.attributes[field.key] ?? ''}
+                  onChange={e => updateBackdropAttribute(backdrop.id, field.key, e.target.value)}
+                  placeholder={field.hint}
+                />
+              )}
+            </div>
+          ))}
+          <div className={styles.field}>
+            <label className={styles.label}>Note <span className={styles.noteHint}>· shown in lower-left</span></label>
+            <textarea
+              className={styles.textarea}
+              value={backdrop.note ?? ''}
+              onChange={e => updateBackdropContent(backdrop.id, { note: e.target.value } as any)}
+              placeholder="Add a note…"
+              rows={2}
+            />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label}>Color</label>
+            <div className={styles.swatches}>
+              {SWATCH_KEYS.map(swatch => (
+                <div key={swatch} role="button"
+                  className={`${styles.swatch} ${backdrop.color === swatch ? styles.swatchActive : ''}`}
+                  style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
+                  onPointerDown={e => {
+                    e.stopPropagation(); e.preventDefault()
+                    updateBackdropContent(backdrop.id, { color: swatch as any })
+                  }}
+                  title={swatch}
+                />
+              ))}
+            </div>
+          </div>
+        </div>,
+        worldRef.current!
       )}
     </>
   )

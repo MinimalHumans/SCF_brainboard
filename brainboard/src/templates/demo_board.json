@@ -1,0 +1,515 @@
+{
+  "schemaVersion": 1,
+  "boardId": "kv4yBmrwjmoL--e4ZwOPS",
+  "name": "Demo Board",
+  "createdAt": "2026-04-23T14:19:29.781Z",
+  "updatedAt": "2026-04-23T15:29:37.559Z",
+  "viewport": {
+    "x": 2094.7713837445854,
+    "y": 1330.44154557306,
+    "zoom": 0.6166734663248385
+  },
+  "cards": [
+    {
+      "id": "QFLRTVsuYdzGXFKzruI6I",
+      "entityId": "xbCw-TO8RSVF3fb7g-kEZ",
+      "type": "Thought",
+      "position": {
+        "x": 3273.3973155147096,
+        "y": 2745.5896448501344
+      },
+      "rotation": 0,
+      "color": "sage",
+      "zIndex": 9,
+      "noteRaw": "random unsorted thoughts would go here.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "This is a thought card..."
+    },
+    {
+      "id": "abkABfRDMybcY-sLfekU5",
+      "entityId": "g5TmfvR-Y_yKG3139kHOq",
+      "type": "Arc",
+      "position": {
+        "x": 3644.9710425799503,
+        "y": 2744.6430467113937
+      },
+      "rotation": 0,
+      "color": "slate",
+      "zIndex": 35,
+      "noteRaw": "Additioanl notes about an Arc could go here.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "This is for working out Arcs"
+    },
+    {
+      "id": "86LRhnTbzyANi9W-0Tvzd",
+      "entityId": "f5Km0JDGg-yEZEkQy1POb",
+      "type": "Beat",
+      "position": {
+        "x": 3647.6916792818165,
+        "y": 2983.489636285346
+      },
+      "rotation": 0,
+      "color": "rose",
+      "zIndex": 14,
+      "noteRaw": "This is where you would describe what happens in a specific story or emotional beat.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Beats can be simple cards or Backdrops with other cards."
+    },
+    {
+      "id": "dc5U8etkqLf-OYnhaW6ln",
+      "entityId": "lev-RAuPvVyyfl9kLIEK9",
+      "type": "Character",
+      "position": {
+        "x": 3274.1825746018662,
+        "y": 2891.0193049804893
+      },
+      "rotation": 0,
+      "color": "amber",
+      "zIndex": 34,
+      "noteRaw": "Additional Notes can go here",
+      "instanceNote": "Cards can be instanced and this note is unique to to specific instances.",
+      "isFlipped": false,
+      "title": "Character Name"
+    },
+    {
+      "id": "J5tzGJDfIg9S1tQHoijV7",
+      "entityId": "mAtK1LPuQ7SXMwR3OJ0Us",
+      "type": "Location",
+      "position": {
+        "x": 3280.1439182132603,
+        "y": 3209.9581566887255
+      },
+      "rotation": 0,
+      "color": "sage",
+      "zIndex": 26,
+      "noteRaw": "Here's a note. You can also use\nMarkdown Syntax.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Location Name"
+    },
+    {
+      "id": "P5ti50PBgfeSCybgIrT9N",
+      "entityId": "6IgqGGiVQwa8LEABjufu0",
+      "type": "Prop",
+      "position": {
+        "x": 3281.8436896743538,
+        "y": 3471.6621742713623
+      },
+      "rotation": 0,
+      "color": "violet",
+      "zIndex": 27,
+      "noteRaw": "A note about the hammer",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Important Prop #99"
+    },
+    {
+      "id": "DtW9zC-G_EH-13ITOsZ3C",
+      "entityId": "PCC2Fh8BHDdSE-ZDmO4h0",
+      "type": "Scene",
+      "position": {
+        "x": 3653.124694579178,
+        "y": 3192.4153006759902
+      },
+      "rotation": 0,
+      "color": "sky",
+      "zIndex": 30,
+      "noteRaw": "A note about the scene.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Scenes can also be cards or backdrops."
+    },
+    {
+      "id": "Xp0s_MnCLwsSwsWj01iW2",
+      "entityId": "DvKpQnFxCP2YwAlfNN0HL",
+      "type": "Shot",
+      "position": {
+        "x": 3282.1726801152317,
+        "y": 3670.2932053924965
+      },
+      "rotation": 0,
+      "color": "amber",
+      "zIndex": 39,
+      "noteRaw": "An extra note space.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Shot 23"
+    },
+    {
+      "id": "rfUm9LY6QN2wvd0RIzdJw",
+      "entityId": "yZuGsCXAz3XHx9h3Mcz-D",
+      "type": "Theme",
+      "position": {
+        "x": 3653.146880115652,
+        "y": 3455.3532387568944
+      },
+      "rotation": 0,
+      "color": "fog",
+      "zIndex": 38,
+      "noteRaw": "An extra note about themes. Tortured thoughts about good versus evil! Or evil versus good! Or Evil versus evil!",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Themes - gotta have 'em"
+    },
+    {
+      "id": "un84H-m_nFuH2j38r40ro",
+      "entityId": "DvKpQnFxCP2YwAlfNN0HL",
+      "type": "Shot",
+      "position": {
+        "x": 2496.839306091794,
+        "y": 3294.2932053924965
+      },
+      "rotation": 0,
+      "color": "amber",
+      "zIndex": 41,
+      "noteRaw": "An extra note space.",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Shot 23"
+    },
+    {
+      "id": "c7OCARnf2V_iWrW_wnMgt",
+      "entityId": "Tl5Fxb71GAzo24GRLd5hh",
+      "type": "Prop",
+      "position": {
+        "x": 5328.054234064846,
+        "y": 2769.542734512836
+      },
+      "rotation": 0,
+      "color": "sand",
+      "zIndex": 55,
+      "noteRaw": "",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Undefined Prop that the Hero Holds in every scene."
+    },
+    {
+      "id": "5pYTyJPuNSE7h2a-ABX3D",
+      "entityId": "Tl5Fxb71GAzo24GRLd5hh",
+      "type": "Prop",
+      "position": {
+        "x": 4903.707364006489,
+        "y": 3131.983040403469
+      },
+      "rotation": 0,
+      "color": "sand",
+      "zIndex": 48,
+      "noteRaw": "",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Undefined Prop that the Hero Holds in every scene."
+    },
+    {
+      "id": "TwfHvP794Gty4GHVhV7dW",
+      "entityId": "Tl5Fxb71GAzo24GRLd5hh",
+      "type": "Prop",
+      "position": {
+        "x": 5312.374112053364,
+        "y": 3142.6496663800317
+      },
+      "rotation": 0,
+      "color": "sand",
+      "zIndex": 51,
+      "noteRaw": "",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Undefined Prop that the Hero Holds in every scene."
+    },
+    {
+      "id": "npdAR3yzcKTZjS9_G5yiP",
+      "entityId": "Tl5Fxb71GAzo24GRLd5hh",
+      "type": "Prop",
+      "position": {
+        "x": 5761.707364006489,
+        "y": 3132.6496663800317
+      },
+      "rotation": 0,
+      "color": "sand",
+      "zIndex": 54,
+      "noteRaw": "",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Undefined Prop that the Hero Holds in every scene."
+    }
+  ],
+  "entities": [
+    {
+      "id": "xbCw-TO8RSVF3fb7g-kEZ",
+      "type": "Thought",
+      "title": "This is a thought card...",
+      "noteRaw": "random unsorted thoughts would go here.",
+      "attributes": {}
+    },
+    {
+      "id": "g5TmfvR-Y_yKG3139kHOq",
+      "type": "Arc",
+      "title": "This is for working out Arcs",
+      "noteRaw": "Additioanl notes about an Arc could go here.",
+      "attributes": {
+        "subject": "Who is changing?",
+        "axis": "in what dimension is this change (suspicious>trusting, weak>strong)",
+        "direction": "Direction, positive of negative"
+      }
+    },
+    {
+      "id": "f5Km0JDGg-yEZEkQy1POb",
+      "type": "Beat",
+      "title": "Beats can be simple cards or Backdrops with other cards.",
+      "noteRaw": "This is where you would describe what happens in a specific story or emotional beat.",
+      "attributes": {}
+    },
+    {
+      "id": "lev-RAuPvVyyfl9kLIEK9",
+      "type": "Character",
+      "title": "Character Name",
+      "noteRaw": "Additional Notes can go here",
+      "attributes": {
+        "pronouns": "she/her",
+        "role": "Protagonist",
+        "occupation": "Monkey Farmer",
+        "age": "99",
+        "summary": "This is the description of a character in a simple way."
+      }
+    },
+    {
+      "id": "mAtK1LPuQ7SXMwR3OJ0Us",
+      "type": "Location",
+      "title": "Location Name",
+      "noteRaw": "Here's a note. You can also use\nMarkdown Syntax.",
+      "attributes": {
+        "type": "Interior",
+        "period": "1993",
+        "mood": "Creepy",
+        "description": "An abandoned mall."
+      }
+    },
+    {
+      "id": "6IgqGGiVQwa8LEABjufu0",
+      "type": "Prop",
+      "title": "Important Prop #99",
+      "noteRaw": "A note about the hammer",
+      "attributes": {
+        "story_function": "MacGuffin",
+        "description": "A big hammer."
+      }
+    },
+    {
+      "id": "PCC2Fh8BHDdSE-ZDmO4h0",
+      "type": "Scene",
+      "title": "Scenes can also be cards or backdrops.",
+      "noteRaw": "A note about the scene.",
+      "attributes": {
+        "goal": "What must happen / what's at stake?",
+        "conflict": "What stands in the way?",
+        "outcome": "How it resolves"
+      }
+    },
+    {
+      "id": "DvKpQnFxCP2YwAlfNN0HL",
+      "type": "Shot",
+      "title": "Shot 23",
+      "noteRaw": "An extra note space.",
+      "attributes": {
+        "subject": "What or who is the subject of this scene?",
+        "framing": "Extreme CloseUp (ECU)",
+        "purpose": "What does this shot accomplish narratively?"
+      }
+    },
+    {
+      "id": "yZuGsCXAz3XHx9h3Mcz-D",
+      "type": "Theme",
+      "title": "Themes - gotta have 'em",
+      "noteRaw": "An extra note about themes. Tortured thoughts about good versus evil! Or evil versus good! Or Evil versus evil!",
+      "attributes": {
+        "statement": "The core thematic claim",
+        "expression": "How the theme manifests",
+        "opposition": "The counter-argument the story explores."
+      }
+    },
+    {
+      "id": "Tl5Fxb71GAzo24GRLd5hh",
+      "type": "Prop",
+      "title": "Undefined Prop that the Hero Holds in every scene.",
+      "noteRaw": "",
+      "attributes": {
+        "story_function": "Symbolic"
+      }
+    }
+  ],
+  "backdrops": [
+    {
+      "note": "A custom note for better describ the goals or content of this backdrop.",
+      "id": "YgEIDWTNIYdk9f2zocv1u",
+      "type": "Act",
+      "title": "Act",
+      "position": {
+        "x": 2040.0091619575805,
+        "y": 2681.9841222416835
+      },
+      "size": {
+        "width": 1123.5745992989873,
+        "height": 1113.2991362170312
+      },
+      "color": "rose",
+      "zIndex": 1,
+      "attributes": {
+        "function": "Narrative Purpose of this Act",
+        "dramatic_question": "The question this act poses...",
+        "shift": "What changes by the end?"
+      }
+    },
+    {
+      "id": "ejpLYKKwZtf1UiTnOQw2p",
+      "type": "Sequence",
+      "title": "Sequence",
+      "note": "Add a note for fun and firendship.",
+      "position": {
+        "x": 2087.200030789725,
+        "y": 2871.8661680124474
+      },
+      "size": {
+        "width": 1038.4149641981533,
+        "height": 822.1503025823131
+      },
+      "color": "sky",
+      "zIndex": 2,
+      "attributes": {
+        "goal": "What must happen in this sequence?",
+        "conflict": "What stands in the way?",
+        "outcome": "How does it resolve?"
+      }
+    },
+    {
+      "id": "KTYGDnYs_R7GPHVExZH2t",
+      "type": "Scene",
+      "title": "Scene",
+      "note": "Add a note",
+      "position": {
+        "x": 2148.694001889447,
+        "y": 3043.7062804242155
+      },
+      "size": {
+        "width": 946.28567069969,
+        "height": 588.5021391258542
+      },
+      "color": "sky",
+      "zIndex": 3,
+      "attributes": {
+        "goal": "What must happen in this scene?",
+        "conflict": "What stands in the way?",
+        "outcome": "How does it resolve?"
+      }
+    },
+    {
+      "id": "1NsR6puYJLqT6-WDJ1rHO",
+      "type": "Beat",
+      "title": "Beat",
+      "note": "Add a super special note if you like!",
+      "position": {
+        "x": 2197.7493589267606,
+        "y": 3211.4800631503404
+      },
+      "size": {
+        "width": 865.8846368870607,
+        "height": 364.33475941723646
+      },
+      "color": "rose",
+      "zIndex": 4,
+      "attributes": {
+        "description": "What happens in this beat?"
+      }
+    },
+    {
+      "id": "85pXF0t30Qfn9ZzOtRUQ9",
+      "type": "Custom",
+      "title": "Custom",
+      "note": "One could make a collection of props or themese or random thoughts.",
+      "position": {
+        "x": 1913.152580871603,
+        "y": 2524.3976967627045
+      },
+      "size": {
+        "width": 2247.27981674386,
+        "height": 1548.8009803319337
+      },
+      "color": "fog",
+      "zIndex": 5,
+      "attributes": {
+        "description": "This is for grouping cards and backdrops in custom ways."
+      }
+    },
+    {
+      "id": "KSOtRfjQjujlBDy-8kkmh",
+      "type": "Scene",
+      "title": "Scene 01",
+      "note": "",
+      "position": {
+        "x": 4888.64780033628,
+        "y": 2978.9680417501204
+      },
+      "size": {
+        "width": 390.581017110957,
+        "height": 472.35220607747715
+      },
+      "color": "sky",
+      "zIndex": 6,
+      "attributes": {}
+    },
+    {
+      "id": "yIUxrJyX1ax_nxwg9Vmrk",
+      "type": "Scene",
+      "title": "Scene 02",
+      "note": "",
+      "position": {
+        "x": 5297.624013913368,
+        "y": 2987.8471950013814
+      },
+      "size": {
+        "width": 393.753622097107,
+        "height": 462.5574062483852
+      },
+      "color": "rose",
+      "zIndex": 7,
+      "attributes": {}
+    },
+    {
+      "id": "occe_90dxXXH_wKTcZ08w",
+      "type": "Scene",
+      "title": "Scene 03",
+      "note": "",
+      "position": {
+        "x": 5711.113615430012,
+        "y": 2982.9753688539104
+      },
+      "size": {
+        "width": 422.47874283367685,
+        "height": 455.2168070694029
+      },
+      "color": "sky",
+      "zIndex": 8,
+      "attributes": {}
+    },
+    {
+      "id": "U3gwGg_VUY0JhU46HVtT_",
+      "type": "Beat",
+      "title": "Instancing",
+      "note": "It's pretty cool! Can't do that with Notecards!",
+      "position": {
+        "x": 4808.895809335953,
+        "y": 2705.933570889606
+      },
+      "size": {
+        "width": 1372.85658834927,
+        "height": 1040.635149952466
+      },
+      "color": "rose",
+      "zIndex": 9,
+      "attributes": {
+        "description": "A demonstration about how instanced cards work."
+      }
+    }
+  ]
+}

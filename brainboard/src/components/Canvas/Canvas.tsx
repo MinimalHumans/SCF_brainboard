@@ -401,6 +401,7 @@ export function Canvas() {
                 key={backdrop.id}
                 backdrop={backdrop}
                 getViewerZoom={getViewerZoom}
+                worldRef={worldRef}
               />
             ))}
 
@@ -426,6 +427,7 @@ export function Canvas() {
                 allCards={cards}
                 getViewerZoom={getViewerZoom}
                 onCreateInstance={handleCreateInstance}
+                worldRef={worldRef}
               />
             ))}
           </div>

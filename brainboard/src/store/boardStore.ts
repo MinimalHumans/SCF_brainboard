@@ -61,10 +61,11 @@ interface BoardStore {
   publishAll:    () => void
 
   // Backdrops
-  createBackdrop:         (position: Position, size: Size, type: BackdropType) => Backdrop
+  createBackdrop:         (position: Position, size: Size, type: BackdropType, fromMenu?: boolean) => Backdrop
   updateBackdropPosition: (id: string, position: Position) => void
   updateBackdropSize:     (id: string, position: Position, size: Size) => void
   updateBackdropContent:  (id: string, patch: Partial<Pick<Backdrop, 'title' | 'color' | 'note'>>) => void
+  updateBackdropType:     (id: string, type: BackdropType) => void
   updateBackdropAttribute:(id: string, key: string, value: string) => void
   duplicateBackdrop:      (id: string) => void
   deleteBackdrop:         (id: string) => void
@@ -265,17 +266,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   // ── Backdrops ─────────────────────────────────────────────────────────────
 
-  createBackdrop: (position, size, type) => {
+  createBackdrop: (position, size, type, fromMenu = false) => {
     const backdrop: Backdrop = {
       id:         nanoid(),
       type,
       title:      type,
       note:       '',
       position,
-      size: {
-        width:  Math.max(size.width,  BACKDROP_MIN_W),
-        height: Math.max(size.height, BACKDROP_MIN_H),
-      },
+      size: fromMenu
+        ? { width: 600, height: 400 }
+        : { width: Math.max(size.width, BACKDROP_MIN_W), height: Math.max(size.height, BACKDROP_MIN_H) },
       color:      BACKDROP_SWATCH_DEFAULTS[type],
       zIndex:     maxZ(get().board.backdrops) + 1,
       attributes: {},
@@ -314,6 +314,21 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       board: touch({
         ...s.board,
         backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, ...patch } : b),
+      }),
+    })),
+
+  updateBackdropType: (id, type) =>
+    set(s => ({
+      board: touch({
+        ...s.board,
+        backdrops: s.board.backdrops.map(b =>
+          b.id === id ? {
+            ...b,
+            type,
+            color: BACKDROP_SWATCH_DEFAULTS[type],
+            attributes: {},  // clear attributes — schema changed
+          } : b
+        ),
       }),
     })),
 
