@@ -11,6 +11,7 @@ interface ToolbarProps {
   onImport?:          () => void
   onTemplates?:       () => void
   onHelp?:            () => void
+  onNewBoard?:        () => void
 }
 
 export function Toolbar({
@@ -21,6 +22,7 @@ export function Toolbar({
   onImport,
   onTemplates,
   onHelp,
+  onNewBoard,
 }: ToolbarProps) {
   const boardName    = useBoardStore(s => s.board.name)
   const zoom         = useBoardStore(s => s.board.viewport.zoom)
@@ -92,6 +94,7 @@ export function Toolbar({
 
       {/* Right: actions */}
       <div className={styles.right}>
+        <button className={styles.newBoardBtn} onClick={onNewBoard} title="Create a blank board (current board will be lost)">New Board</button>
         <button className={styles.action} onClick={onImport}    title="Import board from file">Import</button>
         <button className={styles.action} onClick={onExport}    title="Export board to file">Export</button>
         <button className={styles.templatesBtn} onClick={onTemplates} title="Browse templates">Templates</button>
