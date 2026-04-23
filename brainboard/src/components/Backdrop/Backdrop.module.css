@@ -7,6 +7,10 @@
 .backdrop[data-swatch="rose"]   { --bd-swatch: var(--swatch-rose);   --bd-surface: var(--swatch-rose-surface);   }
 .backdrop[data-swatch="slate"]  { --bd-swatch: var(--swatch-slate);  --bd-surface: var(--swatch-slate-surface);  }
 .backdrop[data-swatch="fog"]    { --bd-swatch: var(--swatch-fog);    --bd-surface: var(--swatch-fog-surface);    }
+.backdrop[data-swatch="crimson"]  { --bd-swatch: var(--swatch-crimson);  --bd-surface: var(--swatch-crimson-surface);  }
+.backdrop[data-swatch="emerald"]  { --bd-swatch: var(--swatch-emerald);  --bd-surface: var(--swatch-emerald-surface);  }
+.backdrop[data-swatch="cobalt"]   { --bd-swatch: var(--swatch-cobalt);   --bd-surface: var(--swatch-cobalt-surface);   }
+.backdrop[data-swatch="gold"]     { --bd-swatch: var(--swatch-gold);     --bd-surface: var(--swatch-gold-surface);     }
 
 /* ==========================================================================
    Backdrop root
@@ -189,9 +193,12 @@
    Edit panel — floats over the body, pointer-events restored via inline style
    ========================================================================== */
 .editPanel {
-  /* World-space: position set via inline style from backdrop.position.
-     Portalled into worldRef so it pans/zooms with the canvas. */
-  width:            300px;
+  /* Portal-rendered: position: fixed so it sits in the viewport stacking context,
+     above all cards and backdrops regardless of their z-index values.
+     top/right are set via inline style from the backdrop's getBoundingClientRect. */
+  position:         fixed;
+  width:            340px;
+  z-index:          var(--z-modal);   /* above everything */
   padding:          var(--space-3);
   background-color: var(--color-surface-overlay);
   border:           1px solid var(--color-border-strong);
@@ -200,12 +207,15 @@
   display:          flex;
   flex-direction:   column;
   gap:              var(--space-3);
+  /* Prevent panel from going off-screen at the top */
+  max-height:       80vh;
+  overflow-y:       auto;
   animation:        panelIn var(--duration-fast) var(--easing-standard);
 }
 
 @keyframes panelIn {
-  from { opacity: 0; transform: translateX(-4px) scale(0.98); }
-  to   { opacity: 1; transform: translateX(0) scale(1); }
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
@@ -340,46 +350,3 @@
   transition:       border-color var(--duration-fast) var(--easing-out);
 }
 .select:focus { border-color: var(--color-accent); outline: none; }
-
-.panelHeader {
-  display:        flex;
-  align-items:    center;
-  gap:            var(--space-2);
-  margin-bottom:  var(--space-1);
-  padding-bottom: var(--space-2);
-  border-bottom:  1px solid var(--color-border);
-}
-
-.panelTitle {
-  font-family:   var(--font-display);
-  font-size:     var(--text-sm);
-  font-weight:   var(--weight-semibold);
-  font-variation-settings: 'wght' 600, 'WONK' 0.3, 'opsz' 13;
-  color:         var(--color-text-primary);
-  flex:          1;
-  overflow:      hidden;
-  text-overflow: ellipsis;
-  white-space:   nowrap;
-}
-
-.panelClose {
-  font-size:        18px;
-  line-height:      1;
-  width:            24px;
-  height:           24px;
-  display:          flex;
-  align-items:      center;
-  justify-content:  center;
-  border-radius:    var(--radius-xs);
-  color:            rgba(255,255,255,0.4);
-  background:       transparent;
-  border:           none;
-  cursor:           pointer;
-  flex-shrink:      0;
-  transition:       color            var(--duration-fast) var(--easing-out),
-                    background-color var(--duration-fast) var(--easing-out);
-}
-.panelClose:hover {
-  color:            rgba(255,255,255,0.9);
-  background-color: rgba(255,255,255,0.1);
-}

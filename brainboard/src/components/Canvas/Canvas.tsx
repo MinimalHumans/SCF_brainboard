@@ -4,6 +4,7 @@ import Selecto from 'react-selecto'
 import { useBoardStore, WORLD_SIZE, WORLD_CENTER, CARD_W, CARD_H } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { useViewerStore } from '@/store/viewerStore'
+import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { CardComponent } from '@/components/Card/Card'
 import { BackdropComponent } from '@/components/Backdrop/Backdrop'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
@@ -40,6 +41,9 @@ export function Canvas() {
   const [canvasMenu, setCanvasMenu]     = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
 
   const { board, createCard, duplicateCard, createInstance, deleteCards, setViewport, createBackdrop } = useBoardStore()
+  const undo             = useBoardStore(s => s.undo)
+  const redo             = useBoardStore(s => s.redo)
+  const requestCloseAll  = useEditorSignalStore(s => s.requestCloseAll)
   const { clearSelection, selectMany } = useSelectionStore()
   const { cards, backdrops }           = board
 
@@ -195,6 +199,8 @@ export function Canvas() {
       const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
       if (inInput) return
       const sel = useSelectionStore.getState()
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); return }
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); selectMany(cards.map(c => c.id)); return }
       if (e.key === 'f' || e.key === 'F')             { e.preventDefault(); frameAll(); return }
       if (sel.selectedIds.size === 0) return
@@ -319,23 +325,12 @@ export function Canvas() {
   }, [screenToWorld])
 
   const canvasMenuItems: ContextMenuItem[] = canvasMenu ? [
-    {
-      label:   'New Card here',
-      onClick: () => createCard({ x: canvasMenu.wx - CARD_W / 2, y: canvasMenu.wy - CARD_H / 2 }),
-    },
-    {
-      label:    'Add Sequence backdrop',
-      divider:  true,
-      onClick:  () => setCreationMode('Sequence'),
-    },
-    {
-      label:   'Add Act backdrop',
-      onClick: () => setCreationMode('Act'),
-    },
-    {
-      label:   'Add Beat backdrop',
-      onClick: () => setCreationMode('Beat'),
-    },
+    { label: 'New Card here', onClick: () => createCard({ x: canvasMenu.wx - CARD_W / 2, y: canvasMenu.wy - CARD_H / 2 }) },
+    { label: 'Add Act backdrop',      divider: true, onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Act',      true) },
+    { label: 'Add Sequence backdrop',              onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Sequence',  true) },
+    { label: 'Add Scene backdrop',                 onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Scene',     true) },
+    { label: 'Add Beat backdrop',                  onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Beat',      true) },
+    { label: 'Add Custom backdrop',                onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Custom',    true) },
   ] : []
 
   // ── Double-click: create card ─────────────────────────────────────────────

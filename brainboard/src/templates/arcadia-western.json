@@ -1,28 +1,18 @@
 {
   "schemaVersion": 1,
-  "boardId": "yZ02iVOu-R6vxqVNS7sox",
+  "boardId": "template-arcadia-01",
   "name": "Arcadia — Western Mystery",
-  "createdAt": "2026-04-22T16:50:08.312Z",
-  "updatedAt": "2026-04-22T16:50:38.464Z",
-  "viewport": {
-    "x": 2865.0541877069477,
-    "y": 3273.520512693499,
-    "zoom": 0.7389056098930653
-  },
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "viewport": { "x": 3900, "y": 3900, "zoom": 0.9 },
   "backdrops": [
     {
-      "note": "Establish the world and the problem",
       "id": "bd-act1",
       "type": "Act",
       "title": "Act One",
-      "position": {
-        "x": 3029.493795002038,
-        "y": 3369.787326196055
-      },
-      "size": {
-        "width": 850.2180910973348,
-        "height": 877.732164526107
-      },
+      "note": "Establish the world and the problem",
+      "position": { "x": 3920, "y": 3940 },
+      "size": { "width": 520, "height": 340 },
       "color": "violet",
       "zIndex": 1,
       "attributes": {
@@ -32,18 +22,12 @@
       }
     },
     {
-      "note": "Escalation and confrontation",
       "id": "bd-act2",
       "type": "Act",
       "title": "Act Two",
-      "position": {
-        "x": 3935.8012811954527,
-        "y": 3375.2007788265705
-      },
-      "size": {
-        "width": 836.6846453757752,
-        "height": 861.4920131398151
-      },
+      "note": "Escalation and confrontation",
+      "position": { "x": 4460, "y": 3940 },
+      "size": { "width": 520, "height": 340 },
       "color": "rose",
       "zIndex": 1,
       "attributes": {
@@ -61,13 +45,10 @@
       "title": "Ezra Cade",
       "noteRaw": "Confederate veteran, former Pinkerton agent. Haunted by what he did during the war and what he enabled after it.",
       "instanceNote": "",
-      "position": {
-        "x": 3086.485452853729,
-        "y": 3609.181323931681
-      },
+      "position": { "x": 3940, "y": 3980 },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 17,
+      "zIndex": 10,
       "isFlipped": false
     },
     {
@@ -77,13 +58,10 @@
       "title": "Harrow Creek",
       "noteRaw": "A dying timber town in 1870s Oregon. The surrounding forest belongs — by treaty — to the Tillamook people.",
       "instanceNote": "",
-      "position": {
-        "x": 3482.119643276698,
-        "y": 3747.223271531975
-      },
+      "position": { "x": 4120, "y": 3980 },
       "rotation": 0,
       "color": "sage",
-      "zIndex": 18,
+      "zIndex": 10,
       "isFlipped": false
     },
     {
@@ -93,13 +71,10 @@
       "title": "The Body in the Mill",
       "noteRaw": "Ezra arrives in Harrow Creek. A body has been found — partially consumed. The sheriff wants it buried quietly.",
       "instanceNote": "",
-      "position": {
-        "x": 4390.223632293877,
-        "y": 3693.9914622939923
-      },
+      "position": { "x": 4300, "y": 3980 },
       "rotation": 0,
       "color": "sky",
-      "zIndex": 15,
+      "zIndex": 10,
       "isFlipped": false
     },
     {
@@ -109,13 +84,10 @@
       "title": "Complicity",
       "noteRaw": "The story asks what we owe to the harms we enabled, even at a distance.",
       "instanceNote": "",
-      "position": {
-        "x": 3998.206309075558,
-        "y": 3619.10592513605
-      },
+      "position": { "x": 4480, "y": 3980 },
       "rotation": 0,
       "color": "violet",
-      "zIndex": 16,
+      "zIndex": 10,
       "isFlipped": false
     }
   ],

@@ -7,6 +7,10 @@
 .card[data-swatch="rose"]   { --card-swatch: var(--swatch-rose);   --card-swatch-surface: var(--swatch-rose-surface);   }
 .card[data-swatch="slate"]  { --card-swatch: var(--swatch-slate);  --card-swatch-surface: var(--swatch-slate-surface);  }
 .card[data-swatch="fog"]    { --card-swatch: var(--swatch-fog);    --card-swatch-surface: var(--swatch-fog-surface);    }
+.card[data-swatch="crimson"]  { --card-swatch: var(--swatch-crimson);  --card-swatch-surface: var(--swatch-crimson-surface);  }
+.card[data-swatch="emerald"]  { --card-swatch: var(--swatch-emerald);  --card-swatch-surface: var(--swatch-emerald-surface);  }
+.card[data-swatch="cobalt"]   { --card-swatch: var(--swatch-cobalt);   --card-swatch-surface: var(--swatch-cobalt-surface);   }
+.card[data-swatch="gold"]     { --card-swatch: var(--swatch-gold);     --card-swatch-surface: var(--swatch-gold-surface);     }
 
 /* ==========================================================================
    Card root

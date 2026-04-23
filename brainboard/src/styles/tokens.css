@@ -257,6 +257,14 @@
   --swatch-slate-surface: var(--_raw-slate-dark);
   --swatch-fog:           var(--_raw-fog);
   --swatch-fog-surface:   var(--_raw-fog-dark);
+  --swatch-crimson:        var(--_raw-crimson);
+  --swatch-crimson-surface: var(--_raw-crimson-dark);
+  --swatch-emerald:        var(--_raw-emerald);
+  --swatch-emerald-surface: var(--_raw-emerald-dark);
+  --swatch-cobalt:         var(--_raw-cobalt);
+  --swatch-cobalt-surface: var(--_raw-cobalt-dark);
+  --swatch-gold:           var(--_raw-gold);
+  --swatch-gold-surface:   var(--_raw-gold-dark);
 
   /* --- Typography ---
    *  font-ui      → Inter Variable. All UI chrome, labels, metadata.

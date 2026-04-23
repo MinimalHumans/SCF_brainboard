@@ -1,13 +1,14 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
 import { useBoardStore } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
+import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { useCardDrag } from '@/hooks/useCardDrag'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { Card } from '@/types/board'
-import { ENTITY_TYPES, SWATCH_KEYS } from '@/types/board'
+import { ENTITY_TYPES, SWATCH_KEYS, isInstance } from '@/types/board'
 import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import styles from './Card.module.css'
 
@@ -31,26 +32,31 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const duplicateCard         = useBoardStore(s => s.duplicateCard)
   const deleteCard            = useBoardStore(s => s.deleteCard)
 
+  // Read entity live from store for realtime attribute updates
   const entity = useBoardStore(s =>
     card.entityId ? s.board.entities.find(e => e.id === card.entityId) : undefined
   )
-  const isSelected    = useSelectionStore(s => s.selectedIds.has(card.id))
-  const selectedIds   = useSelectionStore(s => s.selectedIds)
-  const clearSelection = useSelectionStore(s => s.clearSelection)
-  const select        = useSelectionStore(s => s.select)
 
-  const published   = card.entityId !== null
-  const hasInstance = allCards.some(c => c.entityId === card.entityId && c.id !== card.id && published)
+  const isSelected   = useSelectionStore(s => s.selectedIds.has(card.id))
+  const selectedIds  = useSelectionStore(s => s.selectedIds)
+  const clearSelection = useSelectionStore(s => s.clearSelection)
+  const select       = useSelectionStore(s => s.select)
+
+  // Close when canvas signals
+  const closeSignal = useEditorSignalStore(s => s.closeSignal)
+  useEffect(() => { if (closeSignal > 0) setIsEditing(false) }, [closeSignal])
+
+  const published   = true  // cards always published
+  const hasInstance = isInstance(card, allCards)
   const attrSchema  = ATTRIBUTE_SCHEMAS[card.type] ?? []
 
-  // For published cards, always display entity title to keep instances in sync
-  const displayTitle = published && entity ? entity.title : card.title
+  // Title always from entity to keep instances in sync
+  const displayTitle = entity?.title ?? card.title
 
   const handlePointerDown = useCardDrag(card.id, getViewerZoom, isEditing)
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsEditing(true)
+    e.stopPropagation(); setIsEditing(true)
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -58,8 +64,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   }, [isEditing])
 
   const handleFlipPointerDown = useCallback((e: React.PointerEvent) => {
-    e.stopPropagation(); e.preventDefault()
-    setIsEditing(true)
+    e.stopPropagation(); e.preventDefault(); setIsEditing(true)
   }, [])
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -73,7 +78,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
     return [
       { label: 'Edit', shortcut: 'Double-click', onClick: () => setIsEditing(true), disabled: multi },
       { label: 'Duplicate', shortcut: 'Ctrl D', onClick: () => duplicateCard(card.id), divider: true },
-      { label: 'Create Instance', shortcut: 'Ctrl I', onClick: () => onCreateInstance(card.id), disabled: !published },
+      { label: 'Create Instance', shortcut: 'Ctrl I', onClick: () => onCreateInstance(card.id) },
       {
         label: 'Delete', shortcut: 'Del', divider: true, danger: true,
         onClick: () => {
@@ -82,16 +87,14 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
         },
       },
     ]
-  }, [card.id, published, selectedIds, duplicateCard, deleteCard, onCreateInstance, clearSelection])
+  }, [card.id, selectedIds, duplicateCard, deleteCard, onCreateInstance, clearSelection])
 
   const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
   const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
   const setInstanceNote = useCallback((v: string) => updateCardContent(card.id, { instanceNote: v }), [card.id, updateCardContent])
   const setType         = useCallback((v: string) => updateCardContent(card.id, { type: v as any }),  [card.id, updateCardContent])
-
-  const setAttr = useCallback((key: string, value: string) => {
-    if (!entity) return
-    updateEntityAttribute(entity.id, key, value)
+  const setAttr         = useCallback((key: string, value: string) => {
+    if (entity) updateEntityAttribute(entity.id, key, value)
   }, [entity, updateEntityAttribute])
 
   const handleSwatchPointerDown = useCallback((e: React.PointerEvent, swatch: string) => {
@@ -101,14 +104,11 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
 
   const handlePublishPointerDown = useCallback((e: React.PointerEvent) => {
     e.stopPropagation(); e.preventDefault()
-    publishCard(card.id)
-    setIsEditing(false)
+    publishCard(card.id); setIsEditing(false)
   }, [card.id, publishCard])
 
   const displayNote = entity?.noteRaw ?? card.noteRaw
-  const noteHtml    = useMemo(() =>
-    displayNote ? marked.parse(displayNote) as string : '',
-  [displayNote])
+  const noteHtml    = useMemo(() => displayNote ? marked.parse(displayNote) as string : '', [displayNote])
 
   const filledAttrs = useMemo(() => {
     if (!entity || attrSchema.length === 0) return []
@@ -117,7 +117,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
       .filter(({ value }) => value.trim() !== '')
   }, [entity, attrSchema])
 
-  // Edit panel world position: to the right of the card
   const CARD_W = 320
   const panelLeft = card.position.x + CARD_W + 8
   const panelTop  = card.position.y
@@ -126,12 +125,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
     <>
       <div
         data-card-id={card.id}
-        className={[
-          styles.card,
-          styles.front,
-          isSelected ? styles.selected : '',
-          published  ? ''              : styles.unpublished,
-        ].join(' ').trim()}
+        className={[styles.card, styles.front, isSelected ? styles.selected : ''].join(' ').trim()}
         data-swatch={card.color}
         style={{ transform: `translate(${card.position.x}px, ${card.position.y}px)`, zIndex: card.zIndex }}
         onPointerDown={handlePointerDown}
@@ -139,7 +133,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
       >
-        {/* Handle bar */}
         <div className={styles.handle} data-drag-handle="true">
           <span className={styles.typeBadge}>{card.type}</span>
           {hasInstance && (
@@ -147,8 +140,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               <InstanceIcon />
             </span>
           )}
-          {!published && <span className={styles.draftLabel}>Draft</span>}
-          {/* Edit button hidden while panel is open */}
           {!isEditing && (
             <button className={styles.flipBtn} onPointerDown={handleFlipPointerDown} title="Edit card">
               <EditIcon />
@@ -156,11 +147,8 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
           )}
         </div>
 
-        {/* Front face — always shown */}
         <div className={styles.frontContent}>
-          <div className={`${styles.title} text-display-card`}>
-            {displayTitle || `New ${card.type}`}
-          </div>
+          <div className={`${styles.title} text-display-card`}>{displayTitle || `New ${card.type}`}</div>
           {filledAttrs.length > 0 && (
             <div className={styles.attrDisplay}>
               {filledAttrs.map(({ field, value }) => (
@@ -171,36 +159,22 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               ))}
             </div>
           )}
-          {noteHtml && (
-            <div className={styles.noteMarkdown} dangerouslySetInnerHTML={{ __html: noteHtml }} />
-          )}
-          {card.instanceNote && (
-            <p className={styles.instanceNotePreview}>{card.instanceNote}</p>
-          )}
+          {noteHtml && <div className={styles.noteMarkdown} dangerouslySetInnerHTML={{ __html: noteHtml }} />}
+          {card.instanceNote && <p className={styles.instanceNotePreview}>{card.instanceNote}</p>}
         </div>
       </div>
 
-      {/* Edit panel — portalled into world div so it moves with the canvas */}
       {isEditing && worldRef.current && createPortal(
-        <div
-          className={styles.editPanel}
-          style={{
-            position: 'absolute',
-            left:     panelLeft,
-            top:      panelTop,
-            zIndex:   card.zIndex + 1000,
-          }}
+        <div className={styles.editPanel}
+          style={{ position: 'absolute', left: panelLeft, top: panelTop, zIndex: card.zIndex + 1000 }}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
         >
-          {/* Panel header with close button */}
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>{displayTitle || card.type}</span>
-            <button
-              className={styles.panelClose}
+            <button className={styles.panelClose}
               onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(false) }}
-              title="Close"
-            >×</button>
+              title="Close">×</button>
           </div>
 
           <div className={styles.field}>
@@ -209,29 +183,22 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-
           <div className={styles.field}>
             <label className={styles.label}>Name</label>
             <input className={styles.input} value={displayTitle}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={`New ${card.type}`}
-              autoFocus />
+              onChange={e => setTitle(e.target.value)} placeholder={`New ${card.type}`} autoFocus />
           </div>
 
           {attrSchema.length > 0 && (
             <div className={styles.attrSection}>
-              <div className={styles.attrSectionHeader}>
-                Attributes
-                {!published && <span className={styles.attrLock}> · publish to save</span>}
-              </div>
+              <div className={styles.attrSectionHeader}>Attributes</div>
               {attrSchema.map(field => (
                 <div key={field.key} className={styles.field}>
                   <label className={styles.label}>{field.label}</label>
                   {field.type === 'select' ? (
                     <select className={styles.select}
                       value={(entity?.attributes[field.key] as string) ?? ''}
-                      onChange={e => setAttr(field.key, e.target.value)}
-                      disabled={!published}>
+                      onChange={e => setAttr(field.key, e.target.value)}>
                       <option value="">—</option>
                       {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
@@ -239,12 +206,12 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                     <textarea className={styles.textarea}
                       value={(entity?.attributes[field.key] as string) ?? ''}
                       onChange={e => setAttr(field.key, e.target.value)}
-                      placeholder={field.hint} rows={2} disabled={!published} />
+                      placeholder={field.hint} rows={2} />
                   ) : (
                     <input className={styles.input}
                       value={(entity?.attributes[field.key] as string) ?? ''}
                       onChange={e => setAttr(field.key, e.target.value)}
-                      placeholder={field.hint} disabled={!published} />
+                      placeholder={field.hint} />
                   )}
                 </div>
               ))}
@@ -252,23 +219,17 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
           )}
 
           <div className={styles.field}>
-            <label className={styles.label}>
-              Note {published && <span className={styles.tag}> · shared</span>}
-            </label>
+            <label className={styles.label}>Note <span className={styles.tag}> · shared</span></label>
             <textarea className={styles.textarea} value={card.noteRaw}
               onChange={e => setNoteRaw(e.target.value)}
               placeholder="Add a note… (markdown supported)" rows={3} />
           </div>
-
           <div className={styles.field}>
-            <label className={styles.label}>
-              Placement note <span className={styles.tag}> · this card only</span>
-            </label>
+            <label className={styles.label}>Placement note <span className={styles.tag}> · this card only</span></label>
             <textarea className={styles.textarea} value={card.instanceNote}
               onChange={e => setInstanceNote(e.target.value)}
               placeholder="Context for this placement…" rows={2} />
           </div>
-
           <div className={styles.field}>
             <label className={styles.label}>Color</label>
             <div className={styles.swatches}>
@@ -281,24 +242,12 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               ))}
             </div>
           </div>
-
-          {!published && (
-            <div className={styles.publishRow}>
-              <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
-                Publish entity
-              </button>
-            </div>
-          )}
         </div>,
         worldRef.current
       )}
 
       {ctxMenu && (
-        <ContextMenu
-          x={ctxMenu.x} y={ctxMenu.y}
-          items={contextMenuItems}
-          onClose={() => setCtxMenu(null)}
-        />
+        <ContextMenu x={ctxMenu.x} y={ctxMenu.y} items={contextMenuItems} onClose={() => setCtxMenu(null)} />
       )}
     </>
   )
