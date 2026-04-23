@@ -9,6 +9,7 @@ import { BackdropComponent } from '@/components/Backdrop/Backdrop'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { BackdropType } from '@/types/board'
+import { TabMenu } from '@/components/TabMenu/TabMenu'
 import styles from './Canvas.module.css'
 
 // ---------------------------------------------------------------------------
@@ -28,8 +29,11 @@ export function Canvas() {
   const canvasShellRef = useRef<HTMLDivElement>(null)
   const isSpaceDownRef = useRef(false)
   const suppressNextClickRef = useRef(false)
+  const lastMouseWorldRef     = useRef({ x: 4000, y: 4000 })
 
   const [shellEl, setShellEl]         = useState<HTMLDivElement | null>(null)
+  // Tab menu: stores viewport-center world coords when opened
+  const [tabMenu, setTabMenu]           = useState<{ worldX: number; worldY: number } | null>(null)
   const [creationMode, setCreationMode] = useState<BackdropType | null>(null)
   const [drawState, setDrawState]       = useState<DrawState | null>(null)
   const [canvasMenu, setCanvasMenu]     = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
@@ -72,18 +76,31 @@ export function Canvas() {
     }
   }, [])
 
-  // ── Escape cancels creation mode ──────────────────────────────────────────
+  // ── Tab → TabMenu; Escape → cancel modes ────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
       const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
       if (inInput) return
+
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (tabMenu) { setTabMenu(null); return }
+        const viewer = viewerRef.current
+        const el     = canvasShellRef.current
+        if (!viewer || !el) return
+        // Place menu at last known cursor world position
+        setTabMenu({ worldX: lastMouseWorldRef.current.x, worldY: lastMouseWorldRef.current.y })
+        return
+      }
+
+      if (e.key !== 'Escape') return
       if (creationMode) { setCreationMode(null); setDrawState(null); return }
+      if (tabMenu)      { setTabMenu(null); return }
       clearSelection()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [creationMode, clearSelection])
+  }, [creationMode, tabMenu, clearSelection])
 
   // ── Middle mouse prevention ───────────────────────────────────────────────
   useEffect(() => {
@@ -257,6 +274,17 @@ export function Canvas() {
   }, [creationMode, screenToWorld])
 
   const handleWorldPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Always track cursor world position for Tab menu placement
+    const viewer = viewerRef.current
+    const world  = worldRef.current
+    if (viewer && world) {
+      const zoom = viewer.getZoom()
+      const rect = world.getBoundingClientRect()
+      lastMouseWorldRef.current = {
+        x: (e.clientX - rect.left) / zoom,
+        y: (e.clientY - rect.top)  / zoom,
+      }
+    }
     if (!drawState) return
     const { x, y } = screenToWorld(e.clientX, e.clientY)
     setDrawState(s => s ? { ...s, currentX: x, currentY: y } : null)
@@ -447,6 +475,15 @@ export function Canvas() {
       )}
 
       {cards.length === 0 && backdrops.length === 0 && <EmptyState />}
+
+      {tabMenu && (
+        <TabMenu
+          worldX={tabMenu.worldX}
+          worldY={tabMenu.worldY}
+          onClose={() => setTabMenu(null)}
+          getViewerZoom={getViewerZoom}
+        />
+      )}
     </div>
   )
 }

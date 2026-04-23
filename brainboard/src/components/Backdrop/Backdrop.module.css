@@ -191,7 +191,7 @@
 .editPanel {
   margin-top:       var(--space-2);
   padding:          var(--space-3);
-  background-color: rgba(0,0,0,0.55);
+  background-color: var(--color-surface-overlay);
   border-radius:    var(--radius-lg);
   display:          flex;
   flex-direction:   column;
@@ -295,16 +295,16 @@
 .noteDisplay {
   position:    absolute;
   bottom:      var(--space-3);
-  right:       var(--space-4);
-  max-width:   45%;
+  left:        var(--space-4);
+  max-width:   55%;
   font-family: var(--font-ui);
   font-size:   var(--text-xs);
   color:       var(--color-text-muted);
   opacity:     0.65;
   line-height: var(--leading-normal);
-  text-align:  right;
+  text-align:  left;
   user-select: none;
-  /* No line clamp — show the full note */
+  /* No clamp — show full note */
 }
 
 .noteHint {

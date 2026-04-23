@@ -40,7 +40,17 @@
   font-family: var(--font-ui); font-size: var(--text-2xs); font-weight: var(--weight-bold);
   letter-spacing: 0.07em; text-transform: uppercase; color: rgba(0,0,0,0.5); flex-shrink: 0;
 }
-.instanceGlyph { font-size: var(--text-xs); color: rgba(0,0,0,0.35); }
+.instanceBadge {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           18px;
+  height:          18px;
+  border-radius:   var(--radius-xs);
+  background-color: rgba(0,0,0,0.18);
+  color:           rgba(0,0,0,0.55);
+  flex-shrink:     0;
+}
 .draftLabel {
   font-family: var(--font-ui); font-size: var(--text-2xs); font-weight: var(--weight-medium);
   letter-spacing: 0.05em; text-transform: uppercase; color: rgba(0,0,0,0.3); font-style: italic;

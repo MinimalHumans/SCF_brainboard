@@ -102,6 +102,10 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
     setIsEditing(false)
   }, [card.id, publishCard])
 
+  // For published cards, always read title from entity (prevents instance title drift).
+  // Unpublished cards read from card.title directly.
+  const displayTitle = published && entity ? entity.title : card.title
+
   // Note for front face
   const displayNote = entity?.noteRaw ?? card.noteRaw
   const noteHtml    = useMemo(() =>
@@ -140,7 +144,11 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
         {/* ── HANDLE BAR ── */}
         <div className={styles.handle} data-drag-handle="true">
           <span className={styles.typeBadge}>{card.type}</span>
-          {hasInstance && <span className={styles.instanceGlyph} title="Multiple instances">◈</span>}
+          {hasInstance && (
+            <span className={styles.instanceBadge} title="Instance — shares entity with other cards on this board">
+              <InstanceIcon />
+            </span>
+          )}
           {!published  && <span className={styles.draftLabel}>Draft</span>}
           <button
             className={styles.flipBtn}
@@ -156,7 +164,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
           <div className={styles.frontContent}>
             {/* Title */}
             <div className={`${styles.title} text-display-card`}>
-              {card.title || `New ${card.type}`}
+              {displayTitle || `New ${card.type}`}
             </div>
 
             {/* Filled attributes — shown inline, card grows to fit */}
@@ -201,7 +209,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance 
 
             <div className={styles.field}>
               <label className={styles.label}>Name</label>
-              <input className={styles.input} value={card.title}
+              <input className={styles.input} value={displayTitle}
                 onChange={e => setTitle(e.target.value)}
                 placeholder={`New ${card.type}`}
                 onClick={e => e.stopPropagation()} autoFocus />
@@ -326,6 +334,16 @@ function ViewIcon() {
       <rect x="1.5" y="2" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
       <line x1="1.5" y1="5" x2="11.5" y2="5" stroke="currentColor" strokeWidth="1.3"/>
       <line x1="4" y1="7.5" x2="9" y2="7.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function InstanceIcon() {
+  // Two overlapping cards with a link indicator
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <rect x="1" y="3.5" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>
+      <rect x="4" y="1" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" strokeDasharray="1.5 1"/>
     </svg>
   )
 }

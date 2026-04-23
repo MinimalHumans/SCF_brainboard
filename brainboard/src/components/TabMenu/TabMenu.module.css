@@ -1,0 +1,140 @@
+/* Full-screen invisible overlay catches outside clicks */
+.overlay {
+  position: fixed;
+  inset:    0;
+  z-index:  var(--z-modal);
+}
+
+.menu {
+  position:         absolute;
+  top:              50%;
+  left:             50%;
+  transform:        translate(-50%, -50%);
+  width:            360px;
+  background-color: var(--color-surface-overlay);
+  border:           1px solid var(--color-border-strong);
+  border-radius:    var(--radius-xl);
+  box-shadow:       var(--shadow-overlay);
+  overflow:         hidden;
+  animation:        popIn var(--duration-fast) var(--easing-spring);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Search row */
+.searchRow {
+  display:       flex;
+  align-items:   center;
+  gap:           var(--space-2);
+  padding:       var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabIcon {
+  font-size:   var(--text-md);
+  color:       var(--color-accent);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.input {
+  flex:        1;
+  font-family: var(--font-ui);
+  font-size:   var(--text-base);
+  color:       var(--color-text-primary);
+  background:  transparent;
+  border:      none;
+  outline:     none;
+  user-select: text;
+}
+
+.input::placeholder {
+  color:   var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.hint {
+  font-family:      var(--font-ui);
+  font-size:        var(--text-xs);
+  color:            var(--color-text-muted);
+  opacity:          0.5;
+  background-color: var(--color-surface-raised);
+  border:           1px solid var(--color-border-strong);
+  border-radius:    var(--radius-xs);
+  padding:          1px var(--space-2);
+  flex-shrink:      0;
+  white-space:      nowrap;
+}
+
+/* Item list */
+.list {
+  list-style:  none;
+  max-height:  320px;
+  overflow-y:  auto;
+  padding:     var(--space-1) 0;
+}
+
+.item {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-2);
+  padding:     8px var(--space-3);
+  cursor:      pointer;
+  transition:  background-color var(--duration-instant) var(--easing-out);
+}
+
+.item:active {
+  background-color: var(--color-accent-muted);
+}
+
+.active {
+  background-color: var(--color-accent-subtle);
+}
+
+.badge {
+  flex-shrink:    0;
+  font-family:    var(--font-ui);
+  font-size:      var(--text-2xs);
+  font-weight:    var(--weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding:        1px 5px;
+  border-radius:  var(--radius-xs);
+}
+
+.badge_card {
+  color:            var(--color-accent);
+  background-color: var(--color-accent-subtle);
+}
+
+.badge_backdrop {
+  color:            var(--color-text-muted);
+  background-color: var(--color-surface-raised);
+}
+
+.label {
+  flex:        1;
+  font-family: var(--font-ui);
+  font-size:   var(--text-sm);
+  color:       var(--color-text-primary);
+}
+
+.enterHint {
+  font-size:   var(--text-xs);
+  color:       var(--color-text-muted);
+  opacity:     0.5;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.empty {
+  padding:     var(--space-5) var(--space-4);
+  font-family: var(--font-ui);
+  font-size:   var(--text-sm);
+  color:       var(--color-text-muted);
+  opacity:     0.6;
+  text-align:  center;
+}
