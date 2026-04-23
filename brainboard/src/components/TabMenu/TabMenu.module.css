@@ -6,10 +6,7 @@
 }
 
 .menu {
-  position:         absolute;
-  top:              50%;
-  left:             50%;
-  transform:        translate(-50%, -50%);
+  /* Positioning is handled by MenuPositioned inline style */
   width:            360px;
   background-color: var(--color-surface-overlay);
   border:           1px solid var(--color-border-strong);
@@ -20,8 +17,8 @@
 }
 
 @keyframes popIn {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
-  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* Search row */
@@ -137,4 +134,14 @@
   color:       var(--color-text-muted);
   opacity:     0.6;
   text-align:  center;
+}
+
+/* Visual shell — applied to the inner container inside MenuPositioned */
+.menuBox {
+  background-color: var(--color-surface-overlay);
+  border:           1px solid var(--color-border-strong);
+  border-radius:    var(--radius-xl);
+  box-shadow:       var(--shadow-overlay);
+  overflow:         hidden;
+  animation:        popIn var(--duration-fast) var(--easing-spring);
 }

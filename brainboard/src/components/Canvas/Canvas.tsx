@@ -30,10 +30,11 @@ export function Canvas() {
   const isSpaceDownRef = useRef(false)
   const suppressNextClickRef = useRef(false)
   const lastMouseWorldRef     = useRef({ x: 4000, y: 4000 })
+  const lastMouseScreenRef    = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
 
   const [shellEl, setShellEl]         = useState<HTMLDivElement | null>(null)
   // Tab menu: stores viewport-center world coords when opened
-  const [tabMenu, setTabMenu]           = useState<{ worldX: number; worldY: number } | null>(null)
+  const [tabMenu, setTabMenu]           = useState<{ worldX: number; worldY: number; screenX: number; screenY: number } | null>(null)
   const [creationMode, setCreationMode] = useState<BackdropType | null>(null)
   const [drawState, setDrawState]       = useState<DrawState | null>(null)
   const [canvasMenu, setCanvasMenu]     = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
@@ -88,8 +89,7 @@ export function Canvas() {
         const viewer = viewerRef.current
         const el     = canvasShellRef.current
         if (!viewer || !el) return
-        // Place menu at last known cursor world position
-        setTabMenu({ worldX: lastMouseWorldRef.current.x, worldY: lastMouseWorldRef.current.y })
+        setTabMenu({ worldX: lastMouseWorldRef.current.x, worldY: lastMouseWorldRef.current.y, screenX: lastMouseScreenRef.current.x, screenY: lastMouseScreenRef.current.y })
         return
       }
 
@@ -285,6 +285,7 @@ export function Canvas() {
         y: (e.clientY - rect.top)  / zoom,
       }
     }
+    lastMouseScreenRef.current = { x: e.clientX, y: e.clientY }
     if (!drawState) return
     const { x, y } = screenToWorld(e.clientX, e.clientY)
     setDrawState(s => s ? { ...s, currentX: x, currentY: y } : null)
@@ -480,6 +481,8 @@ export function Canvas() {
         <TabMenu
           worldX={tabMenu.worldX}
           worldY={tabMenu.worldY}
+          screenX={tabMenu.screenX}
+          screenY={tabMenu.screenY}
           onClose={() => setTabMenu(null)}
           getViewerZoom={getViewerZoom}
         />

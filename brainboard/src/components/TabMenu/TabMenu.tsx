@@ -28,19 +28,59 @@ function itemKey(item: TabItem): string {
 }
 
 // ---------------------------------------------------------------------------
+// MenuPositioned — positions the menu near the cursor, clamped to viewport
+// ---------------------------------------------------------------------------
+
+const MENU_W = 360
+const MENU_H = 420  // approximate max height
+
+function MenuPositioned({ screenX, screenY, onClose, children }: {
+  screenX:  number
+  screenY:  number
+  onClose:  () => void
+  children: React.ReactNode
+}) {
+  const PAD = 12
+  const vw  = window.innerWidth
+  const vh  = window.innerHeight
+
+  // Position below-right of cursor; flip left if near right edge, flip up if near bottom
+  let left = screenX + 8
+  let top  = screenY + 8
+
+  if (left + MENU_W + PAD > vw) left = screenX - MENU_W - 8
+  if (top  + MENU_H + PAD > vh) top  = screenY - MENU_H - 8
+
+  // Clamp to viewport
+  left = Math.max(PAD, Math.min(left, vw - MENU_W - PAD))
+  top  = Math.max(PAD, Math.min(top,  vh - PAD))
+
+  return (
+    <div
+      style={{ position: 'absolute', left, top, width: MENU_W }}
+      className={''} // picks up no overlay centering
+      role="dialog"
+      aria-label="Create card or backdrop"
+    >
+      {children}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // TabMenu component
 // ---------------------------------------------------------------------------
 
 interface TabMenuProps {
-  /** World-space coordinates where the new item should be created */
-  worldX:   number
-  worldY:   number
-  onClose:  () => void
-  /** Ref to the InfiniteViewer to read zoom when creating backdrops */
+  worldX:        number   // world coords — used for card/backdrop creation
+  worldY:        number
+  screenX:       number   // screen coords — used for menu positioning
+  screenY:       number
+  onClose:       () => void
   getViewerZoom: () => number
 }
 
-export function TabMenu({ worldX, worldY, onClose, getViewerZoom }: TabMenuProps) {
+export function TabMenu({ worldX, worldY, screenX, screenY, onClose, getViewerZoom }: TabMenuProps) {
   const [query, setQuery]         = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef                  = useRef<HTMLInputElement>(null)
@@ -117,7 +157,8 @@ export function TabMenu({ worldX, worldY, onClose, getViewerZoom }: TabMenuProps
 
   return createPortal(
     <div className={styles.overlay} onPointerDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={styles.menu} role="dialog" aria-label="Create card or backdrop">
+      <MenuPositioned screenX={screenX} screenY={screenY} onClose={onClose}>
+        <div className={styles.menuBox}>
         <div className={styles.searchRow}>
           <span className={styles.tabIcon}>⊞</span>
           <input
@@ -155,7 +196,8 @@ export function TabMenu({ worldX, worldY, onClose, getViewerZoom }: TabMenuProps
             ))}
           </ul>
         )}
-      </div>
+        </div>
+      </MenuPositioned>
     </div>,
     document.body
   )
