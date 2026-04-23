@@ -3,11 +3,11 @@
   "boardId": "kv4yBmrwjmoL--e4ZwOPS",
   "name": "Demo Board",
   "createdAt": "2026-04-23T14:19:29.781Z",
-  "updatedAt": "2026-04-23T15:29:37.559Z",
+  "updatedAt": "2026-04-23T16:13:50.892Z",
   "viewport": {
-    "x": 2094.7713837445854,
-    "y": 1330.44154557306,
-    "zoom": 0.6166734663248385
+    "x": 1833.1525808716015,
+    "y": 2303.9140527990694,
+    "zoom": 0.43472398962154907
   },
   "cards": [
     {
@@ -31,12 +31,12 @@
       "entityId": "g5TmfvR-Y_yKG3139kHOq",
       "type": "Arc",
       "position": {
-        "x": 3644.9710425799503,
-        "y": 2744.6430467113937
+        "x": 3654.2499744577144,
+        "y": 2745.734671058378
       },
       "rotation": 0,
-      "color": "slate",
-      "zIndex": 35,
+      "color": "sand",
+      "zIndex": 60,
       "noteRaw": "Additioanl notes about an Arc could go here.",
       "instanceNote": "",
       "isFlipped": false,
@@ -175,12 +175,12 @@
       "entityId": "Tl5Fxb71GAzo24GRLd5hh",
       "type": "Prop",
       "position": {
-        "x": 5328.054234064846,
-        "y": 2769.542734512836
+        "x": 4717.969244199517,
+        "y": 2589.338961863732
       },
       "rotation": 0,
-      "color": "sand",
-      "zIndex": 55,
+      "color": "amber",
+      "zIndex": 57,
       "noteRaw": "",
       "instanceNote": "",
       "isFlipped": false,
@@ -191,11 +191,11 @@
       "entityId": "Tl5Fxb71GAzo24GRLd5hh",
       "type": "Prop",
       "position": {
-        "x": 4903.707364006489,
-        "y": 3131.983040403469
+        "x": 4293.6223741411595,
+        "y": 2951.7792677543653
       },
       "rotation": 0,
-      "color": "sand",
+      "color": "amber",
       "zIndex": 48,
       "noteRaw": "",
       "instanceNote": "",
@@ -207,11 +207,11 @@
       "entityId": "Tl5Fxb71GAzo24GRLd5hh",
       "type": "Prop",
       "position": {
-        "x": 5312.374112053364,
-        "y": 3142.6496663800317
+        "x": 4702.2891221880345,
+        "y": 2962.4458937309278
       },
       "rotation": 0,
-      "color": "sand",
+      "color": "amber",
       "zIndex": 51,
       "noteRaw": "",
       "instanceNote": "",
@@ -223,12 +223,12 @@
       "entityId": "Tl5Fxb71GAzo24GRLd5hh",
       "type": "Prop",
       "position": {
-        "x": 5761.707364006489,
-        "y": 3132.6496663800317
+        "x": 5151.6223741411595,
+        "y": 2952.4458937309278
       },
       "rotation": 0,
-      "color": "sand",
-      "zIndex": 54,
+      "color": "amber",
+      "zIndex": 56,
       "noteRaw": "",
       "instanceNote": "",
       "isFlipped": false,
@@ -362,10 +362,10 @@
       }
     },
     {
+      "note": "Add a note for fun and firendship.",
       "id": "ejpLYKKwZtf1UiTnOQw2p",
       "type": "Sequence",
       "title": "Sequence",
-      "note": "Add a note for fun and firendship.",
       "position": {
         "x": 2087.200030789725,
         "y": 2871.8661680124474
@@ -383,10 +383,10 @@
       }
     },
     {
+      "note": "Add a note",
       "id": "KTYGDnYs_R7GPHVExZH2t",
       "type": "Scene",
       "title": "Scene",
-      "note": "Add a note",
       "position": {
         "x": 2148.694001889447,
         "y": 3043.7062804242155
@@ -404,10 +404,10 @@
       }
     },
     {
+      "note": "Add a super special note if you like!",
       "id": "1NsR6puYJLqT6-WDJ1rHO",
       "type": "Beat",
       "title": "Beat",
-      "note": "Add a super special note if you like!",
       "position": {
         "x": 2197.7493589267606,
         "y": 3211.4800631503404
@@ -423,10 +423,10 @@
       }
     },
     {
+      "note": "One could make a collection of props or themese or random thoughts.",
       "id": "85pXF0t30Qfn9ZzOtRUQ9",
       "type": "Custom",
       "title": "Custom",
-      "note": "One could make a collection of props or themese or random thoughts.",
       "position": {
         "x": 1913.152580871603,
         "y": 2524.3976967627045
@@ -442,13 +442,13 @@
       }
     },
     {
+      "note": "",
       "id": "KSOtRfjQjujlBDy-8kkmh",
       "type": "Scene",
       "title": "Scene 01",
-      "note": "",
       "position": {
-        "x": 4888.64780033628,
-        "y": 2978.9680417501204
+        "x": 4278.56281047095,
+        "y": 2798.7642691010165
       },
       "size": {
         "width": 390.581017110957,
@@ -459,13 +459,13 @@
       "attributes": {}
     },
     {
+      "note": "",
       "id": "yIUxrJyX1ax_nxwg9Vmrk",
       "type": "Scene",
       "title": "Scene 02",
-      "note": "",
       "position": {
-        "x": 5297.624013913368,
-        "y": 2987.8471950013814
+        "x": 4687.539024048038,
+        "y": 2807.6434223522774
       },
       "size": {
         "width": 393.753622097107,
@@ -476,13 +476,13 @@
       "attributes": {}
     },
     {
+      "note": "",
       "id": "occe_90dxXXH_wKTcZ08w",
       "type": "Scene",
       "title": "Scene 03",
-      "note": "",
       "position": {
-        "x": 5711.113615430012,
-        "y": 2982.9753688539104
+        "x": 5101.028625564682,
+        "y": 2802.7715962048064
       },
       "size": {
         "width": 422.47874283367685,
@@ -493,13 +493,13 @@
       "attributes": {}
     },
     {
+      "note": "It's pretty cool! Can't do that with Notecards!",
       "id": "U3gwGg_VUY0JhU46HVtT_",
       "type": "Beat",
       "title": "Instancing",
-      "note": "It's pretty cool! Can't do that with Notecards!",
       "position": {
-        "x": 4808.895809335953,
-        "y": 2705.933570889606
+        "x": 4198.810819470624,
+        "y": 2525.729798240502
       },
       "size": {
         "width": 1372.85658834927,
