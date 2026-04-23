@@ -22,6 +22,7 @@ export const ENTITY_TYPES = [
   'Beat',
   'Theme',
   'Arc',
+  'Shot',
   'Thought',
 ] as const
 
@@ -31,7 +32,7 @@ export type EntityType = (typeof ENTITY_TYPES)[number]
 // Backdrop types
 // ---------------------------------------------------------------------------
 
-export const BACKDROP_TYPES = ['Sequence', 'Act', 'Beat'] as const
+export const BACKDROP_TYPES = ['Sequence', 'Act', 'Beat', 'Scene'] as const
 export type BackdropType = (typeof BACKDROP_TYPES)[number]
 
 // ---------------------------------------------------------------------------
@@ -59,6 +60,7 @@ export const TYPE_SWATCH_DEFAULTS: Record<EntityType, SwatchKey> = {
   Beat:      'rose',
   Theme:     'violet',
   Arc:       'slate',
+  Shot:      'fog',
   Thought:   'fog',
 }
 
@@ -66,6 +68,7 @@ export const BACKDROP_SWATCH_DEFAULTS: Record<BackdropType, SwatchKey> = {
   Sequence: 'sky',
   Act:      'violet',
   Beat:     'rose',
+  Scene:    'sky',
 }
 
 // ---------------------------------------------------------------------------

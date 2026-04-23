@@ -18,6 +18,13 @@ export const BACKDROP_SCHEMAS: Record<BackdropType, BackdropFieldDef[]> = {
     { key: 'dramatic_question', label: 'Dramatic Question', type: 'text',     hint: 'The question this act poses…' },
     { key: 'shift',             label: 'Shift',             type: 'textarea', hint: 'What changes by the end…' },
   ],
+  // Scene as backdrop — same attributes as the Scene card type
+  Scene: [
+    { key: 'goal',     label: 'Goal',     type: 'textarea', hint: 'What must happen in this scene…' },
+    { key: 'conflict', label: 'Conflict', type: 'textarea', hint: 'What stands in the way…' },
+    { key: 'outcome',  label: 'Outcome',  type: 'textarea', hint: 'How it resolves…' },
+  ],
+
   // Beat as backdrop: name + description only
   Beat: [
     { key: 'description', label: 'Description', type: 'textarea', hint: 'What happens in this beat…' },

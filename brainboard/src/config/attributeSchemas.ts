@@ -164,6 +164,27 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
     },
   ],
 
+  Shot: [
+    {
+      key:   'subject',
+      label: 'Subject',
+      type:  'text',
+      hint:  'What or who is the primary subject of the shot…',
+    },
+    {
+      key:   'framing',
+      label: 'Framing',
+      type:  'text',
+      hint:  'e.g. ECU, CU, MS, LS, wide, OTS, POV…',
+    },
+    {
+      key:   'purpose',
+      label: 'Purpose',
+      type:  'textarea',
+      hint:  'What this shot accomplishes narratively or visually…',
+    },
+  ],
+
   // Thought: name + note only — no attribute fields
   Thought: [],
 }
