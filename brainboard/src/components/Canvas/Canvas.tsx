@@ -324,13 +324,14 @@ export function Canvas() {
     setCanvasMenu({ x: e.clientX, y: e.clientY, wx: x, wy: y })
   }, [screenToWorld])
 
+  // Menu items use setCreationMode so the user draws the backdrop bounds
   const canvasMenuItems: ContextMenuItem[] = canvasMenu ? [
     { label: 'New Card here', onClick: () => createCard({ x: canvasMenu.wx - CARD_W / 2, y: canvasMenu.wy - CARD_H / 2 }) },
-    { label: 'Add Act backdrop',      divider: true, onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Act',      true) },
-    { label: 'Add Sequence backdrop',              onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Sequence',  true) },
-    { label: 'Add Scene backdrop',                 onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Scene',     true) },
-    { label: 'Add Beat backdrop',                  onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Beat',      true) },
-    { label: 'Add Custom backdrop',                onClick: () => createBackdrop({ x: canvasMenu.wx - 300, y: canvasMenu.wy - 200 }, { width: 600, height: 400 }, 'Custom',    true) },
+    { label: 'Draw Act backdrop',      divider: true, onClick: () => setCreationMode('Act')      },
+    { label: 'Draw Sequence backdrop',               onClick: () => setCreationMode('Sequence')  },
+    { label: 'Draw Scene backdrop',                  onClick: () => setCreationMode('Scene')     },
+    { label: 'Draw Beat backdrop',                   onClick: () => setCreationMode('Beat')      },
+    { label: 'Draw Custom backdrop',                 onClick: () => setCreationMode('Custom')    },
   ] : []
 
   // ── Double-click: create card ─────────────────────────────────────────────
