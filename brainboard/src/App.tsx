@@ -1,26 +1,27 @@
-import React, { useState, useEffect } from 'react'
-import { Toolbar }          from '@/components/Toolbar/Toolbar'
-import { Canvas }           from '@/components/Canvas/Canvas'
-import { StatusBar }        from '@/components/StatusBar/StatusBar'
-import { ToastStack }       from '@/components/Toast/Toast'
-import { TemplatesModal }   from '@/components/Templates/TemplatesModal'
-import { HelpModal }        from '@/components/Help/HelpModal'
-import { useBoardStore }    from '@/store/boardStore'
+import React, { useState } from 'react'
+import { Toolbar }        from '@/components/Toolbar/Toolbar'
+import { Canvas }         from '@/components/Canvas/Canvas'
+import { StatusBar }      from '@/components/StatusBar/StatusBar'
+import { ToastStack }     from '@/components/Toast/Toast'
+import { TemplatesModal } from '@/components/Templates/TemplatesModal'
+import { HelpModal }      from '@/components/Help/HelpModal'
+import { OutlineModal }   from '@/components/Outline/OutlineModal'
+import { useBoardStore }  from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
-import { usePersistence }   from '@/hooks/usePersistence'
-import { toast }            from '@/store/toastStore'
-import { nanoid }           from 'nanoid'
+import { usePersistence } from '@/hooks/usePersistence'
+import { toast }          from '@/store/toastStore'
+import { nanoid }         from 'nanoid'
 
 export default function App() {
   const loadBoard      = useBoardStore(s => s.loadBoard)
   const publishAllFn   = useBoardStore(s => s.publishAll)
   const publishCardsFn = useBoardStore(s => s.publishCards)
-  const cards          = useBoardStore(s => s.board.cards)
   const selectedIds    = useSelectionStore(s => s.selectedIds)
 
   const { exportBoard, importBoard } = usePersistence()
   const [showTemplates, setShowTemplates] = useState(false)
   const [showHelp,      setShowHelp]      = useState(false)
+  const [showOutline,   setShowOutline]   = useState(false)
 
   const handlePublishAll = () => {
     publishAllFn()
@@ -53,6 +54,7 @@ export default function App() {
         onExport={exportBoard}
         onImport={importBoard}
         onTemplates={() => setShowTemplates(true)}
+        onOutline={() => setShowOutline(true)}
         onHelp={() => setShowHelp(true)}
         onNewBoard={handleNewBoard}
       />
@@ -61,6 +63,7 @@ export default function App() {
       <ToastStack />
       {showTemplates && <TemplatesModal onClose={() => setShowTemplates(false)} />}
       {showHelp      && <HelpModal      onClose={() => setShowHelp(false)} />}
+      {showOutline   && <OutlineModal   onClose={() => setShowOutline(false)} />}
     </>
   )
 }

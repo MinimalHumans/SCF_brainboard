@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { useBoardStore } from '@/store/boardStore'
-import { useViewerStore } from '@/store/viewerStore'
+import { useBoardStore }   from '@/store/boardStore'
+import { useViewerStore }  from '@/store/viewerStore'
 import { useHistoryStore } from '@/store/historyStore'
-import styles from './Toolbar.module.css'
+import styles              from './Toolbar.module.css'
 
 interface ToolbarProps {
   hasSelection?:      boolean
@@ -11,11 +11,22 @@ interface ToolbarProps {
   onExport?:          () => void
   onImport?:          () => void
   onTemplates?:       () => void
+  onOutline?:         () => void
   onHelp?:            () => void
   onNewBoard?:        () => void
 }
 
-export function Toolbar({ hasSelection = false, onPublishAll, onPublishSelected, onExport, onImport, onTemplates, onHelp, onNewBoard }: ToolbarProps) {
+export function Toolbar({
+  hasSelection = false,
+  onPublishAll,
+  onPublishSelected,
+  onExport,
+  onImport,
+  onTemplates,
+  onOutline,
+  onHelp,
+  onNewBoard,
+}: ToolbarProps) {
   const boardName    = useBoardStore(s => s.board.name)
   const zoom         = useBoardStore(s => s.board.viewport.zoom)
   const setBoardName = useBoardStore(s => s.setBoardName)
@@ -31,7 +42,11 @@ export function Toolbar({ hasSelection = false, onPublishAll, onPublishSelected,
 
   const startRename = useCallback(() => { setDraft(boardName); setIsRenaming(true) }, [boardName])
   useEffect(() => { if (isRenaming) requestAnimationFrame(() => inputRef.current?.select()) }, [isRenaming])
-  const commitRename = useCallback(() => { const t = draft.trim(); if (t) setBoardName(t); setIsRenaming(false) }, [draft, setBoardName])
+  const commitRename = useCallback(() => {
+    const t = draft.trim()
+    if (t) setBoardName(t)
+    setIsRenaming(false)
+  }, [draft, setBoardName])
 
   const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter')  { e.preventDefault(); commitRename() }
@@ -46,18 +61,39 @@ export function Toolbar({ hasSelection = false, onPublishAll, onPublishSelected,
         <span className={`${styles.wordmark} text-display`}>Brainboard</span>
         <span className={styles.divider} aria-hidden="true" />
         {isRenaming ? (
-          <input ref={inputRef} className={styles.renameInput} value={draft}
-            onChange={e => setDraft(e.target.value)} onBlur={commitRename}
-            onKeyDown={handleRenameKeyDown} maxLength={80} aria-label="Board name" />
+          <input
+            ref={inputRef}
+            className={styles.renameInput}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={handleRenameKeyDown}
+            maxLength={80}
+            aria-label="Board name"
+          />
         ) : (
-          <button className={styles.boardName} onClick={startRename} title="Click to rename">{boardName}</button>
+          <button className={styles.boardName} onClick={startRename} title="Click to rename">
+            {boardName}
+          </button>
         )}
       </div>
 
       <div className={styles.center}>
         <div className={styles.undoRedo}>
-          <button className={styles.undoRedoBtn} onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">↩</button>
-          <button className={styles.undoRedoBtn} onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">↪</button>
+          <button
+            className={styles.undoRedoBtn}
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo"
+          >↩</button>
+          <button
+            className={styles.undoRedoBtn}
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Y)"
+            aria-label="Redo"
+          >↪</button>
         </div>
         <div className={styles.zoomHud}>
           <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'out' })} title="Zoom out">−</button>
@@ -71,11 +107,16 @@ export function Toolbar({ hasSelection = false, onPublishAll, onPublishSelected,
         <button className={styles.action} onClick={onImport}>Import</button>
         <button className={styles.action} onClick={onExport}>Export</button>
         <button className={styles.templatesBtn} onClick={onTemplates}>Templates</button>
+        <button className={styles.templatesBtn} onClick={onOutline}>Outline</button>
         <div className={styles.publishGroup}>
           {hasSelection && onPublishSelected && (
             <button className={styles.action} onClick={onPublishSelected}>Publish Selected</button>
           )}
-          <button className={`${styles.action} ${styles.publishAll}`} onClick={onPublishAll} disabled={!onPublishAll}>
+          <button
+            className={`${styles.action} ${styles.publishAll}`}
+            onClick={onPublishAll}
+            disabled={!onPublishAll}
+          >
             Publish All
           </button>
         </div>
