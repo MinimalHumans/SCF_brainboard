@@ -3,11 +3,11 @@
   "boardId": "kv4yBmrwjmoL--e4ZwOPS",
   "name": "Demo Board",
   "createdAt": "2026-04-23T14:19:29.781Z",
-  "updatedAt": "2026-04-23T16:13:50.892Z",
+  "updatedAt": "2026-04-23T16:50:23.276Z",
   "viewport": {
-    "x": 1833.1525808716015,
-    "y": 2303.9140527990694,
-    "zoom": 0.43472398962154907
+    "x": 1833.1525808716028,
+    "y": 2439.597395584943,
+    "zoom": 0.7151995275038858
   },
   "cards": [
     {
@@ -233,6 +233,22 @@
       "instanceNote": "",
       "isFlipped": false,
       "title": "Undefined Prop that the Hero Holds in every scene."
+    },
+    {
+      "id": "6XqK8h61T1JwE9qQPhFKI",
+      "entityId": "gXOjXd49F14B90sLrtp7P",
+      "type": "Thought",
+      "position": {
+        "x": 3651.3880072884494,
+        "y": 3719.2268963204547
+      },
+      "rotation": 0,
+      "color": "crimson",
+      "zIndex": 62,
+      "noteRaw": "**Bold**  text. \n*Italicized* text\n~~Strikethrough.~~",
+      "instanceNote": "",
+      "isFlipped": false,
+      "title": "Markdown Syntax Examples"
     }
   ],
   "entities": [
@@ -337,6 +353,13 @@
       "attributes": {
         "story_function": "Symbolic"
       }
+    },
+    {
+      "id": "gXOjXd49F14B90sLrtp7P",
+      "type": "Character",
+      "title": "Markdown Syntax Examples",
+      "noteRaw": "**Bold**  text. \n*Italicized* text\n~~Strikethrough.~~",
+      "attributes": {}
     }
   ],
   "backdrops": [

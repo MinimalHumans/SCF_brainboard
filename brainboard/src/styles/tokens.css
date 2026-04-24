@@ -63,6 +63,15 @@
   --_raw-slate-dark:    rgba(80, 112, 144, 0.12);
   --_raw-fog:           #686878;
   --_raw-fog-dark:      rgba(104, 104, 120, 0.12);
+  /* Saturated additions */
+  --_raw-crimson:       #c0192a;
+  --_raw-crimson-dark:  rgba(192, 25, 42, 0.15);
+  --_raw-emerald:       #1a9e5a;
+  --_raw-emerald-dark:  rgba(26, 158, 90, 0.15);
+  --_raw-cobalt:        #1e56c8;
+  --_raw-cobalt-dark:   rgba(30, 86, 200, 0.15);
+  --_raw-gold:          #c87800;
+  --_raw-gold-dark:     rgba(200, 120, 0, 0.15);
 }
 
 
