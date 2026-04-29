@@ -121,7 +121,7 @@
   --color-status-success:         #4a9460;
   --color-status-success-surface: rgba(74, 148, 96, 0.12);
 
-  --color-grid-dot:  rgba(255, 255, 255, 0.09);
+  --color-grid-dot:  rgba(255, 255, 255, 0.12);
   --color-grid-size: 24px;
 
   --shadow-sm:            0 1px 3px rgba(0, 0, 0, 0.5);
@@ -145,11 +145,11 @@
    ========================================================================== */
 
 [data-theme="light"] {
-  --color-surface-base:    #f2f2f6;
-  --color-surface-canvas:  #e8e8ee;
-  --color-surface-raised:  #ffffff;
-  --color-surface-overlay: #ffffff;
-  --color-surface-inset:   #ebebf2;
+  --color-surface-base:    #94B0CA;
+  --color-surface-canvas:  #D6CECB;
+  --color-surface-raised:  #D2C6C1;
+  --color-surface-overlay: #D2C6C1;
+  --color-surface-inset:   #E3DCD9;
   --color-surface-hover:   #e2e2ea;
 
   --color-text-primary:    #18181c;
@@ -179,7 +179,7 @@
   --color-status-success-surface: rgba(36, 120, 64, 0.08);
 
   /* Darker dots on light canvas */
-  --color-grid-dot:  rgba(0, 0, 0, 0.12);
+  --color-grid-dot:  rgba(0, 0, 0, 0.3);
   --color-grid-size: 24px;
 
   --shadow-sm:            0 1px 3px rgba(0, 0, 0, 0.1);
