@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 1,
+  "boardId": "WPLJRt-kwMUVyHweY53Md",
+  "name": "Save The Cat - Beat Sheet",
+  "createdAt": "2026-04-28T16:44:43.569Z",
+  "updatedAt": "2026-04-28T17:12:50.873Z",
+  "viewport": {
+    "x": -3705.9590564599403,
+    "y": 94.56273857046881,
+    "zoom": 0.16529888822158648
+  },
+  "cards": [],
+  "entities": [],
+  "backdrops": [
+    {
+      "note": "This is a snapshot of the protagonist’s world before the story truly begins. It establishes tone, genre, and the character’s current state—often highlighting what’s missing or broken in their life. Its purpose is to give the audience a baseline so they can later see how much has changed by the end.",
+      "id": "kXXeBVYk846yJqezRUQHY",
+      "type": "Beat",
+      "title": "1. Opening Image",
+      "position": {
+        "x": 2394.223392314681,
+        "y": 1003.1515422008374
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "emerald",
+      "zIndex": 1,
+      "attributes": {}
+    },
+    {
+      "note": "Early in the story (often via dialogue), someone hints at the central theme or lesson the protagonist will eventually learn. The hero usually doesn’t understand it yet. This beat plants the philosophical question of the story, giving the narrative deeper meaning beyond just plot events.",
+      "id": "nkm-qQAwSXv2883NtjpVp",
+      "type": "Beat",
+      "title": "2. Theme Stated",
+      "position": {
+        "x": 3063.8090018697135,
+        "y": 1000.5517381150125
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "cobalt",
+      "zIndex": 2,
+      "attributes": {}
+    },
+    {
+      "note": "This section introduces the protagonist’s everyday life, key relationships, stakes, and flaws. Supporting characters and subplots are established, and we see what the hero lacks internally. Its purpose is to build empathy and clearly define what must change.",
+      "id": "uaU7Qg45_gyN_QeBzJOlz",
+      "type": "Beat",
+      "title": "3. Set-Up",
+      "position": {
+        "x": 3734.1954604357566,
+        "y": 995.9096553702075
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "gold",
+      "zIndex": 3,
+      "attributes": {}
+    },
+    {
+      "note": "A disruptive event shakes up the protagonist’s world and forces them out of their comfort zone. This could be a discovery, disaster, invitation, or opportunity. It’s the moment that starts the story’s main conflict and demands a response.",
+      "id": "fkeNw6BpwMatc4unr0PTR",
+      "type": "Beat",
+      "title": "4. Catalyst",
+      "position": {
+        "x": 4404.581919001799,
+        "y": 996.9674397387316
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "sage",
+      "zIndex": 4,
+      "attributes": {}
+    },
+    {
+      "note": "The protagonist hesitates, questions, or resists taking action. They weigh risks, doubt themselves, or try to avoid change. This beat builds tension and makes the eventual decision feel meaningful, showing that the journey isn’t entered lightly.",
+      "id": "HdjY-Ydb6Asw1USNDzt3w",
+      "type": "Beat",
+      "title": "5. Debate",
+      "position": {
+        "x": 5070.082766535201,
+        "y": 996.3967119458785
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "sky",
+      "zIndex": 5,
+      "attributes": {}
+    },
+    {
+      "note": "The hero makes a choice and enters a new world, situation, or way of thinking—the “upside-down” version of their old life. This marks the transition from Act One to Act Two. Its purpose is to commit the character to the journey.",
+      "id": "1VWu2VMhhrQjW1zo9dh15",
+      "type": "Beat",
+      "title": "6. Break into Two",
+      "position": {
+        "x": 2781.0507577209773,
+        "y": 2618.610729161536
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "sand",
+      "zIndex": 6,
+      "attributes": {}
+    },
+    {
+      "note": "A secondary storyline begins, often involving relationships (frequently romantic or deeply personal). This thread usually carries the emotional heart of the story and is closely tied to the theme, helping the protagonist grow in ways the main plot cannot.",
+      "id": "YhN4ZVbVk_oVWJ709mwli",
+      "type": "Beat",
+      "title": "7. B Story",
+      "position": {
+        "x": 3444.1089488350763,
+        "y": 2618.0400013686826
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "violet",
+      "zIndex": 7,
+      "attributes": {}
+    },
+    {
+      "note": "This is where the premise delivers on its promise—the “trailer moments.” The protagonist explores the new world, often experiencing early wins, failures, or comedic situations. Its purpose is to entertain while showing the surface-level appeal of the journey.",
+      "id": "TusbzMpwwW5MI_23t58dX",
+      "type": "Beat",
+      "title": "8. Fun and Games",
+      "position": {
+        "x": 4115.355735687298,
+        "y": 2621.4292064699303
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "rose",
+      "zIndex": 8,
+      "attributes": {}
+    },
+    {
+      "note": "A major turning point occurs—either a false victory or a false defeat. Stakes are raised, and the story shifts in tone or direction. Often, something becomes more urgent or personal. This beat prevents the story from stagnating and deepens the conflict.",
+      "id": "NxYS-xCb9oFPxByyAhiK-",
+      "type": "Beat",
+      "title": "9. Midpoint",
+      "position": {
+        "x": 4783.608685910644,
+        "y": 2625.7638243637075
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "slate",
+      "zIndex": 9,
+      "attributes": {}
+    },
+    {
+      "note": "Internal and external pressures mount. Antagonistic forces tighten their grip, and the protagonist’s flaws begin to resurface. Even successes feel fragile. The purpose here is to create escalating tension and push the hero toward breaking point.",
+      "id": "nnVwv2t7w6sF9O8Lq5pkW",
+      "type": "Beat",
+      "title": "10. Bad Guys Close In",
+      "position": {
+        "x": 3075.2343040400892,
+        "y": 4202.7295445526115
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "fog",
+      "zIndex": 10,
+      "attributes": {}
+    },
+    {
+      "note": "The lowest moment of the story. Something happens that makes success seem impossible—often accompanied by a symbolic “death” (literal or emotional). The protagonist feels defeated, and everything appears to have fallen apart.",
+      "id": "dH3CO8-d4ro1_PlnmY44J",
+      "type": "Beat",
+      "title": "11. All Is Lost",
+      "position": {
+        "x": 3776.358400420786,
+        "y": 4202.660943100429
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "crimson",
+      "zIndex": 11,
+      "attributes": {}
+    },
+    {
+      "note": "The protagonist reflects on their failure and processes what went wrong. This is an introspective moment where they confront their flaws and the story’s theme. Its purpose is to prepare them for transformation.",
+      "id": "DG5AIdChDS8f8UzDDfqK-",
+      "type": "Beat",
+      "title": "12. Dark Night of the Soul",
+      "position": {
+        "x": 4481.876271420904,
+        "y": 4201.622603341063
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "emerald",
+      "zIndex": 12,
+      "attributes": {}
+    },
+    {
+      "note": "Armed with new understanding (often thanks to the B Story), the protagonist finds a solution or new approach. They synthesize what they’ve learned and decide to act again—this time differently. This launches the final act.",
+      "id": "FVE1dKWSkJfymjfFIYX02",
+      "type": "Beat",
+      "title": "13. Break into Three",
+      "position": {
+        "x": 3118.629108907103,
+        "y": 5653.941649280028
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "cobalt",
+      "zIndex": 13,
+      "attributes": {}
+    },
+    {
+      "note": "The protagonist executes a plan to resolve the central conflict, often facing the antagonist directly. They demonstrate growth by applying the lesson they’ve learned. The world is changed—both externally and internally.",
+      "id": "A_5Cpr2zTV2DPO-UUEc8N",
+      "type": "Beat",
+      "title": "14. Finale",
+      "position": {
+        "x": 3790.1517911371393,
+        "y": 5651.92872793497
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "gold",
+      "zIndex": 14,
+      "attributes": {}
+    },
+    {
+      "note": "A mirror of the Opening Image, showing how the protagonist and their world have transformed. It provides closure and reinforces the theme by visually contrasting “before” and “after.”",
+      "id": "yJzZdogNqryiDWhc86xNN",
+      "type": "Beat",
+      "title": "15. Final Image",
+      "position": {
+        "x": 4461.770784356058,
+        "y": 5651.391324369568
+      },
+      "size": {
+        "width": 649.8579511198009,
+        "height": 854.6077165411075
+      },
+      "color": "sage",
+      "zIndex": 15,
+      "attributes": {}
+    },
+    {
+      "id": "52KyTduUZzUzKV96SGYKB",
+      "type": "Act",
+      "title": "Act One",
+      "note": "Act One is about establishing the world, the protagonist’s flaw, and the central problem. It ends when the hero stops hesitating and makes a choice. The Debate beat is crucial here—it stretches the tension before commitment. The act culminates in the transition to Act Two.",
+      "position": {
+        "x": 2252.1910117274942,
+        "y": 820.6337774703961
+      },
+      "size": {
+        "width": 3647.111916688482,
+        "height": 1301.587224699975
+      },
+      "color": "sage",
+      "zIndex": 16,
+      "attributes": {}
+    },
+    {
+      "id": "CzIXfTybsuzENVPQUVExO",
+      "type": "Act",
+      "title": "Act Three (Resolution)",
+      "note": "Act Three is where the protagonist applies what they’ve learned. Break into Three is the moment of insight and renewed action, often informed by the B Story. The Finale resolves the main conflict with a transformed hero, and the Final Image mirrors the beginning to show how far things have come.",
+      "position": {
+        "x": 2958.5144510956025,
+        "y": 5474.275616135854
+      },
+      "size": {
+        "width": 2337.6159462833725,
+        "height": 1301.587224699975
+      },
+      "color": "violet",
+      "zIndex": 17,
+      "attributes": {}
+    },
+    {
+      "id": "dtcdm46E7jYtLxmkBHBeo",
+      "type": "Act",
+      "title": "Act Two – Part B (Rising Pressure)",
+      "note": "This section tightens the screws. The protagonist’s initial approach fails, internal flaws resurface, and external forces escalate. It all leads to All Is Lost, followed by reflection in Dark Night of the Soul, where the character begins to understand what needs to change.",
+      "position": {
+        "x": 2862.1151770337865,
+        "y": 3928.451164116168
+      },
+      "size": {
+        "width": 2513.196323143719,
+        "height": 1301.587224699975
+      },
+      "color": "sand",
+      "zIndex": 18,
+      "attributes": {}
+    },
+    {
+      "id": "RHyz7g3JnOiDWa3UOhWLg",
+      "type": "Act",
+      "title": "Act Two – Part A (Fun & Games)",
+      "note": "This is the “promise of the premise” section. After Break into Two, the protagonist explores the new situation or world. The B Story adds emotional depth, and Fun and Games delivers the core concept. The Midpoint then shifts everything—raising stakes and often flipping the story from reactive to proactive.",
+      "position": {
+        "x": 2583.920723019359,
+        "y": 2347.7589679113685
+      },
+      "size": {
+        "width": 3006.9407706757456,
+        "height": 1301.587224699975
+      },
+      "color": "sky",
+      "zIndex": 19,
+      "attributes": {}
+    }
+  ]
+}

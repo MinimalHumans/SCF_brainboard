@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "boardId": "lI8A-5Tl7FvqnDUncbr2D",
+  "name": "Twelve Step Mystery",
+  "createdAt": "2026-04-29T14:10:46.571Z",
+  "updatedAt": "2026-04-29T14:47:45.270Z",
+  "viewport": {
+    "x": 1371.9904266745716,
+    "y": 2973.374931873063,
+    "zoom": 0.44932896411722134
+  },
+  "cards": [],
+  "entities": [],
+  "backdrops": [
+    {
+      "id": "hhjw5VzovxDr4hParAMhR",
+      "type": "Beat",
+      "title": "1. The Crime",
+      "note": "The story begins with a disruption—usually a murder, theft, or disappearance. This event creates the central question that drives the narrative: what happened, and who is responsible? Its purpose is to hook the audience immediately with stakes and intrigue.",
+      "position": {
+        "x": 3198.073291577935,
+        "y": 3444.4923921655404
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "amber",
+      "zIndex": 1,
+      "attributes": {}
+    },
+    {
+      "id": "Rmt2KKWoAq4h_e1YoCVYy",
+      "type": "Beat",
+      "title": "2. Introduction of the Detective",
+      "note": "We meet the investigator (professional or amateur), along with their skills, flaws, and personal stakes. This beat establishes why this person is suited (or uniquely unsuited) to solve the mystery.",
+      "position": {
+        "x": 3596.0676781017623,
+        "y": 3445.661318063036
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "sage",
+      "zIndex": 2,
+      "attributes": {}
+    },
+    {
+      "id": "hIIUf-fXPp70glAjXOI8n",
+      "type": "Beat",
+      "title": "3. The Call to Investigate",
+      "note": "The detective is drawn into the case—by duty, curiosity, personal connection, or circumstance. This formalizes the story’s direction and aligns the audience with the investigator’s goal.",
+      "position": {
+        "x": 3986.1056055356676,
+        "y": 3447.8248241102106
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "sky",
+      "zIndex": 3,
+      "attributes": {}
+    },
+    {
+      "id": "rSCNDG6Pm5m7P53GkB17n",
+      "type": "Beat",
+      "title": "4. Initial Investigation",
+      "note": "The detective surveys the scene, gathers obvious clues, and interviews key witnesses. This creates the first layer of understanding while introducing suspects and planting early (often misleading) information.",
+      "position": {
+        "x": 4375.149043873647,
+        "y": 3448.993795534583
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "sand",
+      "zIndex": 4,
+      "attributes": {}
+    },
+    {
+      "id": "ZH7En-E7Dw8sqXb2KrWsX",
+      "type": "Beat",
+      "title": "5. The Suspects",
+      "note": "A cast of potential culprits is established, each with motives, secrets, and conflicting alibis. The purpose is to create narrative tension and give the audience multiple plausible answers.",
+      "position": {
+        "x": 3196.1479837363304,
+        "y": 4109.100619543204
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "violet",
+      "zIndex": 5,
+      "attributes": {}
+    },
+    {
+      "id": "ONDYJ_tsXrBwWE3d3bNKQ",
+      "type": "Beat",
+      "title": "6. First Twist / Red Herring",
+      "note": "A surprising clue or revelation points strongly toward a particular suspect—but ultimately misleads. This keeps the audience guessing and prevents the mystery from feeling too straightforward.",
+      "position": {
+        "x": 3594.1422792064045,
+        "y": 4112.258614686303
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "slate",
+      "zIndex": 6,
+      "attributes": {}
+    },
+    {
+      "id": "SHCtN0iV1UJmPcBaM_3WK",
+      "type": "Beat",
+      "title": "7. Deepening the Investigation",
+      "note": "The detective digs deeper, uncovering hidden relationships, contradictions, and new evidence. The case becomes more complex, often revealing that the initial assumptions were incomplete or wrong.",
+      "position": {
+        "x": 3983.1857175443843,
+        "y": 4113.427540583799
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "fog",
+      "zIndex": 7,
+      "attributes": {}
+    },
+    {
+      "id": "wZr75sO2e-NGzfUhpbtCl",
+      "type": "Beat",
+      "title": "8. Midpoint Revelation",
+      "note": "A major discovery shifts the direction of the investigation. This could be a key clue, a new victim, or a reframing of the crime. Stakes rise, and the detective’s understanding changes significantly.",
+      "position": {
+        "x": 4366.261857091799,
+        "y": 4116.585626780652
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "crimson",
+      "zIndex": 8,
+      "attributes": {}
+    },
+    {
+      "id": "0LcP63jSf2SteRsyOp_Hk",
+      "type": "Beat",
+      "title": "9. The Net Tightens",
+      "note": "The detective begins closing in on the truth. Suspects are pressured, alibis collapse, and tension escalates. However, the full picture is still just out of reach.",
+      "position": {
+        "x": 3096.3218549168773,
+        "y": 4795.212872938183
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "emerald",
+      "zIndex": 9,
+      "attributes": {}
+    },
+    {
+      "id": "7yGIwMJN3BWPkH8fCSC7y",
+      "type": "Beat",
+      "title": "10. False Solution / Crisis",
+      "note": "The detective (or audience) believes the case is solved—but it’s wrong. This often leads to consequences: an innocent person accused, the real culprit escaping, or another crime occurring. It represents the story’s low point.",
+      "position": {
+        "x": 3501.597320959406,
+        "y": 4796.381798835679
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "cobalt",
+      "zIndex": 10,
+      "attributes": {}
+    },
+    {
+      "id": "Ji_s5lHOTU_Z3frjzmz18",
+      "type": "Beat",
+      "title": "11. The True Solution",
+      "note": "A final clue, insight, or connection allows the detective to see the truth clearly. This is the “aha” moment where all pieces fall into place logically.",
+      "position": {
+        "x": 4039.2802146218323,
+        "y": 4787.612536473857
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "gold",
+      "zIndex": 11,
+      "attributes": {}
+    },
+    {
+      "id": "Jt4aXFjIDJZ4EowEvnIHV",
+      "type": "Beat",
+      "title": "12. The Reveal and Explanation",
+      "note": "The detective confronts the culprit and explains how the crime was committed and why. Loose ends are tied up, and the audience gets the intellectual satisfaction of seeing the puzzle resolved.",
+      "position": {
+        "x": 4442.566297938391,
+        "y": 4788.561315189656
+      },
+      "size": {
+        "width": 365.99429547007435,
+        "height": 473.40562817336905
+      },
+      "color": "sage",
+      "zIndex": 12,
+      "attributes": {}
+    },
+    {
+      "id": "gA5PrqK9TWcXdELLhxJCn",
+      "type": "Act",
+      "title": "Act One (Setup of the Puzzle)",
+      "note": "This act establishes the central mystery, introduces the detective and suspects, and lays down the first clues. It ends when the investigation is fully underway and the puzzle is clearly defined.",
+      "position": {
+        "x": 3150.8521095237747,
+        "y": 3352.4812291376084
+      },
+      "size": {
+        "width": 1632.893688309614,
+        "height": 644.3296240419158
+      },
+      "color": "fog",
+      "zIndex": 13,
+      "attributes": {}
+    },
+    {
+      "id": "Fa9hHp3Kx9Q1LTGvsR9ml",
+      "type": "Act",
+      "title": "Act Two – Part A (Expansion of the Puzzle)",
+      "note": "Here the mystery broadens and becomes more complex. New information complicates the case, and the midpoint shifts the detective’s understanding, raising the stakes.",
+      "position": {
+        "x": 3151.060369947689,
+        "y": 4011.501779835553
+      },
+      "size": {
+        "width": 1632.893688309614,
+        "height": 654.390394960391
+      },
+      "color": "slate",
+      "zIndex": 14,
+      "attributes": {}
+    },
+    {
+      "id": "uDFLx_UKnmD1QqZrc0i3d",
+      "type": "Act",
+      "title": "Act Two – Part B (Contraction of the Puzzle)",
+      "note": "The story shifts from expansion to narrowing focus. The detective gets closer, but the false solution creates a major setback, reinforcing how elusive the truth is.",
+      "position": {
+        "x": 3048.7218816374716,
+        "y": 4694.98799092524
+      },
+      "size": {
+        "width": 904.0459457267987,
+        "height": 656.4771197822879
+      },
+      "color": "cobalt",
+      "zIndex": 15,
+      "attributes": {}
+    },
+    {
+      "id": "UtpGHTXLYrMUKv0V6k-su",
+      "type": "Act",
+      "title": "Act Three (Resolution of the Puzzle)",
+      "note": "The detective arrives at the correct conclusion and demonstrates it. This act delivers both emotional and intellectual payoff, resolving the mystery cleanly.",
+      "position": {
+        "x": 3983.4760901675495,
+        "y": 4697.356664890344
+      },
+      "size": {
+        "width": 882.1805201221124,
+        "height": 655.2622256309533
+      },
+      "color": "gold",
+      "zIndex": 16,
+      "attributes": {}
+    }
+  ]
+}

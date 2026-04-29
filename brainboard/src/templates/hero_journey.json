@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "boardId": "d1wfWuOdzDfFl0g7wIhXN",
+  "name": "Hero Journey",
+  "createdAt": "2026-04-29T14:50:47.182Z",
+  "updatedAt": "2026-04-29T15:20:44.449Z",
+  "viewport": {
+    "x": 1381.1494881033339,
+    "y": 2688.9835992882513,
+    "zoom": 0.5488116360940265
+  },
+  "cards": [],
+  "entities": [],
+  "backdrops": [
+    {
+      "note": "We see the hero in their normal life before the adventure begins. This establishes their baseline, including their limitations, flaws, and unfulfilled desires. Its purpose is to ground the story and give the audience a clear sense of what will change",
+      "id": "bFy43nUUjMnQ3XEOtdFZp",
+      "type": "Beat",
+      "title": "1. Ordinary World",
+      "position": {
+        "x": 2752.409570014461,
+        "y": 2960.608583272823
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "amber",
+      "zIndex": 1,
+      "attributes": {}
+    },
+    {
+      "note": "A challenge, threat, or opportunity presents itself, inviting the hero into a new world. This moment introduces the central conflict and sets the story in motion.",
+      "id": "t6UNmc45Nbf8a8oaWOQG9",
+      "type": "Beat",
+      "title": "2. Call to Adventure",
+      "position": {
+        "x": 3213.076272284969,
+        "y": 2963.2752092493856
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "sage",
+      "zIndex": 2,
+      "attributes": {}
+    },
+    {
+      "note": "The hero hesitates or rejects the call due to fear, doubt, obligation, or insecurity. This beat humanizes the hero and emphasizes the risk involved in the journey.",
+      "id": "vTxTsyHHkfzAO_4u0UOCk",
+      "type": "Beat",
+      "title": "3. Refusal of the Call",
+      "position": {
+        "x": 3673.076272284969,
+        "y": 2961.9418962611044
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "sky",
+      "zIndex": 3,
+      "attributes": {}
+    },
+    {
+      "note": "The hero encounters someone who provides guidance, tools, training, or encouragement. The mentor helps prepare the hero for what lies ahead, often giving them confidence or a key resource.",
+      "id": "-ucBIZGJdgacu1Ya3VGgv",
+      "type": "Beat",
+      "title": "4. Meeting the Mentor",
+      "position": {
+        "x": 4129.518110121097,
+        "y": 2960.4761402601052
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "sand",
+      "zIndex": 4,
+      "attributes": {}
+    },
+    {
+      "note": "The hero commits to the journey and enters the “special world,” leaving the familiar behind. This is a point of no return and marks the true beginning of the adventure.",
+      "id": "o1c-riK4He0riCnmrAGm9",
+      "type": "Beat",
+      "title": "5. Crossing the First Threshold",
+      "position": {
+        "x": 4584.851484144535,
+        "y": 2960.4761402601052
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "violet",
+      "zIndex": 5,
+      "attributes": {}
+    },
+    {
+      "note": "The hero faces challenges, makes friends, and encounters adversaries. Through these trials, they begin to understand the rules of the new world. This stage builds skills, relationships, and tension.",
+      "id": "dmjlqSGmLs3Bgc2d_pOFA",
+      "type": "Beat",
+      "title": "6. Tests, Allies, and Enemies",
+      "position": {
+        "x": 2630.883937156799,
+        "y": 3577.4943553452003
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "rose",
+      "zIndex": 6,
+      "attributes": {}
+    },
+    {
+      "note": "The hero prepares for a major challenge, often venturing into a dangerous or symbolic location. This is a moment of planning, tension, and introspection before the central ordeal.",
+      "id": "NXlUuRDUFCVwtP3c9MjF9",
+      "type": "Beat",
+      "title": "7. Approach to the Inmost Cave",
+      "position": {
+        "x": 3092.0648829462,
+        "y": 3581.5656119877417
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "slate",
+      "zIndex": 7,
+      "attributes": {}
+    },
+    {
+      "note": "The hero faces a major crisis—often a life-or-death moment or their greatest fear. This is the emotional and narrative core of the story where transformation begins.",
+      "id": "yO3sLlZEZoPXhxO5D6T6T",
+      "type": "Beat",
+      "title": "8. The Ordeal",
+      "position": {
+        "x": 3549.6466206616374,
+        "y": 3583.1941986976276
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "fog",
+      "zIndex": 8,
+      "attributes": {}
+    },
+    {
+      "note": "Having survived the ordeal, the hero gains something of value—an object, knowledge, power, or insight. This reward represents progress but does not yet resolve the story.",
+      "id": "KckFW3pV-GlvVrROoHXCj",
+      "type": "Beat",
+      "title": "9. Reward (Seizing the Sword)",
+      "position": {
+        "x": 4152.104563077479,
+        "y": 3574.661864265065
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "crimson",
+      "zIndex": 9,
+      "attributes": {}
+    },
+    {
+      "note": "The hero begins the journey back to the ordinary world, but consequences arise. The stakes are often raised again, and the hero may be pursued or tested further.",
+      "id": "YvS0yn31RNolxeQ2nDeJ3",
+      "type": "Beat",
+      "title": "10. The Road Back",
+      "position": {
+        "x": 4623.742838412097,
+        "y": 3575.319196324757
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "emerald",
+      "zIndex": 10,
+      "attributes": {}
+    },
+    {
+      "note": "A final, climactic test forces the hero to apply everything they’ve learned. This is a moment of rebirth where the hero proves they’ve truly changed.",
+      "id": "dkvbFm0mUap444A63cyvA",
+      "type": "Beat",
+      "title": "11. The Resurrection",
+      "position": {
+        "x": 3415.1704293126845,
+        "y": 4273.557233994686
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "cobalt",
+      "zIndex": 11,
+      "attributes": {}
+    },
+    {
+      "note": "The hero returns home transformed, bringing something back that benefits others (knowledge, healing, power, etc.). This resolves both the external conflict and the internal arc.",
+      "id": "zomz5FBbDSCTl68bH3rf6",
+      "type": "Beat",
+      "title": "12. Return with the Elixir",
+      "position": {
+        "x": 3883.2642696816833,
+        "y": 4280.047570789219
+      },
+      "size": {
+        "width": 441.6175954245655,
+        "height": 440.6113185826516
+      },
+      "color": "gold",
+      "zIndex": 12,
+      "attributes": {}
+    },
+    {
+      "note": "This act establishes the hero and pushes them out of their comfort zone. It ends when they fully commit and enter the new world.",
+      "id": "kxOJpNyk0-QF3fD-JeipS",
+      "type": "Act",
+      "title": "Act One (Departure)",
+      "position": {
+        "x": 2722.3642635938954,
+        "y": 2850.9820067687256
+      },
+      "size": {
+        "width": 2344.459449026918,
+        "height": 608.5876793304301
+      },
+      "color": "fog",
+      "zIndex": 13,
+      "attributes": {}
+    },
+    {
+      "note": "The hero is tested and shaped by the new world, culminating in a major confrontation that begins their transformation.",
+      "id": "qmmZ5WsyMBiMN84YfPEJD",
+      "type": "Act",
+      "title": "Act Two – Part A (Initiation: Learning the Rules)",
+      "position": {
+        "x": 2557.158899834026,
+        "y": 3479.00565704109
+      },
+      "size": {
+        "width": 1469.842424839474,
+        "height": 647.4596212142981
+      },
+      "color": "slate",
+      "zIndex": 14,
+      "attributes": {}
+    },
+    {
+      "note": "After the ordeal, the hero gains something but must deal with its consequences. The journey shifts toward resolution.",
+      "id": "xzf5AGsrNvyhMtxs__r4d",
+      "type": "Act",
+      "title": "Act Two – Part B (Initiation: Consequences and Growth)",
+      "position": {
+        "x": 4068.302832433426,
+        "y": 3479.0055458277843
+      },
+      "size": {
+        "width": 1152.7937535715246,
+        "height": 643.8152724002111
+      },
+      "color": "gold",
+      "zIndex": 15,
+      "attributes": {}
+    },
+    {
+      "note": "The hero faces a final test and returns home changed, completing their arc and resolving the story.",
+      "id": "rH5pI5khstjik-xXUXPdB",
+      "type": "Act",
+      "title": "Act Three (Return)",
+      "position": {
+        "x": 3344.313999176115,
+        "y": 4175.054816363653
+      },
+      "size": {
+        "width": 1048.3257573002102,
+        "height": 630.4531049351164
+      },
+      "color": "emerald",
+      "zIndex": 16,
+      "attributes": {}
+    }
+  ]
+}
