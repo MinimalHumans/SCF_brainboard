@@ -8,20 +8,39 @@ export const BACKDROP_TYPES = ['Sequence', 'Act', 'Beat', 'Scene', 'Custom'] as 
 export type BackdropType = (typeof BACKDROP_TYPES)[number]
 
 export const SWATCH_KEYS = [
+  // Original 8 muted
   'amber', 'sage', 'sky', 'sand', 'violet', 'rose', 'slate', 'fog',
+  // Saturated 4
   'crimson', 'emerald', 'cobalt', 'gold',
+  // New 12 — expanded palette
+  'coral', 'lilac', 'teal', 'pine', 'rust', 'mauve',
+  'periwinkle', 'mint', 'ochre', 'lavender', 'jade', 'wine',
 ] as const
 export type SwatchKey = (typeof SWATCH_KEYS)[number]
 
 export const TYPE_SWATCH_DEFAULTS: Record<EntityType, SwatchKey> = {
-  Character: 'amber', Location: 'sage',   Scene:    'sky',
-  Prop:      'sand',  Beat:     'rose',   Theme:    'violet',
-  Arc:       'slate', Shot:     'fog',    Thought:  'fog',
+  Character: 'amber',  Location: 'sage',   Scene:   'sky',
+  Prop:      'sand',   Beat:     'rose',   Theme:   'violet',
+  Arc:       'slate',  Shot:     'fog',    Thought: 'fog',
 }
 
 export const BACKDROP_SWATCH_DEFAULTS: Record<BackdropType, SwatchKey> = {
-  Sequence: 'sky', Act: 'violet', Beat: 'rose', Scene: 'sky', Custom: 'fog',
+  Sequence: 'sky', Act: 'violet', Beat: 'rose', Scene: 'teal', Custom: 'fog',
 }
+
+/*
+ * Z-index layers for backdrops — hierarchical stacking.
+ * Visual order from top to bottom:
+ *   Cards (1000+) > Beat (250) > Scene (200) > Sequence (150) > Act (100) > Custom (50)
+ */
+export const BACKDROP_Z_LAYERS: Record<BackdropType, number> = {
+  Beat:     250,
+  Scene:    200,
+  Sequence: 150,
+  Act:      100,
+  Custom:    50,
+}
+export const CARD_Z_BASE = 1000
 
 export interface Position { x: number; y: number }
 export interface Size     { width: number; height: number }
@@ -29,7 +48,7 @@ export interface Viewport { x: number; y: number; zoom: number }
 
 export interface Card {
   id:           string
-  entityId:     string       // always set — cards are published on creation
+  entityId:     string
   type:         EntityType
   position:     Position
   rotation:     number

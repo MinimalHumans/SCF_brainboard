@@ -1,25 +1,9 @@
 /*
  * Brainboard Design Tokens
- * ========================
- * This file is the visual contract for the entire prototype and its port
- * to the SCF React branch. Two rules that must hold across all phases:
- *
- *   1. Components NEVER reference raw palette values directly.
- *      They always use semantic tokens (--color-surface-*, --color-text-*, etc.)
- *
- *   2. Light mode values are honest stubs — not copy-pasted dark values.
- *      They exist so the token structure is correct when light mode is
- *      eventually implemented. Using a dark value as a light stub creates
- *      false confidence and a harder retrofit.
- *
- * Token naming convention:
- *   --{category}-{concept}-{variant?}
- *   e.g. --color-surface-raised, --shadow-card-selected, --swatch-amber-surface
  */
 
-
 /* ==========================================================================
-   Raw Palette — internal reference only, never use in components
+   Raw Palette — internal reference only
    ========================================================================== */
 
 :root {
@@ -38,15 +22,12 @@
   --_raw-off-white:  #eeeef4;
   --_raw-white:      #f6f6fa;
 
-  /* Accent — indigo, chosen to be distinct from all card swatch colors */
+  /* Accent */
   --_raw-accent-400:  #818cf8;
   --_raw-accent-500:  #6366f1;
   --_raw-accent-600:  #4f52d4;
-  --_raw-accent-900:  #1e1f4a;
 
-  /* Named swatch colors — the 8 muted card palette */
-  /* These are the "ON" color — borders, title accents, type badges.          */
-  /* -surface variants are the subtle background tint applied to card bodies. */
+  /* === ORIGINAL 8 MUTED SWATCHES === */
   --_raw-amber:         #c98a12;
   --_raw-amber-dark:    rgba(201, 138, 18, 0.12);
   --_raw-sage:          #4f8e62;
@@ -63,7 +44,8 @@
   --_raw-slate-dark:    rgba(80, 112, 144, 0.12);
   --_raw-fog:           #686878;
   --_raw-fog-dark:      rgba(104, 104, 120, 0.12);
-  /* Saturated additions */
+
+  /* === SATURATED 4 === */
   --_raw-crimson:       #c0192a;
   --_raw-crimson-dark:  rgba(192, 25, 42, 0.15);
   --_raw-emerald:       #1a9e5a;
@@ -72,22 +54,40 @@
   --_raw-cobalt-dark:   rgba(30, 86, 200, 0.15);
   --_raw-gold:          #c87800;
   --_raw-gold-dark:     rgba(200, 120, 0, 0.15);
+
+  /* === NEW 12 === */
+  --_raw-coral:           #c05548;
+  --_raw-coral-dark:      rgba(192, 85, 72, 0.14);
+  --_raw-lilac:           #9868cc;
+  --_raw-lilac-dark:      rgba(152, 104, 204, 0.13);
+  --_raw-teal:            #2a9898;
+  --_raw-teal-dark:       rgba(42, 152, 152, 0.13);
+  --_raw-pine:            #3a7a50;
+  --_raw-pine-dark:       rgba(58, 122, 80, 0.13);
+  --_raw-rust:            #c06030;
+  --_raw-rust-dark:       rgba(192, 96, 48, 0.14);
+  --_raw-mauve:           #a85080;
+  --_raw-mauve-dark:      rgba(168, 80, 128, 0.13);
+  --_raw-periwinkle:      #6878d8;
+  --_raw-periwinkle-dark: rgba(104, 120, 216, 0.13);
+  --_raw-mint:            #30a890;
+  --_raw-mint-dark:       rgba(48, 168, 144, 0.13);
+  --_raw-ochre:           #b08820;
+  --_raw-ochre-dark:      rgba(176, 136, 32, 0.13);
+  --_raw-lavender:        #8890d0;
+  --_raw-lavender-dark:   rgba(136, 144, 208, 0.13);
+  --_raw-jade:            #28a070;
+  --_raw-jade-dark:       rgba(40, 160, 112, 0.13);
+  --_raw-wine:            #902040;
+  --_raw-wine-dark:       rgba(144, 32, 64, 0.14);
 }
 
 
 /* ==========================================================================
-   Dark Theme — [data-theme="dark"] (default, set on <html>)
+   Dark Theme
    ========================================================================== */
 
 [data-theme="dark"] {
-
-  /* --- Surface hierarchy ---
-   *  base      → the page/canvas background; nothing sits below this
-   *  canvas    → the infinite board area (slightly distinct from base)
-   *  raised    → card body; sits above canvas
-   *  overlay   → dropdowns, tooltips, context menus; floats above cards
-   *  inset     → sunken inputs and recessed areas inside cards
-   */
   --color-surface-base:    var(--_raw-near-black);
   --color-surface-canvas:  var(--_raw-ink-1);
   --color-surface-raised:  var(--_raw-ink-3);
@@ -95,71 +95,35 @@
   --color-surface-inset:   var(--_raw-ink-2);
   --color-surface-hover:   var(--_raw-ink-5);
 
-  /* --- Text ---
-   *  primary   → headings, card titles, active labels
-   *  secondary → body copy, descriptions
-   *  muted     → placeholders, timestamps, helper text
-   *  disabled  → disabled controls
-   *  on-accent → text on the accent color background
-   */
   --color-text-primary:    var(--_raw-off-white);
   --color-text-secondary:  var(--_raw-muted-3);
   --color-text-muted:      var(--_raw-muted-1);
   --color-text-disabled:   var(--_raw-ink-6);
   --color-text-on-accent:  var(--_raw-white);
 
-  /* --- Borders ---
-   *  default  → subtle card and panel borders (visible but quiet)
-   *  strong   → dividers, active panel edges
-   *  focus    → keyboard focus rings (uses accent)
-   */
   --color-border:          rgba(255, 255, 255, 0.07);
   --color-border-strong:   rgba(255, 255, 255, 0.13);
   --color-border-focus:    var(--color-accent);
 
-  /* --- Accent (indigo) ---
-   *  default  → interactive elements, selection rings, publish actions
-   *  hover    → hover state of accent elements
-   *  muted    → accent-tinted backgrounds (e.g. selected card fill)
-   *  subtle   → very low-opacity accent tint
-   */
   --color-accent:          var(--_raw-accent-500);
   --color-accent-hover:    var(--_raw-accent-400);
   --color-accent-muted:    rgba(99, 102, 241, 0.18);
   --color-accent-subtle:   rgba(99, 102, 241, 0.08);
 
-  /* --- Selection ---
-   *  ring  → outline drawn around selected cards
-   *  fill  → rubber-band selection box fill
-   *  stroke→ rubber-band selection box border
-   */
   --color-selection-ring:   var(--_raw-accent-500);
   --color-selection-fill:   rgba(99, 102, 241, 0.08);
   --color-selection-stroke: rgba(99, 102, 241, 0.5);
 
-  /* --- Status / semantic ---
-   *  These are used in Phase 7 (publish flow warnings and orphan flags).
-   *  Defined now so components don't hard-code colors when they arrive.
-   */
-  --color-status-warning:        #c49a20;
+  --color-status-warning:         #c49a20;
   --color-status-warning-surface: rgba(196, 154, 32, 0.12);
-  --color-status-error:          #c05040;
-  --color-status-error-surface:  rgba(192, 80, 64, 0.12);
-  --color-status-success:        #4a9460;
+  --color-status-error:           #c05040;
+  --color-status-error-surface:   rgba(192, 80, 64, 0.12);
+  --color-status-success:         #4a9460;
   --color-status-success-surface: rgba(74, 148, 96, 0.12);
 
-  /* --- Canvas infrastructure ---
-   *  grid-dot  → dot pattern on the board background
-   *  grid-size → dot spacing
-   */
   --color-grid-dot:  rgba(255, 255, 255, 0.09);
   --color-grid-size: 24px;
 
-  /* --- Shadows ---
-   *  Each shadow also includes a 1px inset border via box-shadow to
-   *  simulate a subtle edge catch on dark surfaces without a real border.
-   *  card-selected replaces the border with the accent ring.
-   */
   --shadow-sm:            0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-md:            0 4px 12px rgba(0, 0, 0, 0.6);
   --shadow-lg:            0 8px 32px rgba(0, 0, 0, 0.7);
@@ -177,47 +141,45 @@
 
 
 /* ==========================================================================
-   Light Theme — [data-theme="light"]
-   STUB: These are honest placeholder values, not copy-pasted dark tokens.
-   Implement properly when light mode is actually needed in the SCF branch.
+   Light Theme
    ========================================================================== */
 
 [data-theme="light"] {
-
-  --color-surface-base:    #f4f4f8;
-  --color-surface-canvas:  #ebebf0;
+  --color-surface-base:    #f2f2f6;
+  --color-surface-canvas:  #e8e8ee;
   --color-surface-raised:  #ffffff;
   --color-surface-overlay: #ffffff;
-  --color-surface-inset:   #f0f0f5;
-  --color-surface-hover:   #e8e8ee;
+  --color-surface-inset:   #ebebf2;
+  --color-surface-hover:   #e2e2ea;
 
   --color-text-primary:    #18181c;
-  --color-text-secondary:  #50505e;
-  --color-text-muted:      #90909e;
-  --color-text-disabled:   #c0c0cc;
+  --color-text-secondary:  #44445a;
+  --color-text-muted:      #888898;
+  --color-text-disabled:   #b8b8c8;
   --color-text-on-accent:  #ffffff;
 
   --color-border:          rgba(0, 0, 0, 0.09);
   --color-border-strong:   rgba(0, 0, 0, 0.16);
   --color-border-focus:    var(--color-accent);
 
-  --color-accent:          var(--_raw-accent-500);
-  --color-accent-hover:    var(--_raw-accent-600);
-  --color-accent-muted:    rgba(99, 102, 241, 0.12);
-  --color-accent-subtle:   rgba(99, 102, 241, 0.06);
+  --color-accent:          var(--_raw-accent-600);
+  --color-accent-hover:    var(--_raw-accent-500);
+  --color-accent-muted:    rgba(79, 82, 212, 0.14);
+  --color-accent-subtle:   rgba(79, 82, 212, 0.07);
 
-  --color-selection-ring:   var(--_raw-accent-500);
-  --color-selection-fill:   rgba(99, 102, 241, 0.07);
-  --color-selection-stroke: rgba(99, 102, 241, 0.4);
+  --color-selection-ring:   var(--_raw-accent-600);
+  --color-selection-fill:   rgba(79, 82, 212, 0.07);
+  --color-selection-stroke: rgba(79, 82, 212, 0.4);
 
-  --color-status-warning:         #b08800;
-  --color-status-warning-surface: rgba(176, 136, 0, 0.1);
-  --color-status-error:           #c03020;
-  --color-status-error-surface:   rgba(192, 48, 32, 0.08);
-  --color-status-success:         #2a7a48;
-  --color-status-success-surface: rgba(42, 122, 72, 0.08);
+  --color-status-warning:         #a07800;
+  --color-status-warning-surface: rgba(160, 120, 0, 0.1);
+  --color-status-error:           #b83020;
+  --color-status-error-surface:   rgba(184, 48, 32, 0.08);
+  --color-status-success:         #247840;
+  --color-status-success-surface: rgba(36, 120, 64, 0.08);
 
-  --color-grid-dot:  rgba(0, 0, 0, 0.07);
+  /* Darker dots on light canvas */
+  --color-grid-dot:  rgba(0, 0, 0, 0.12);
   --color-grid-size: 24px;
 
   --shadow-sm:            0 1px 3px rgba(0, 0, 0, 0.1);
@@ -231,61 +193,75 @@
                           0 0 0 2px var(--color-selection-ring);
   --shadow-card-dragging: 0 16px 48px rgba(0, 0, 0, 0.22),
                           0 0 0 1px rgba(0, 0, 0, 0.11);
-  --shadow-overlay:       0 8px 32px rgba(0, 0, 0, 0.2),
+  --shadow-overlay:       0 8px 32px rgba(0, 0, 0, 0.18),
                           0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
 
 /* ==========================================================================
-   Theme-independent tokens — same in both modes
+   Theme-independent tokens
    ========================================================================== */
 
 :root {
-
-  /* --- Card swatches ---
-   *  {name}         → accent color: used for card left border, type badge, title
-   *  {name}-surface → card body tint: very subtle, gives cards their hue identity
-   *  Entity type defaults:
-   *    Character → amber  |  Location → sage   |  Scene  → sky
-   *    Prop      → sand   |  Sequence → violet  |  Beat   → rose
-   *    User overridable: slate, fog (+ all of the above)
-   */
-  --swatch-amber:         var(--_raw-amber);
-  --swatch-amber-surface: var(--_raw-amber-dark);
-  --swatch-sage:          var(--_raw-sage);
-  --swatch-sage-surface:  var(--_raw-sage-dark);
-  --swatch-sky:           var(--_raw-sky);
-  --swatch-sky-surface:   var(--_raw-sky-dark);
-  --swatch-sand:          var(--_raw-sand);
-  --swatch-sand-surface:  var(--_raw-sand-dark);
-  --swatch-violet:        var(--_raw-violet);
+  /* === ALL 24 SWATCHES === */
+  /* Originals */
+  --swatch-amber:          var(--_raw-amber);
+  --swatch-amber-surface:  var(--_raw-amber-dark);
+  --swatch-sage:           var(--_raw-sage);
+  --swatch-sage-surface:   var(--_raw-sage-dark);
+  --swatch-sky:            var(--_raw-sky);
+  --swatch-sky-surface:    var(--_raw-sky-dark);
+  --swatch-sand:           var(--_raw-sand);
+  --swatch-sand-surface:   var(--_raw-sand-dark);
+  --swatch-violet:         var(--_raw-violet);
   --swatch-violet-surface: var(--_raw-violet-dark);
-  --swatch-rose:          var(--_raw-rose);
-  --swatch-rose-surface:  var(--_raw-rose-dark);
-  --swatch-slate:         var(--_raw-slate);
-  --swatch-slate-surface: var(--_raw-slate-dark);
-  --swatch-fog:           var(--_raw-fog);
-  --swatch-fog-surface:   var(--_raw-fog-dark);
-  --swatch-crimson:        var(--_raw-crimson);
-  --swatch-crimson-surface: var(--_raw-crimson-dark);
-  --swatch-emerald:        var(--_raw-emerald);
-  --swatch-emerald-surface: var(--_raw-emerald-dark);
-  --swatch-cobalt:         var(--_raw-cobalt);
-  --swatch-cobalt-surface: var(--_raw-cobalt-dark);
-  --swatch-gold:           var(--_raw-gold);
-  --swatch-gold-surface:   var(--_raw-gold-dark);
+  --swatch-rose:           var(--_raw-rose);
+  --swatch-rose-surface:   var(--_raw-rose-dark);
+  --swatch-slate:          var(--_raw-slate);
+  --swatch-slate-surface:  var(--_raw-slate-dark);
+  --swatch-fog:            var(--_raw-fog);
+  --swatch-fog-surface:    var(--_raw-fog-dark);
+  /* Saturated */
+  --swatch-crimson:          var(--_raw-crimson);
+  --swatch-crimson-surface:  var(--_raw-crimson-dark);
+  --swatch-emerald:          var(--_raw-emerald);
+  --swatch-emerald-surface:  var(--_raw-emerald-dark);
+  --swatch-cobalt:           var(--_raw-cobalt);
+  --swatch-cobalt-surface:   var(--_raw-cobalt-dark);
+  --swatch-gold:             var(--_raw-gold);
+  --swatch-gold-surface:     var(--_raw-gold-dark);
+  /* New 12 */
+  --swatch-coral:            var(--_raw-coral);
+  --swatch-coral-surface:    var(--_raw-coral-dark);
+  --swatch-lilac:            var(--_raw-lilac);
+  --swatch-lilac-surface:    var(--_raw-lilac-dark);
+  --swatch-teal:             var(--_raw-teal);
+  --swatch-teal-surface:     var(--_raw-teal-dark);
+  --swatch-pine:             var(--_raw-pine);
+  --swatch-pine-surface:     var(--_raw-pine-dark);
+  --swatch-rust:             var(--_raw-rust);
+  --swatch-rust-surface:     var(--_raw-rust-dark);
+  --swatch-mauve:            var(--_raw-mauve);
+  --swatch-mauve-surface:    var(--_raw-mauve-dark);
+  --swatch-periwinkle:       var(--_raw-periwinkle);
+  --swatch-periwinkle-surface: var(--_raw-periwinkle-dark);
+  --swatch-mint:             var(--_raw-mint);
+  --swatch-mint-surface:     var(--_raw-mint-dark);
+  --swatch-ochre:            var(--_raw-ochre);
+  --swatch-ochre-surface:    var(--_raw-ochre-dark);
+  --swatch-lavender:         var(--_raw-lavender);
+  --swatch-lavender-surface: var(--_raw-lavender-dark);
+  --swatch-jade:             var(--_raw-jade);
+  --swatch-jade-surface:     var(--_raw-jade-dark);
+  --swatch-wine:             var(--_raw-wine);
+  --swatch-wine-surface:     var(--_raw-wine-dark);
 
-  /* --- Typography ---
-   *  font-ui      → Inter Variable. All UI chrome, labels, metadata.
-   *  font-display → Fraunces Variable. Card titles, board name, wordmark.
-   *                 Use WONK axis for character at display sizes.
-   *  font-mono    → system monospace for any attribute values that need it
-   */
+  /* Typography */
   --font-ui:      'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-display: 'Fraunces Variable', 'Fraunces', Georgia, serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  /* --- Type scale --- */
+  /* Type scale */
   --text-2xs:  10px;
   --text-xs:   11px;
   --text-sm:   13px;
@@ -296,23 +272,20 @@
   --text-2xl:  26px;
   --text-3xl:  32px;
 
-  /* --- Font weights --- */
+  /* Font weights */
   --weight-regular:   400;
   --weight-medium:    500;
   --weight-semibold:  600;
   --weight-bold:      700;
 
-  /* --- Line heights --- */
+  /* Line heights */
   --leading-none:   1;
   --leading-tight:  1.2;
   --leading-snug:   1.35;
   --leading-normal: 1.55;
   --leading-loose:  1.75;
 
-  /* --- Spacing (4px base grid) ---
-   *  Named by multiplier, not px value, so they read as a scale
-   *  not a magic number.
-   */
+  /* Spacing */
   --space-px:  1px;
   --space-0:   2px;
   --space-1:   4px;
@@ -328,7 +301,7 @@
   --space-16:  64px;
   --space-20:  80px;
 
-  /* --- Border radius --- */
+  /* Border radius */
   --radius-xs:   3px;
   --radius-sm:   5px;
   --radius-md:   8px;
@@ -337,32 +310,21 @@
   --radius-2xl:  20px;
   --radius-full: 9999px;
 
-  /* --- Card dimensions ---
-   *  Defaults. Cards can be resized in Phase 3 via react-moveable.
-   *  These are the starting sizes, not constraints.
-   */
+  /* Card dimensions */
   --card-width-default:   240px;
   --card-height-default:  180px;
   --card-width-min:       160px;
   --card-height-min:      120px;
-  --card-border-accent:   3px;  /* left border stripe width */
+  --card-border-accent:   3px;
   --card-padding:         var(--space-4);
   --card-title-size:      var(--text-lg);
   --card-title-weight:    var(--weight-semibold);
 
-  /* --- Toolbar --- */
+  /* Toolbar */
   --toolbar-height:       48px;
   --toolbar-padding-x:    var(--space-4);
 
-  /* --- Motion ---
-   *  All durations and easings go through tokens.
-   *  Phase 10 is the polish pass — only touch these after Phase 9 ships.
-   *
-   *  easing-standard: snappy deceleration (Linear-style)
-   *  easing-spring:   subtle overshoot for card lift/drop
-   *  easing-out:      smooth exit animations
-   *  easing-flip:     used specifically for card 3D flip
-   */
+  /* Motion */
   --duration-instant:  80ms;
   --duration-fast:     120ms;
   --duration-normal:   200ms;
@@ -374,18 +336,14 @@
   --easing-out:       cubic-bezier(0, 0, 0.2, 1);
   --easing-flip:      cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* --- Z-index ladder ---
-   *  All z-index values go through tokens. Hard-coded z-indices in
-   *  components are a portability hazard.
-   *  Note: card z-index is base + dynamic zIndex from board model.
-   */
-  --z-canvas:       0;
-  --z-card-base:    1;
-  --z-card-hover:   50;
-  --z-card-selected: 100;
-  --z-card-dragging: 200;
-  --z-toolbar:      1000;
-  --z-context-menu: 1100;
-  --z-toast:        1200;
-  --z-modal:        1300;
+  /* Z-index ladder */
+  --z-canvas:         0;
+  --z-card-base:      1;
+  --z-card-hover:     50;
+  --z-card-selected:  100;
+  --z-card-dragging:  200;
+  --z-toolbar:        1000;
+  --z-context-menu:   1100;
+  --z-toast:          1200;
+  --z-modal:          1300;
 }

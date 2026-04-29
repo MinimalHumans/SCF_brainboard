@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
-import type { Board, Card, Entity, Backdrop, EntityType, BackdropType, Position, Size, Viewport } from '@/types/board'
-import { TYPE_SWATCH_DEFAULTS, BACKDROP_SWATCH_DEFAULTS, getContainedCardIds, getContainedBackdropIds } from '@/types/board'
+import type {
+  Board, Card, Entity, Backdrop, EntityType, BackdropType, Position, Size, Viewport
+} from '@/types/board'
+import {
+  TYPE_SWATCH_DEFAULTS, BACKDROP_SWATCH_DEFAULTS,
+  getContainedCardIds, getContainedBackdropIds,
+  BACKDROP_Z_LAYERS, CARD_Z_BASE,
+} from '@/types/board'
 import { useHistoryStore } from '@/store/historyStore'
 
 export const WORLD_SIZE    = 8000
@@ -25,8 +31,8 @@ function touch<T extends { updatedAt: string }>(obj: T): T {
   return { ...obj, updatedAt: new Date().toISOString() }
 }
 
-function maxZ(items: { zIndex: number }[]): number {
-  return items.length === 0 ? 0 : Math.max(...items.map(c => c.zIndex))
+function maxCardZ(cards: { zIndex: number }[]): number {
+  return cards.length === 0 ? CARD_Z_BASE : Math.max(CARD_Z_BASE, ...cards.map(c => c.zIndex))
 }
 
 // Push snapshot to history before mutating
@@ -34,35 +40,48 @@ function snapshot() {
   useHistoryStore.getState().push(useBoardStore.getState().board)
 }
 
+/*
+ * Normalize a loaded board's backdrop z-indices to the hierarchy system.
+ * This fixes boards saved before the hierarchy was introduced.
+ */
+function normalizeBackdrops(backdrops: Backdrop[]): Backdrop[] {
+  return backdrops.map(b => ({
+    note: '',
+    ...b,
+    zIndex: BACKDROP_Z_LAYERS[b.type] ?? 50,
+  }))
+}
+
 interface BoardStore {
   board: Board
-  setBoardName:           (name: string) => void
-  setViewport:            (viewport: Viewport) => void
-  createCard:             (position: Position, type?: EntityType) => Card
-  duplicateCard:          (id: string) => Card | null
-  createInstance:         (id: string, position: Position) => Card | null
-  deleteCard:             (id: string) => void
-  deleteCards:            (ids: string[]) => void
-  updateCardPosition:     (id: string, position: Position) => void
-  updateCardPositions:    (updates: { id: string; position: Position }[]) => void
-  updateCardContent:      (id: string, patch: Partial<Pick<Card, 'title' | 'noteRaw' | 'instanceNote' | 'color' | 'type'>>) => void
-  bringToFront:           (id: string) => void
-  updateEntityAttribute:  (entityId: string, key: string, value: string | string[]) => void
-  publishCard:            (id: string) => void
-  publishCards:           (ids: string[]) => void
-  publishAll:             () => void
-  createBackdrop:         (position: Position, size: Size, type: BackdropType, fromMenu?: boolean) => Backdrop
-  duplicateBackdrop:      (id: string) => void
-  updateBackdropPosition: (id: string, position: Position) => void
-  updateBackdropSize:     (id: string, position: Position, size: Size) => void
-  updateBackdropContent:  (id: string, patch: Partial<Pick<Backdrop, 'title' | 'color' | 'note'>>) => void
-  updateBackdropType:     (id: string, type: BackdropType) => void
-  updateBackdropAttribute:(id: string, key: string, value: string) => void
-  deleteBackdrop:         (id: string) => void
-  moveBackdropWithCards:  (id: string, backdropPos: Position, cardUpdates: { id: string; position: Position }[], backdropUpdates: { id: string; position: Position }[]) => void
-  loadBoard:              (board: Board) => void
-  undo:                   () => void
-  redo:                   () => void
+  setBoardName:                 (name: string) => void
+  setViewport:                  (viewport: Viewport) => void
+  createCard:                   (position: Position, type?: EntityType) => Card
+  duplicateCard:                (id: string) => Card | null
+  createInstance:               (id: string, position: Position) => Card | null
+  deleteCard:                   (id: string) => void
+  deleteCards:                  (ids: string[]) => void
+  updateCardPosition:           (id: string, position: Position) => void
+  updateCardPositions:          (updates: { id: string; position: Position }[]) => void
+  updateCardContent:            (id: string, patch: Partial<Pick<Card, 'title' | 'noteRaw' | 'instanceNote' | 'color' | 'type'>>) => void
+  bringToFront:                 (id: string) => void
+  updateEntityAttribute:        (entityId: string, key: string, value: string | string[]) => void
+  publishCard:                  (id: string) => void
+  publishCards:                 (ids: string[]) => void
+  publishAll:                   () => void
+  createBackdrop:               (position: Position, size: Size, type: BackdropType, fromMenu?: boolean) => Backdrop
+  duplicateBackdrop:            (id: string) => void
+  duplicateBackdropWithContents:(id: string) => void
+  updateBackdropPosition:       (id: string, position: Position) => void
+  updateBackdropSize:           (id: string, position: Position, size: Size) => void
+  updateBackdropContent:        (id: string, patch: Partial<Pick<Backdrop, 'title' | 'color' | 'note'>>) => void
+  updateBackdropType:           (id: string, type: BackdropType) => void
+  updateBackdropAttribute:      (id: string, key: string, value: string) => void
+  deleteBackdrop:               (id: string) => void
+  moveBackdropWithCards:        (id: string, backdropPos: Position, cardUpdates: { id: string; position: Position }[], backdropUpdates: { id: string; position: Position }[]) => void
+  loadBoard:                    (board: Board) => void
+  undo:                         () => void
+  redo:                         () => void
 }
 
 export const useBoardStore = create<BoardStore>((set, get) => ({
@@ -81,7 +100,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       type: type ?? 'Thought',
       position, rotation: 0,
       color: TYPE_SWATCH_DEFAULTS[type ?? 'Thought'],
-      zIndex: maxZ(get().board.cards) + 1,
+      zIndex: maxCardZ(get().board.cards) + 1,
       noteRaw: '', instanceNote: '', isFlipped: false, title: 'New Card',
     }
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card], entities: [...s.board.entities, entity] }) }))
@@ -95,7 +114,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     const entityId = nanoid()
     const srcEntity = get().board.entities.find(e => e.id === source.entityId)
     const entity: Entity = { id: entityId, type: source.type, title: source.title, noteRaw: source.noteRaw, attributes: { ...(srcEntity?.attributes ?? {}) } }
-    const card: Card = { ...source, id: nanoid(), entityId, position: { x: source.position.x + 24, y: source.position.y + 24 }, zIndex: maxZ(get().board.cards) + 1, instanceNote: '' }
+    const card: Card = { ...source, id: nanoid(), entityId, position: { x: source.position.x + 24, y: source.position.y + 24 }, zIndex: maxCardZ(get().board.cards) + 1, instanceNote: '' }
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card], entities: [...s.board.entities, entity] }) }))
     return card
   },
@@ -104,7 +123,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     snapshot()
     const source = get().board.cards.find(c => c.id === id)
     if (!source) return null
-    const card: Card = { ...source, id: nanoid(), position, zIndex: maxZ(get().board.cards) + 1, instanceNote: '', isFlipped: false }
+    const card: Card = { ...source, id: nanoid(), position, zIndex: maxCardZ(get().board.cards) + 1, instanceNote: '', isFlipped: false }
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card] }) }))
     return card
   },
@@ -161,35 +180,124 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     }),
 
   bringToFront: (id) =>
-    set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => c.id === id ? { ...c, zIndex: maxZ(s.board.cards) + 1 } : c) }) })),
+    set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => c.id === id ? { ...c, zIndex: maxCardZ(s.board.cards) + 1 } : c) }) })),
 
   updateEntityAttribute: (entityId, key, value) =>
     set(s => ({ board: touch({ ...s.board, entities: s.board.entities.map(e => e.id === entityId ? { ...e, attributes: { ...e.attributes, [key]: value } } : e) }) })),
 
-  publishCard: (id) => set(s => s),   // no-op — cards always published
-  publishCards: (ids) => set(s => s),
-  publishAll: () => {},
+  publishCard:  (_id) => set(s => s),
+  publishCards: (_ids) => set(s => s),
+  publishAll:   () => {},
 
   createBackdrop: (position, size, type, fromMenu = false) => {
     snapshot()
     const backdrop: Backdrop = {
       id: nanoid(), type, title: type, note: '',
       position,
-      size: fromMenu ? { width: 600, height: 400 } : { width: Math.max(size.width, BACKDROP_MIN_W), height: Math.max(size.height, BACKDROP_MIN_H) },
+      size: fromMenu
+        ? { width: 600, height: 400 }
+        : { width: Math.max(size.width, BACKDROP_MIN_W), height: Math.max(size.height, BACKDROP_MIN_H) },
       color: BACKDROP_SWATCH_DEFAULTS[type],
-      zIndex: maxZ(get().board.backdrops) + 1, attributes: {},
+      zIndex: BACKDROP_Z_LAYERS[type],
+      attributes: {},
     }
     set(s => ({ board: touch({ ...s.board, backdrops: [...s.board.backdrops, backdrop] }) }))
     return backdrop
   },
 
+  /*
+   * duplicateBackdrop — copies the backdrop shell only, offset to the right
+   * by (source.size.width + 40) so the copy lands outside the original's
+   * footprint and cannot accidentally capture its children.
+   */
   duplicateBackdrop: (id) => {
     snapshot()
     set(s => {
       const source = s.board.backdrops.find(b => b.id === id)
       if (!source) return s
-      const copy: Backdrop = { ...source, id: nanoid(), position: { x: source.position.x + 32, y: source.position.y + 32 }, zIndex: maxZ(s.board.backdrops) + 1 }
+      const copy: Backdrop = {
+        ...source,
+        id:       nanoid(),
+        position: { x: source.position.x + source.size.width + 40, y: source.position.y },
+        zIndex:   BACKDROP_Z_LAYERS[source.type] ?? 50,
+      }
       return { board: touch({ ...s.board, backdrops: [...s.board.backdrops, copy] }) }
+    })
+  },
+
+  /*
+   * duplicateBackdropWithContents — copies the backdrop shell PLUS all
+   * cards and sub-backdrops that are geometrically contained within it.
+   * Contained cards become independent entities (new IDs); they are NOT
+   * instances. Offset is the same rightward shift as duplicateBackdrop.
+   */
+  duplicateBackdropWithContents: (id) => {
+    snapshot()
+    set(s => {
+      const source = s.board.backdrops.find(b => b.id === id)
+      if (!source) return s
+
+      const dx = source.size.width + 40
+      const dy = 0
+
+      // New backdrop shell
+      const newBackdrop: Backdrop = {
+        ...source,
+        id:       nanoid(),
+        position: { x: source.position.x + dx, y: source.position.y + dy },
+        zIndex:   BACKDROP_Z_LAYERS[source.type] ?? 50,
+      }
+
+      // Contained cards → duplicate as new independent entities
+      const containedCardIds = getContainedCardIds(source, s.board.cards, CARD_W, CARD_H)
+      const newCards:    Card[]   = []
+      const newEntities: Entity[] = []
+
+      let runningZ = maxCardZ(s.board.cards)
+      for (const cardId of containedCardIds) {
+        const card = s.board.cards.find(c => c.id === cardId)
+        if (!card) continue
+        const srcEntity = s.board.entities.find(e => e.id === card.entityId)
+        const newEntityId = nanoid()
+        const newEntity: Entity = {
+          id:         newEntityId,
+          type:       card.type,
+          title:      srcEntity?.title  ?? card.title,
+          noteRaw:    srcEntity?.noteRaw ?? card.noteRaw,
+          attributes: { ...(srcEntity?.attributes ?? {}) },
+        }
+        runningZ += 1
+        const newCard: Card = {
+          ...card,
+          id:       nanoid(),
+          entityId: newEntityId,
+          position: { x: card.position.x + dx, y: card.position.y + dy },
+          zIndex:   runningZ,
+        }
+        newCards.push(newCard)
+        newEntities.push(newEntity)
+      }
+
+      // Contained sub-backdrops
+      const containedBdIds = getContainedBackdropIds(source, s.board.backdrops)
+      const newSubBackdrops: Backdrop[] = containedBdIds.map(bdId => {
+        const bd = s.board.backdrops.find(b => b.id === bdId)!
+        return {
+          ...bd,
+          id:       nanoid(),
+          position: { x: bd.position.x + dx, y: bd.position.y + dy },
+          zIndex:   BACKDROP_Z_LAYERS[bd.type] ?? 50,
+        }
+      })
+
+      return {
+        board: touch({
+          ...s.board,
+          backdrops: [...s.board.backdrops, newBackdrop, ...newSubBackdrops],
+          cards:     [...s.board.cards, ...newCards],
+          entities:  [...s.board.entities, ...newEntities],
+        }),
+      }
     })
   },
 
@@ -203,7 +311,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, ...patch } : b) }) })),
 
   updateBackdropType: (id, type) =>
-    set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, type, color: BACKDROP_SWATCH_DEFAULTS[type], attributes: {} } : b) }) })),
+    set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, type, color: BACKDROP_SWATCH_DEFAULTS[type], zIndex: BACKDROP_Z_LAYERS[type], attributes: {} } : b) }) })),
 
   updateBackdropAttribute: (id, key, value) =>
     set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, attributes: { ...b.attributes, [key]: value } } : b) }) })),
@@ -215,8 +323,8 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   moveBackdropWithCards: (id, backdropPos, cardUpdates, backdropUpdates) => {
     snapshot()
-    const cardMap    = new Map(cardUpdates.map(u => [u.id, u.position]))
-    const bdMap      = new Map(backdropUpdates.map(u => [u.id, u.position]))
+    const cardMap = new Map(cardUpdates.map(u => [u.id, u.position]))
+    const bdMap   = new Map(backdropUpdates.map(u => [u.id, u.position]))
     set(s => ({
       board: touch({
         ...s.board,
@@ -230,7 +338,12 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     }))
   },
 
-  loadBoard: (board) => set({ board: { ...board, backdrops: (board.backdrops ?? []).map(b => ({ note: '', ...b })) } }),
+  loadBoard: (board) => set({
+    board: {
+      ...board,
+      backdrops: normalizeBackdrops(board.backdrops ?? []),
+    },
+  }),
 
   undo: () => {
     const prev = useHistoryStore.getState().undo(get().board)

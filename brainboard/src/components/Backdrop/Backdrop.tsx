@@ -22,25 +22,23 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
-  // Read live attributes from store so edit panel updates the view in realtime
   const liveBackdrop = useBoardStore(s => s.board.backdrops.find(b => b.id === backdrop.id) ?? backdrop)
 
-  const updateBackdropContent   = useBoardStore(s => s.updateBackdropContent)
-  const updateBackdropSize      = useBoardStore(s => s.updateBackdropSize)
-  const updateBackdropType      = useBoardStore(s => s.updateBackdropType)
-  const updateBackdropAttribute = useBoardStore(s => s.updateBackdropAttribute)
-  const moveBackdropWithCards   = useBoardStore(s => s.moveBackdropWithCards)
-  const duplicateBackdrop       = useBoardStore(s => s.duplicateBackdrop)
-  const deleteBackdrop          = useBoardStore(s => s.deleteBackdrop)
-  const board                   = useBoardStore(s => s.board)
+  const updateBackdropContent         = useBoardStore(s => s.updateBackdropContent)
+  const updateBackdropSize            = useBoardStore(s => s.updateBackdropSize)
+  const updateBackdropType            = useBoardStore(s => s.updateBackdropType)
+  const updateBackdropAttribute       = useBoardStore(s => s.updateBackdropAttribute)
+  const moveBackdropWithCards         = useBoardStore(s => s.moveBackdropWithCards)
+  const duplicateBackdrop             = useBoardStore(s => s.duplicateBackdrop)
+  const duplicateBackdropWithContents = useBoardStore(s => s.duplicateBackdropWithContents)
+  const deleteBackdrop                = useBoardStore(s => s.deleteBackdrop)
+  const board                         = useBoardStore(s => s.board)
 
-  // Close when canvas signals
   const closeSignal = useEditorSignalStore(s => s.closeSignal)
   useEffect(() => { if (closeSignal > 0) setIsEditing(false) }, [closeSignal])
 
   const schema = BACKDROP_SCHEMAS[liveBackdrop.type] ?? []
 
-  // Header drag — moves backdrop + contained cards + contained backdrops
   const handleHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
@@ -102,7 +100,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     headerEl.addEventListener('pointerup',   onUp)
   }, [liveBackdrop, board.cards, board.backdrops, getViewerZoom, moveBackdropWithCards])
 
-  // Resize
   const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, pos: HandlePos) => {
     e.stopPropagation(); e.preventDefault()
     const handleEl   = e.currentTarget
@@ -124,7 +121,11 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
 
     const onMove = (me: PointerEvent) => {
       const { newX, newY, newW, newH } = calc((me.clientX - startX) / zoom, (me.clientY - startY) / zoom)
-      if (backdropEl) { backdropEl.style.transform = `translate(${newX}px, ${newY}px)`; backdropEl.style.width = `${newW}px`; backdropEl.style.height = `${newH}px` }
+      if (backdropEl) {
+        backdropEl.style.transform = `translate(${newX}px, ${newY}px)`
+        backdropEl.style.width     = `${newW}px`
+        backdropEl.style.height    = `${newH}px`
+      }
     }
     const onUp = (ue: PointerEvent) => {
       handleEl.removeEventListener('pointermove', onMove)
@@ -142,9 +143,10 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   }, [])
 
   const ctxItems: ContextMenuItem[] = [
-    { label: 'Edit attributes', onClick: () => setIsEditing(v => !v) },
-    { label: 'Duplicate', divider: true, onClick: () => duplicateBackdrop(liveBackdrop.id) },
-    { label: 'Delete backdrop', danger: true, divider: true, onClick: () => deleteBackdrop(liveBackdrop.id) },
+    { label: 'Edit attributes',        onClick: () => setIsEditing(v => !v) },
+    { label: 'Duplicate backdrop',     divider: true, onClick: () => duplicateBackdrop(liveBackdrop.id) },
+    { label: 'Duplicate with contents',               onClick: () => duplicateBackdropWithContents(liveBackdrop.id) },
+    { label: 'Delete backdrop',        danger: true, divider: true, onClick: () => deleteBackdrop(liveBackdrop.id) },
   ]
 
   const filledAttrs = schema
@@ -158,6 +160,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     <>
       <div
         data-backdrop-id={liveBackdrop.id}
+        data-bd-type={liveBackdrop.type}
         className={styles.backdrop}
         data-swatch={liveBackdrop.color}
         style={{
@@ -209,7 +212,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
 
       {isEditing && worldRef.current && createPortal(
         <div className={styles.editPanel}
-          style={{ position: 'absolute', left: panelLeft, top: panelTop, zIndex: liveBackdrop.zIndex + 1000 }}
+          style={{ position: 'absolute', left: panelLeft, top: panelTop, zIndex: liveBackdrop.zIndex + 9000 }}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
         >

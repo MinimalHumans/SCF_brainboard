@@ -1,24 +1,31 @@
-/* Swatch resolution */
-.backdrop[data-swatch="amber"]  { --bd-swatch: var(--swatch-amber);  --bd-surface: var(--swatch-amber-surface);  }
-.backdrop[data-swatch="sage"]   { --bd-swatch: var(--swatch-sage);   --bd-surface: var(--swatch-sage-surface);   }
-.backdrop[data-swatch="sky"]    { --bd-swatch: var(--swatch-sky);    --bd-surface: var(--swatch-sky-surface);    }
-.backdrop[data-swatch="sand"]   { --bd-swatch: var(--swatch-sand);   --bd-surface: var(--swatch-sand-surface);   }
-.backdrop[data-swatch="violet"] { --bd-swatch: var(--swatch-violet); --bd-surface: var(--swatch-violet-surface); }
-.backdrop[data-swatch="rose"]   { --bd-swatch: var(--swatch-rose);   --bd-surface: var(--swatch-rose-surface);   }
-.backdrop[data-swatch="slate"]  { --bd-swatch: var(--swatch-slate);  --bd-surface: var(--swatch-slate-surface);  }
-.backdrop[data-swatch="fog"]    { --bd-swatch: var(--swatch-fog);    --bd-surface: var(--swatch-fog-surface);    }
-.backdrop[data-swatch="crimson"]  { --bd-swatch: var(--swatch-crimson);  --bd-surface: var(--swatch-crimson-surface);  }
-.backdrop[data-swatch="emerald"]  { --bd-swatch: var(--swatch-emerald);  --bd-surface: var(--swatch-emerald-surface);  }
-.backdrop[data-swatch="cobalt"]   { --bd-swatch: var(--swatch-cobalt);   --bd-surface: var(--swatch-cobalt-surface);   }
-.backdrop[data-swatch="gold"]     { --bd-swatch: var(--swatch-gold);     --bd-surface: var(--swatch-gold-surface);     }
+/* === SWATCH RESOLUTION — all 24 === */
+.backdrop[data-swatch="amber"]      { --bd-swatch: var(--swatch-amber);      --bd-surface: var(--swatch-amber-surface);      }
+.backdrop[data-swatch="sage"]       { --bd-swatch: var(--swatch-sage);       --bd-surface: var(--swatch-sage-surface);       }
+.backdrop[data-swatch="sky"]        { --bd-swatch: var(--swatch-sky);        --bd-surface: var(--swatch-sky-surface);        }
+.backdrop[data-swatch="sand"]       { --bd-swatch: var(--swatch-sand);       --bd-surface: var(--swatch-sand-surface);       }
+.backdrop[data-swatch="violet"]     { --bd-swatch: var(--swatch-violet);     --bd-surface: var(--swatch-violet-surface);     }
+.backdrop[data-swatch="rose"]       { --bd-swatch: var(--swatch-rose);       --bd-surface: var(--swatch-rose-surface);       }
+.backdrop[data-swatch="slate"]      { --bd-swatch: var(--swatch-slate);      --bd-surface: var(--swatch-slate-surface);      }
+.backdrop[data-swatch="fog"]        { --bd-swatch: var(--swatch-fog);        --bd-surface: var(--swatch-fog-surface);        }
+.backdrop[data-swatch="crimson"]    { --bd-swatch: var(--swatch-crimson);    --bd-surface: var(--swatch-crimson-surface);    }
+.backdrop[data-swatch="emerald"]    { --bd-swatch: var(--swatch-emerald);    --bd-surface: var(--swatch-emerald-surface);    }
+.backdrop[data-swatch="cobalt"]     { --bd-swatch: var(--swatch-cobalt);     --bd-surface: var(--swatch-cobalt-surface);     }
+.backdrop[data-swatch="gold"]       { --bd-swatch: var(--swatch-gold);       --bd-surface: var(--swatch-gold-surface);       }
+.backdrop[data-swatch="coral"]      { --bd-swatch: var(--swatch-coral);      --bd-surface: var(--swatch-coral-surface);      }
+.backdrop[data-swatch="lilac"]      { --bd-swatch: var(--swatch-lilac);      --bd-surface: var(--swatch-lilac-surface);      }
+.backdrop[data-swatch="teal"]       { --bd-swatch: var(--swatch-teal);       --bd-surface: var(--swatch-teal-surface);       }
+.backdrop[data-swatch="pine"]       { --bd-swatch: var(--swatch-pine);       --bd-surface: var(--swatch-pine-surface);       }
+.backdrop[data-swatch="rust"]       { --bd-swatch: var(--swatch-rust);       --bd-surface: var(--swatch-rust-surface);       }
+.backdrop[data-swatch="mauve"]      { --bd-swatch: var(--swatch-mauve);      --bd-surface: var(--swatch-mauve-surface);      }
+.backdrop[data-swatch="periwinkle"] { --bd-swatch: var(--swatch-periwinkle); --bd-surface: var(--swatch-periwinkle-surface); }
+.backdrop[data-swatch="mint"]       { --bd-swatch: var(--swatch-mint);       --bd-surface: var(--swatch-mint-surface);       }
+.backdrop[data-swatch="ochre"]      { --bd-swatch: var(--swatch-ochre);      --bd-surface: var(--swatch-ochre-surface);      }
+.backdrop[data-swatch="lavender"]   { --bd-swatch: var(--swatch-lavender);   --bd-surface: var(--swatch-lavender-surface);   }
+.backdrop[data-swatch="jade"]       { --bd-swatch: var(--swatch-jade);       --bd-surface: var(--swatch-jade-surface);       }
+.backdrop[data-swatch="wine"]       { --bd-swatch: var(--swatch-wine);       --bd-surface: var(--swatch-wine-surface);       }
 
 /* ==========================================================================
    Backdrop root
-   pointer-events: none by default — the body is transparent to interaction.
-   Only header and handles have pointer-events: auto.
-   This means the CSS :hover on the root only fires when the cursor is over
-   an element with pointer-events: auto — i.e. the header or handles.
-   That naturally gates border and handle visibility to edge interaction only.
    ========================================================================== */
 .backdrop {
   position:         absolute;
@@ -28,12 +35,10 @@
   display:          flex;
   flex-direction:   column;
 
-  /* Transparent border by default — shown only on hover (see below) */
   border:           1.5px solid transparent;
   border-radius:    var(--radius-xl);
   background-color: var(--bd-surface, rgba(255,255,255,0.02));
 
-  /* No pointer events on the root — children opt in explicitly */
   pointer-events:   none;
 
   transition:
@@ -41,18 +46,12 @@
     background-color var(--duration-fast) var(--easing-out);
 }
 
-/*
- * Border appears when cursor is over the header OR any handle.
- * Because those are the only pointer-events:auto elements, :hover on the
- * backdrop root only triggers in those zones — not over the interior body.
- */
 .backdrop:hover {
   border-color:     var(--bd-swatch, var(--color-border));
-  background-color: color-mix(in srgb, var(--bd-surface, transparent) 100%, transparent);
 }
 
 /* ==========================================================================
-   Header — full width, grab cursor, pointer-events: auto
+   Header
    ========================================================================== */
 .header {
   display:          flex;
@@ -63,7 +62,6 @@
   flex-shrink:      0;
   pointer-events:   auto;
   cursor:           grab;
-  /* Subtle tint so it reads as draggable without being a hard bar */
   background-color: rgba(0, 0, 0, 0.12);
   border-radius:    calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px) 0 0;
   user-select:      none;
@@ -107,30 +105,25 @@
 .iconBtn:hover { background-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
 
 /* ==========================================================================
-   Body — pointer-events: none so clicks fall through to canvas/cards
+   Body
    ========================================================================== */
 .body {
   flex:           1;
   padding:        var(--space-3) var(--space-4);
-  pointer-events: none;  /* transparent — children opt back in with inline style */
+  pointer-events: none;
   overflow:       hidden;
 }
 
-/* Title — Fraunces, larger than card titles, sits in the body */
-.titleArea {
-  margin-bottom: var(--space-2);
-}
+.titleArea   { margin-bottom: var(--space-2); }
 
 .title {
-  /* .text-display utility class from globals.css sets Fraunces Variable with WONK=1 */
-  font-size:   var(--text-2xl);
-  color:       var(--color-text-primary);
-  opacity:     0.75;
-  line-height: var(--leading-tight);
-  cursor:      text;
-  user-select: none;
-  display:     block;
-  /* Clamp to two lines so very long titles don't swallow the backdrop */
+  font-size:          var(--text-2xl);
+  color:              var(--color-text-primary);
+  opacity:            0.75;
+  line-height:        var(--leading-tight);
+  cursor:             text;
+  user-select:        none;
+  display:            block;
   display:            -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -138,34 +131,29 @@
 }
 
 .titleInput {
-  font-family:      var(--font-display);
-  font-size:        var(--text-2xl);
-  font-weight:      var(--weight-bold);
+  font-family:           var(--font-display);
+  font-size:             var(--text-2xl);
+  font-weight:           var(--weight-bold);
   font-variation-settings: 'wght' 700, 'WONK' 1, 'opsz' 26;
-  color:            var(--color-text-primary);
-  background-color: rgba(0,0,0,0.4);
-  border:           1px solid var(--bd-swatch, var(--color-accent));
-  border-radius:    var(--radius-sm);
-  padding:          2px var(--space-2);
-  outline:          none;
-  width:            100%;
-  user-select:      text;
+  color:                 var(--color-text-primary);
+  background-color:      rgba(0,0,0,0.4);
+  border:                1px solid var(--bd-swatch, var(--color-accent));
+  border-radius:         var(--radius-sm);
+  padding:               2px var(--space-2);
+  outline:               none;
+  width:                 100%;
+  user-select:           text;
 }
 
-/* Attribute display — CSS grid avoids the label wrapping problem.
-   Labels always occupy the left column at their natural width (auto),
-   values get all remaining space (1fr). */
 .attrDisplay {
-  display:        grid;
+  display:               grid;
   grid-template-columns: auto 1fr;
-  column-gap:     var(--space-3);
-  row-gap:        3px;
-  align-items:    baseline;
+  column-gap:            var(--space-3);
+  row-gap:               3px;
+  align-items:           baseline;
 }
 
-.attrRow {
-  display: contents;  /* lets children participate directly in the parent grid */
-}
+.attrRow  { display: contents; }
 
 .attrKey {
   font-family:  var(--font-ui);
@@ -173,7 +161,7 @@
   font-weight:  var(--weight-medium);
   color:        var(--bd-swatch, var(--color-text-muted));
   opacity:      0.7;
-  white-space:  nowrap;  /* label never wraps */
+  white-space:  nowrap;
   user-select:  none;
 }
 
@@ -190,171 +178,8 @@
 }
 
 /* ==========================================================================
-   Edit panel — floats over the body, pointer-events restored via inline style
-   ========================================================================== */
-.editPanel {
-  /* Portal-rendered: position: fixed so it sits in the viewport stacking context,
-     above all cards and backdrops regardless of their z-index values.
-     top/right are set via inline style from the backdrop's getBoundingClientRect. */
-  position:         fixed;
-  width:            340px;
-  z-index:          var(--z-modal);   /* above everything */
-  padding:          var(--space-3);
-  background-color: var(--color-surface-overlay);
-  border:           1px solid var(--color-border-strong);
-  border-radius:    var(--radius-lg);
-  box-shadow:       var(--shadow-overlay);
-  display:          flex;
-  flex-direction:   column;
-  gap:              var(--space-3);
-  /* Prevent panel from going off-screen at the top */
-  max-height:       80vh;
-  overflow-y:       auto;
-  animation:        panelIn var(--duration-fast) var(--easing-standard);
-}
-
-@keyframes panelIn {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.field { display: flex; flex-direction: column; gap: var(--space-1); }
-
-.label {
-  font-family:    var(--font-ui);
-  font-size:      var(--text-xs);
-  font-weight:    var(--weight-medium);
-  color:          var(--color-text-muted);
-  letter-spacing: 0.02em;
-  user-select:    none;
-}
-
-.input {
-  display:          block;
-  width:            100%;
-  font-family:      var(--font-ui);
-  font-size:        var(--text-sm);
-  color:            var(--color-text-primary);
-  background-color: rgba(0,0,0,0.35);
-  border:           1px solid var(--color-border);
-  border-radius:    var(--radius-sm);
-  padding:          var(--space-2);
-  user-select:      text;
-  cursor:           text;
-  transition:       border-color var(--duration-fast) var(--easing-out);
-}
-.input:focus { border-color: var(--color-accent); outline: none; }
-.input::placeholder { color: var(--color-text-muted); opacity: 0.5; }
-
-.textarea {
-  display:          block;
-  width:            100%;
-  font-family:      var(--font-ui);
-  font-size:        var(--text-sm);
-  line-height:      var(--leading-normal);
-  color:            var(--color-text-primary);
-  background-color: rgba(0,0,0,0.35);
-  border:           1px solid var(--color-border);
-  border-radius:    var(--radius-sm);
-  padding:          var(--space-2);
-  resize:           vertical;
-  min-height:       48px;
-  user-select:      text;
-  cursor:           text;
-  transition:       border-color var(--duration-fast) var(--easing-out);
-}
-.textarea:focus { border-color: var(--color-accent); outline: none; }
-.textarea::placeholder { color: var(--color-text-muted); opacity: 0.5; }
-
-.swatches { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.swatch {
-  width: 16px; height: 16px; border-radius: var(--radius-full);
-  background-color: var(--dot, var(--color-border));
-  border: 2px solid transparent; cursor: pointer;
-  transition: transform var(--duration-fast) var(--easing-spring),
-              border-color var(--duration-fast) var(--easing-out);
-}
-.swatch:hover  { transform: scale(1.2); }
-.swatchActive  { border-color: var(--color-text-primary); }
-
-/* ==========================================================================
-   Resize handles
-   pointer-events: auto — these are the edge interaction zones.
-   Opacity is controlled by whether the backdrop root is :hover.
-   Since the body is pointer-events:none, :hover only fires when the cursor
-   is over the header or a handle — which is exactly when we want to show them.
-   ========================================================================== */
-.handle {
-  position:         absolute;
-  width:            12px;
-  height:           12px;
-  background-color: var(--bd-swatch, var(--color-border-strong));
-  border:           2px solid var(--color-surface-base);
-  border-radius:    var(--radius-xs);
-  pointer-events:   auto;
-  opacity:          0;
-  transition:       opacity var(--duration-fast) var(--easing-out);
-  z-index:          1;
-}
-
-/* Show handles when the header or any handle itself is hovered */
-.backdrop:hover .handle {
-  opacity: 1;
-}
-
-.handle_nw { top: -6px; left:  -6px;             cursor: nw-resize; }
-.handle_n  { top: -6px; left:  calc(50% - 6px);  cursor: n-resize; }
-.handle_ne { top: -6px; right: -6px;              cursor: ne-resize; }
-.handle_e  { top: calc(50% - 6px); right: -6px;  cursor: e-resize; }
-.handle_se { bottom: -6px; right: -6px;           cursor: se-resize; }
-.handle_s  { bottom: -6px; left: calc(50% - 6px); cursor: s-resize; }
-.handle_sw { bottom: -6px; left: -6px;            cursor: sw-resize; }
-.handle_w  { top: calc(50% - 6px); left: -6px;   cursor: w-resize; }
-
-/* Note display — lower-right corner of the backdrop body (view mode) */
-.noteDisplay {
-  position:    absolute;
-  bottom:      var(--space-3);
-  left:        var(--space-4);
-  max-width:   55%;
-  font-family: var(--font-ui);
-  font-size:   var(--text-xs);
-  color:       var(--color-text-muted);
-  opacity:     0.65;
-  line-height: var(--leading-normal);
-  text-align:  left;
-  user-select: none;
-  /* No clamp — show full note */
-}
-
-.noteHint {
-  font-weight:    var(--weight-regular);
-  color:          var(--color-text-muted);
-  opacity:        0.6;
-  font-size:      var(--text-2xs);
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.select {
-  display:          block;
-  width:            100%;
-  font-family:      var(--font-ui);
-  font-size:        var(--text-sm);
-  color:            var(--color-text-primary);
-  background-color: var(--color-surface-inset);
-  border:           1px solid var(--color-border-strong);
-  border-radius:    var(--radius-sm);
-  padding:          var(--space-1) var(--space-2);
-  cursor:           pointer;
-  transition:       border-color var(--duration-fast) var(--easing-out);
-}
-.select:focus { border-color: var(--color-accent); outline: none; }
-
-/* ==========================================================================
    Edit panel — world-space portal
    ========================================================================== */
-
 .editPanel {
   width:            300px;
   padding:          var(--space-3);
@@ -365,6 +190,8 @@
   display:          flex;
   flex-direction:   column;
   gap:              var(--space-3);
+  max-height:       80vh;
+  overflow-y:       auto;
   animation:        panelIn var(--duration-fast) var(--easing-standard);
 }
 
@@ -394,29 +221,29 @@
 }
 
 .panelClose {
-  margin-left:      auto;
-  flex-shrink:      0;
-  font-size:        18px;
-  line-height:      1;
-  width:            24px;
-  height:           24px;
-  display:          flex;
-  align-items:      center;
-  justify-content:  center;
-  border-radius:    var(--radius-xs);
-  color:            var(--color-text-muted);
-  background:       transparent;
-  border:           none;
-  cursor:           pointer;
-  transition:       color            var(--duration-fast) var(--easing-out),
-                    background-color var(--duration-fast) var(--easing-out);
+  margin-left:     auto;
+  flex-shrink:     0;
+  font-size:       18px;
+  line-height:     1;
+  width:           24px;
+  height:          24px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  border-radius:   var(--radius-xs);
+  color:           var(--color-text-muted);
+  background:      transparent;
+  border:          none;
+  cursor:          pointer;
+  transition:      color            var(--duration-fast) var(--easing-out),
+                   background-color var(--duration-fast) var(--easing-out);
 }
 .panelClose:hover {
   color:            var(--color-text-primary);
   background-color: var(--color-surface-hover);
 }
 
-.field { display: flex; flex-direction: column; gap: var(--space-1); }
+.field  { display: flex; flex-direction: column; gap: var(--space-1); }
 
 .label {
   font-family:    var(--font-ui);
@@ -427,10 +254,7 @@
   user-select:    none;
 }
 
-.noteHint {
-  font-size:   var(--text-2xs);
-  opacity:     0.6;
-}
+.noteHint { font-size: var(--text-2xs); opacity: 0.6; }
 
 .input {
   display:          block;
@@ -469,10 +293,26 @@
 .textarea:focus        { border-color: var(--color-accent); outline: none; }
 .textarea::placeholder { color: var(--color-text-muted); opacity: 0.5; }
 
+.select {
+  display:          block;
+  width:            100%;
+  font-family:      var(--font-ui);
+  font-size:        var(--text-sm);
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-inset);
+  border:           1px solid var(--color-border-strong);
+  border-radius:    var(--radius-sm);
+  padding:          var(--space-1) var(--space-2);
+  cursor:           pointer;
+  transition:       border-color var(--duration-fast) var(--easing-out);
+}
+.select:focus { border-color: var(--color-accent); outline: none; }
+
+/* Swatches — 24 dots, small but tappable */
 .swatches { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
 .swatch {
-  width:            18px;
-  height:           18px;
+  width:            16px;
+  height:           16px;
   border-radius:    var(--radius-full);
   background-color: var(--dot, var(--color-border));
   border:           2px solid transparent;
@@ -480,5 +320,45 @@
   transition:       transform var(--duration-fast) var(--easing-spring),
                     border-color var(--duration-fast) var(--easing-out);
 }
-.swatch:hover  { transform: scale(1.2); }
+.swatch:hover  { transform: scale(1.22); }
 .swatchActive  { border-color: var(--color-text-primary); transform: scale(1.12); }
+
+/* ==========================================================================
+   Resize handles
+   ========================================================================== */
+.handle {
+  position:         absolute;
+  width:            12px;
+  height:           12px;
+  background-color: var(--bd-swatch, var(--color-border-strong));
+  border:           2px solid var(--color-surface-base);
+  border-radius:    var(--radius-xs);
+  pointer-events:   auto;
+  opacity:          0;
+  transition:       opacity var(--duration-fast) var(--easing-out);
+  z-index:          1;
+}
+.backdrop:hover .handle { opacity: 1; }
+
+.handle_nw { top: -6px; left:  -6px;              cursor: nw-resize; }
+.handle_n  { top: -6px; left:  calc(50% - 6px);   cursor: n-resize;  }
+.handle_ne { top: -6px; right: -6px;               cursor: ne-resize; }
+.handle_e  { top: calc(50% - 6px); right: -6px;   cursor: e-resize;  }
+.handle_se { bottom: -6px; right: -6px;            cursor: se-resize; }
+.handle_s  { bottom: -6px; left: calc(50% - 6px); cursor: s-resize;  }
+.handle_sw { bottom: -6px; left: -6px;             cursor: sw-resize; }
+.handle_w  { top: calc(50% - 6px); left: -6px;    cursor: w-resize;  }
+
+/* Note display */
+.noteDisplay {
+  position:    absolute;
+  bottom:      var(--space-3);
+  left:        var(--space-4);
+  max-width:   55%;
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  color:       var(--color-text-muted);
+  opacity:     0.65;
+  line-height: var(--leading-normal);
+  user-select: none;
+}
