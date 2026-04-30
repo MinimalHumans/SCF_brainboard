@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useBoardStore, CARD_W, CARD_H, BACKDROP_MIN_W, BACKDROP_MIN_H } from '@/store/boardStore'
+import { useBoardStore, CARD_W, CARD_H, BACKDROP_MIN_W, BACKDROP_MIN_H, snapshotBoard } from '@/store/boardStore'
 import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
@@ -131,6 +131,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
       handleEl.removeEventListener('pointermove', onMove)
       handleEl.removeEventListener('pointerup',   onUp)
       const { newX, newY, newW, newH } = calc((ue.clientX - startX) / zoom, (ue.clientY - startY) / zoom)
+      // updateBackdropSize now calls snapshot() internally — one undo step per resize.
       updateBackdropSize(liveBackdrop.id, { x: newX, y: newY }, { width: newW, height: newH })
     }
     handleEl.addEventListener('pointermove', onMove)
@@ -223,6 +224,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
               title="Close">×</button>
           </div>
 
+          {/* Type — updateBackdropType snapshots internally, one undo step per change */}
           <div className={styles.field}>
             <label className={styles.label}>Type</label>
             <select className={styles.select} value={liveBackdrop.type}
@@ -231,37 +233,60 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             </select>
           </div>
 
+          {/* Title — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Title</label>
-            <input className={styles.input} value={liveBackdrop.title}
+            <input
+              className={styles.input}
+              value={liveBackdrop.title}
+              onFocus={() => snapshotBoard()}
               onChange={e => updateBackdropContent(liveBackdrop.id, { title: e.target.value })}
-              placeholder={liveBackdrop.type} autoFocus />
+              placeholder={liveBackdrop.type}
+              autoFocus
+            />
           </div>
 
+          {/* Type-specific attribute fields */}
           {schema.map(field => (
             <div key={field.key} className={styles.field}>
               <label className={styles.label}>{field.label}</label>
               {field.type === 'textarea' ? (
-                <textarea className={styles.textarea}
+                /* Attribute textarea — snapshot on focus, then free-type */
+                <textarea
+                  className={styles.textarea}
                   value={liveBackdrop.attributes[field.key] ?? ''}
+                  onFocus={() => snapshotBoard()}
                   onChange={e => updateBackdropAttribute(liveBackdrop.id, field.key, e.target.value)}
-                  placeholder={field.hint} rows={2} />
+                  placeholder={field.hint}
+                  rows={2}
+                />
               ) : (
-                <input className={styles.input}
+                /* Attribute text input — snapshot on focus, then free-type */
+                <input
+                  className={styles.input}
                   value={liveBackdrop.attributes[field.key] ?? ''}
+                  onFocus={() => snapshotBoard()}
                   onChange={e => updateBackdropAttribute(liveBackdrop.id, field.key, e.target.value)}
-                  placeholder={field.hint} />
+                  placeholder={field.hint}
+                />
               )}
             </div>
           ))}
 
+          {/* Note — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Note <span className={styles.noteHint}>· lower-left</span></label>
-            <textarea className={styles.textarea} value={liveBackdrop.note ?? ''}
+            <textarea
+              className={styles.textarea}
+              value={liveBackdrop.note ?? ''}
+              onFocus={() => snapshotBoard()}
               onChange={e => updateBackdropContent(liveBackdrop.id, { note: e.target.value } as any)}
-              placeholder="Add a note…" rows={2} />
+              placeholder="Add a note…"
+              rows={2}
+            />
           </div>
 
+          {/* Colour — snapshot before applying so each swatch click is its own undo step */}
           <div className={styles.field}>
             <label className={styles.label}>Color</label>
             <div className={styles.swatches}>
@@ -269,7 +294,11 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
                 <div key={swatch} role="button"
                   className={`${styles.swatch} ${liveBackdrop.color === swatch ? styles.swatchActive : ''}`}
                   style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
-                  onPointerDown={e => { e.stopPropagation(); e.preventDefault(); updateBackdropContent(liveBackdrop.id, { color: swatch as any }) }}
+                  onPointerDown={e => {
+                    e.stopPropagation(); e.preventDefault()
+                    snapshotBoard()
+                    updateBackdropContent(liveBackdrop.id, { color: swatch as any })
+                  }}
                   title={swatch} />
               ))}
             </div>

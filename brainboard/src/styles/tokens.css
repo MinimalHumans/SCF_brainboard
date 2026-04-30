@@ -29,21 +29,21 @@
 
   /* === ORIGINAL 8 MUTED SWATCHES === */
   --_raw-amber:         #c98a12;
-  --_raw-amber-dark:    rgba(201, 138, 18, 0.12);
+  --_raw-amber-dark:    rgba(201, 138, 18, 0.2);
   --_raw-sage:          #4f8e62;
-  --_raw-sage-dark:     rgba(79, 142, 98, 0.12);
+  --_raw-sage-dark:     rgba(79, 142, 98, 0.2);
   --_raw-sky:           #3d80b8;
-  --_raw-sky-dark:      rgba(61, 128, 184, 0.12);
+  --_raw-sky-dark:      rgba(61, 128, 184, 0.2);
   --_raw-sand:          #a08860;
-  --_raw-sand-dark:     rgba(160, 136, 96, 0.12);
+  --_raw-sand-dark:     rgba(160, 136, 96, 0.2);
   --_raw-violet:        #8060b4;
-  --_raw-violet-dark:   rgba(128, 96, 180, 0.12);
+  --_raw-violet-dark:   rgba(128, 96, 180, 0.2);
   --_raw-rose:          #b06070;
-  --_raw-rose-dark:     rgba(176, 96, 112, 0.12);
+  --_raw-rose-dark:     rgba(176, 96, 112, 0.2);
   --_raw-slate:         #507090;
-  --_raw-slate-dark:    rgba(80, 112, 144, 0.12);
+  --_raw-slate-dark:    rgba(80, 112, 144, 0.2);
   --_raw-fog:           #686878;
-  --_raw-fog-dark:      rgba(104, 104, 120, 0.12);
+  --_raw-fog-dark:      rgba(104, 104, 120, 0.2);
 
   /* === SATURATED 4 === */
   --_raw-crimson:       #c0192a;

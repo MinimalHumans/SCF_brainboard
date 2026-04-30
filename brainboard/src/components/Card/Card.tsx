@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
-import { useBoardStore } from '@/store/boardStore'
+import { useBoardStore, snapshotBoard } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { useCardDrag } from '@/hooks/useCardDrag'
@@ -89,16 +89,36 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
     ]
   }, [card.id, selectedIds, duplicateCard, deleteCard, onCreateInstance, clearSelection])
 
+  // ── Text field change handlers (no snapshot — snapshot happens on focus) ──
+
   const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
   const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
   const setInstanceNote = useCallback((v: string) => updateCardContent(card.id, { instanceNote: v }), [card.id, updateCardContent])
-  const setType         = useCallback((v: string) => updateCardContent(card.id, { type: v as any }),  [card.id, updateCardContent])
-  const setAttr         = useCallback((key: string, value: string) => {
+
+  // ── Discrete action handlers (snapshot before applying the change) ────────
+
+  // Type dropdown: snapshot once before the change so each type switch is
+  // its own undo step.
+  const setType = useCallback((v: string) => {
+    snapshotBoard()
+    updateCardContent(card.id, { type: v as any })
+  }, [card.id, updateCardContent])
+
+  // Entity attribute change for text/textarea fields (no snapshot — onFocus handles it).
+  const setAttr = useCallback((key: string, value: string) => {
     if (entity) updateEntityAttribute(entity.id, key, value)
   }, [entity, updateEntityAttribute])
 
+  // Entity attribute change for select fields (snapshot before applying).
+  const setAttrSelect = useCallback((key: string, value: string) => {
+    snapshotBoard()
+    if (entity) updateEntityAttribute(entity.id, key, value)
+  }, [entity, updateEntityAttribute])
+
+  // Swatch: snapshot before applying so each colour switch is its own undo step.
   const handleSwatchPointerDown = useCallback((e: React.PointerEvent, swatch: string) => {
     e.stopPropagation(); e.preventDefault()
+    snapshotBoard()
     updateCardContent(card.id, { color: swatch as any })
   }, [card.id, updateCardContent])
 
@@ -177,16 +197,25 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               title="Close">×</button>
           </div>
 
+          {/* Type — discrete dropdown, snapshot before change */}
           <div className={styles.field}>
             <label className={styles.label}>Type</label>
             <select className={styles.select} value={card.type} onChange={e => setType(e.target.value)}>
               {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
+
+          {/* Name — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Name</label>
-            <input className={styles.input} value={displayTitle}
-              onChange={e => setTitle(e.target.value)} placeholder={`New ${card.type}`} autoFocus />
+            <input
+              className={styles.input}
+              value={displayTitle}
+              onFocus={() => snapshotBoard()}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={`New ${card.type}`}
+              autoFocus
+            />
           </div>
 
           {attrSchema.length > 0 && (
@@ -196,40 +225,67 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                 <div key={field.key} className={styles.field}>
                   <label className={styles.label}>{field.label}</label>
                   {field.type === 'select' ? (
-                    <select className={styles.select}
+                    /* Attribute select — discrete, snapshot before change */
+                    <select
+                      className={styles.select}
                       value={(entity?.attributes[field.key] as string) ?? ''}
-                      onChange={e => setAttr(field.key, e.target.value)}>
+                      onChange={e => setAttrSelect(field.key, e.target.value)}
+                    >
                       <option value="">—</option>
                       {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : field.type === 'textarea' ? (
-                    <textarea className={styles.textarea}
+                    /* Attribute textarea — snapshot on focus, then free-type */
+                    <textarea
+                      className={styles.textarea}
                       value={(entity?.attributes[field.key] as string) ?? ''}
+                      onFocus={() => snapshotBoard()}
                       onChange={e => setAttr(field.key, e.target.value)}
-                      placeholder={field.hint} rows={2} />
+                      placeholder={field.hint}
+                      rows={2}
+                    />
                   ) : (
-                    <input className={styles.input}
+                    /* Attribute text input — snapshot on focus, then free-type */
+                    <input
+                      className={styles.input}
                       value={(entity?.attributes[field.key] as string) ?? ''}
+                      onFocus={() => snapshotBoard()}
                       onChange={e => setAttr(field.key, e.target.value)}
-                      placeholder={field.hint} />
+                      placeholder={field.hint}
+                    />
                   )}
                 </div>
               ))}
             </div>
           )}
 
+          {/* Note — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Note <span className={styles.tag}> · shared</span></label>
-            <textarea className={styles.textarea} value={card.noteRaw}
+            <textarea
+              className={styles.textarea}
+              value={card.noteRaw}
+              onFocus={() => snapshotBoard()}
               onChange={e => setNoteRaw(e.target.value)}
-              placeholder="Add a note… (markdown supported)" rows={3} />
+              placeholder="Add a note… (markdown supported)"
+              rows={3}
+            />
           </div>
+
+          {/* Placement note — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Placement note <span className={styles.tag}> · this card only</span></label>
-            <textarea className={styles.textarea} value={card.instanceNote}
+            <textarea
+              className={styles.textarea}
+              value={card.instanceNote}
+              onFocus={() => snapshotBoard()}
               onChange={e => setInstanceNote(e.target.value)}
-              placeholder="Context for this placement…" rows={2} />
+              placeholder="Context for this placement…"
+              rows={2}
+            />
           </div>
+
+          {/* Colour — discrete swatch click, snapshot before change */}
           <div className={styles.field}>
             <label className={styles.label}>Color</label>
             <div className={styles.swatches}>

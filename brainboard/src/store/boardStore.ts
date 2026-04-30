@@ -35,9 +35,28 @@ function maxCardZ(cards: { zIndex: number }[]): number {
   return cards.length === 0 ? CARD_Z_BASE : Math.max(CARD_Z_BASE, ...cards.map(c => c.zIndex))
 }
 
-// Push snapshot to history before mutating
+// Internal: push a snapshot to history before a mutation.
 function snapshot() {
   useHistoryStore.getState().push(useBoardStore.getState().board)
+}
+
+/*
+ * snapshotBoard — exported so components can call it from onFocus handlers.
+ *
+ * Pattern for text fields:
+ *   <input onFocus={() => snapshotBoard()} onChange={e => updateSomething(e.target.value)} />
+ *
+ * This captures the pre-edit state exactly once when the user enters the
+ * field. All keystrokes after that are free updates. Undo restores the
+ * state from before the user started typing — one step per field session,
+ * not one step per keystroke.
+ *
+ * Discrete actions (swatch clicks, type dropdowns) call snapshotBoard()
+ * immediately before applying their change so each one is independently
+ * undoable.
+ */
+export function snapshotBoard() {
+  snapshot()
 }
 
 /*
@@ -155,14 +174,22 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     })
   },
 
-  updateCardPosition: (id, position) =>
-    set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => c.id === id ? { ...c, position } : c) }) })),
+  // Snapshot is taken once on pointerup (end of drag), not on every
+  // pointermove frame. One undo step per drag gesture.
+  updateCardPosition: (id, position) => {
+    snapshot()
+    set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => c.id === id ? { ...c, position } : c) }) }))
+  },
 
   updateCardPositions: (updates) => {
+    snapshot()
     const map = new Map(updates.map(u => [u.id, u.position]))
     set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => map.has(c.id) ? { ...c, position: map.get(c.id)! } : c) }) }))
   },
 
+  // NO snapshot here — text fields call snapshotBoard() on onFocus so the
+  // snapshot is taken once when the user enters the field. Discrete patches
+  // (color, type) call snapshotBoard() in the component before invoking this.
   updateCardContent: (id, patch) =>
     set(s => {
       const card = s.board.cards.find(c => c.id === id)
@@ -182,6 +209,8 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   bringToFront: (id) =>
     set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => c.id === id ? { ...c, zIndex: maxCardZ(s.board.cards) + 1 } : c) }) })),
 
+  // NO snapshot — attribute text fields call snapshotBoard() on onFocus;
+  // attribute selects call snapshotBoard() before invoking this.
   updateEntityAttribute: (entityId, key, value) =>
     set(s => ({ board: touch({ ...s.board, entities: s.board.entities.map(e => e.id === entityId ? { ...e, attributes: { ...e.attributes, [key]: value } } : e) }) })),
 
@@ -205,11 +234,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     return backdrop
   },
 
-  /*
-   * duplicateBackdrop — copies the backdrop shell only, offset to the right
-   * by (source.size.width + 40) so the copy lands outside the original's
-   * footprint and cannot accidentally capture its children.
-   */
   duplicateBackdrop: (id) => {
     snapshot()
     set(s => {
@@ -225,12 +249,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     })
   },
 
-  /*
-   * duplicateBackdropWithContents — copies the backdrop shell PLUS all
-   * cards and sub-backdrops that are geometrically contained within it.
-   * Contained cards become independent entities (new IDs); they are NOT
-   * instances. Offset is the same rightward shift as duplicateBackdrop.
-   */
   duplicateBackdropWithContents: (id) => {
     snapshot()
     set(s => {
@@ -240,7 +258,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       const dx = source.size.width + 40
       const dy = 0
 
-      // New backdrop shell
       const newBackdrop: Backdrop = {
         ...source,
         id:       nanoid(),
@@ -248,7 +265,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         zIndex:   BACKDROP_Z_LAYERS[source.type] ?? 50,
       }
 
-      // Contained cards → duplicate as new independent entities
       const containedCardIds = getContainedCardIds(source, s.board.cards, CARD_W, CARD_H)
       const newCards:    Card[]   = []
       const newEntities: Entity[] = []
@@ -278,7 +294,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         newEntities.push(newEntity)
       }
 
-      // Contained sub-backdrops
       const containedBdIds = getContainedBackdropIds(source, s.board.backdrops)
       const newSubBackdrops: Backdrop[] = containedBdIds.map(bdId => {
         const bd = s.board.backdrops.find(b => b.id === bdId)!
@@ -304,15 +319,26 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   updateBackdropPosition: (id, position) =>
     set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, position } : b) }) })),
 
-  updateBackdropSize: (id, position, size) =>
-    set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, position, size: { width: Math.max(size.width, BACKDROP_MIN_W), height: Math.max(size.height, BACKDROP_MIN_H) } } : b) }) })),
+  // Snapshot here: resize commits once on pointerup, one undo step per resize gesture.
+  updateBackdropSize: (id, position, size) => {
+    snapshot()
+    set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, position, size: { width: Math.max(size.width, BACKDROP_MIN_W), height: Math.max(size.height, BACKDROP_MIN_H) } } : b) }) }))
+  },
 
+  // NO snapshot — title/note fields call snapshotBoard() on onFocus;
+  // color (swatch) calls snapshotBoard() in the component before invoking this.
   updateBackdropContent: (id, patch) =>
     set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, ...patch } : b) }) })),
 
-  updateBackdropType: (id, type) =>
-    set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, type, color: BACKDROP_SWATCH_DEFAULTS[type], zIndex: BACKDROP_Z_LAYERS[type], attributes: {} } : b) }) })),
+  // Snapshot here: changing type is a discrete action (dropdown select),
+  // one undo step per change.
+  updateBackdropType: (id, type) => {
+    snapshot()
+    set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, type, color: BACKDROP_SWATCH_DEFAULTS[type], zIndex: BACKDROP_Z_LAYERS[type], attributes: {} } : b) }) }))
+  },
 
+  // NO snapshot — attribute text/textarea fields call snapshotBoard() on
+  // onFocus; attribute selects call snapshotBoard() before invoking this.
   updateBackdropAttribute: (id, key, value) =>
     set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.map(b => b.id === id ? { ...b, attributes: { ...b.attributes, [key]: value } } : b) }) })),
 
