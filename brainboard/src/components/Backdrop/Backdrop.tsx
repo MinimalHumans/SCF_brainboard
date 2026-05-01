@@ -39,6 +39,15 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
 
   const schema = BACKDROP_SCHEMAS[liveBackdrop.type] ?? []
 
+  // Status — read from attributes; absent or 'Active' = no indicator
+  const backdropStatus = liveBackdrop.attributes['status'] as string | undefined
+
+  // filledAttrs: exclude 'status' — it has its own visual treatment, not listed
+  const filledAttrs = schema
+    .filter(f => f.key !== 'status')
+    .map(f => ({ field: f, value: liveBackdrop.attributes[f.key] ?? '' }))
+    .filter(({ value }) => value.trim() !== '')
+
   const handleHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
@@ -131,7 +140,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
       handleEl.removeEventListener('pointermove', onMove)
       handleEl.removeEventListener('pointerup',   onUp)
       const { newX, newY, newW, newH } = calc((ue.clientX - startX) / zoom, (ue.clientY - startY) / zoom)
-      // updateBackdropSize now calls snapshot() internally — one undo step per resize.
       updateBackdropSize(liveBackdrop.id, { x: newX, y: newY }, { width: newW, height: newH })
     }
     handleEl.addEventListener('pointermove', onMove)
@@ -150,12 +158,14 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     { label: 'Delete backdrop',        danger: true, divider: true, onClick: () => deleteBackdrop(liveBackdrop.id) },
   ]
 
-  const filledAttrs = schema
-    .map(f => ({ field: f, value: liveBackdrop.attributes[f.key] ?? '' }))
-    .filter(({ value }) => value.trim() !== '')
-
   const panelLeft = liveBackdrop.position.x + liveBackdrop.size.width + 8
   const panelTop  = liveBackdrop.position.y
+
+  // data-status attribute value for CSS hooks
+  const dataStatus =
+    backdropStatus === 'Cut'   ? 'cut'   :
+    backdropStatus === 'Draft' ? 'draft' :
+    undefined
 
   return (
     <>
@@ -164,6 +174,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
         data-bd-type={liveBackdrop.type}
         className={styles.backdrop}
         data-swatch={liveBackdrop.color}
+        data-status={dataStatus}
         style={{
           transform: `translate(${liveBackdrop.position.x}px, ${liveBackdrop.position.y}px)`,
           width:  liveBackdrop.size.width,
@@ -174,6 +185,9 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
         <div className={styles.header} onPointerDown={handleHeaderPointerDown} onContextMenu={handleContextMenu}>
           <span className={styles.typeBadge}>{liveBackdrop.type}</span>
           <div className={styles.headerActions}>
+            {backdropStatus === 'Draft' && (
+              <span className={styles.draftStatusBadge}>DRAFT</span>
+            )}
             {!isEditing && (
               <button className={styles.iconBtn}
                 onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(true) }}
@@ -246,11 +260,30 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             />
           </div>
 
-          {/* Type-specific attribute fields */}
+          {/* Type-specific attribute fields — supports text, textarea, and select */}
           {schema.map(field => (
             <div key={field.key} className={styles.field}>
               <label className={styles.label}>{field.label}</label>
-              {field.type === 'textarea' ? (
+              {field.type === 'select' ? (
+                /*
+                 * Attribute select — discrete action, snapshot before change.
+                 * defaultValue set → no blank option (e.g. status → 'Active').
+                 * emptyLabel set  → blank option with custom label.
+                 */
+                <select
+                  className={styles.select}
+                  value={liveBackdrop.attributes[field.key] ?? (field.defaultValue ?? '')}
+                  onChange={e => {
+                    snapshotBoard()
+                    updateBackdropAttribute(liveBackdrop.id, field.key, e.target.value)
+                  }}
+                >
+                  {field.defaultValue === undefined && (
+                    <option value="">{field.emptyLabel ?? '—'}</option>
+                  )}
+                  {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : field.type === 'textarea' ? (
                 /* Attribute textarea — snapshot on focus, then free-type */
                 <textarea
                   className={styles.textarea}

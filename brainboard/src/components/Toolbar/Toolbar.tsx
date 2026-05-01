@@ -1,9 +1,10 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { useBoardStore }   from '@/store/boardStore'
-import { useViewerStore }  from '@/store/viewerStore'
-import { useHistoryStore } from '@/store/historyStore'
-import { useThemeStore }   from '@/store/themeStore'
-import styles              from './Toolbar.module.css'
+import React, { useState, useRef } from 'react'
+import { useBoardStore }      from '@/store/boardStore'
+import { useViewerStore }     from '@/store/viewerStore'
+import { useHistoryStore }    from '@/store/historyStore'
+import { useThemeStore }      from '@/store/themeStore'
+import { ProjectInfoPopover } from './ProjectInfoPopover'
+import styles                 from './Toolbar.module.css'
 
 interface ToolbarProps {
   hasSelection?:      boolean
@@ -28,33 +29,18 @@ export function Toolbar({
   onHelp,
   onNewBoard,
 }: ToolbarProps) {
-  const boardName    = useBoardStore(s => s.board.name)
-  const zoom         = useBoardStore(s => s.board.viewport.zoom)
-  const setBoardName = useBoardStore(s => s.setBoardName)
-  const requestZoom  = useViewerStore(s => s.requestZoom)
-  const undo         = useBoardStore(s => s.undo)
-  const redo         = useBoardStore(s => s.redo)
-  const canUndo      = useHistoryStore(s => s.canUndo())
-  const canRedo      = useHistoryStore(s => s.canRedo())
-  const theme        = useThemeStore(s => s.theme)
-  const toggleTheme  = useThemeStore(s => s.toggle)
+  const boardName   = useBoardStore(s => s.board.name)
+  const zoom        = useBoardStore(s => s.board.viewport.zoom)
+  const requestZoom = useViewerStore(s => s.requestZoom)
+  const undo        = useBoardStore(s => s.undo)
+  const redo        = useBoardStore(s => s.redo)
+  const canUndo     = useHistoryStore(s => s.canUndo())
+  const canRedo     = useHistoryStore(s => s.canRedo())
+  const theme       = useThemeStore(s => s.theme)
+  const toggleTheme = useThemeStore(s => s.toggle)
 
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [draft, setDraft]           = useState('')
-  const inputRef                    = useRef<HTMLInputElement>(null)
-
-  const startRename = useCallback(() => { setDraft(boardName); setIsRenaming(true) }, [boardName])
-  useEffect(() => { if (isRenaming) requestAnimationFrame(() => inputRef.current?.select()) }, [isRenaming])
-  const commitRename = useCallback(() => {
-    const t = draft.trim()
-    if (t) setBoardName(t)
-    setIsRenaming(false)
-  }, [draft, setBoardName])
-
-  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter')  { e.preventDefault(); commitRename() }
-    if (e.key === 'Escape') { e.preventDefault(); setIsRenaming(false) }
-  }, [commitRename])
+  const boardNameBtnRef              = useRef<HTMLButtonElement>(null)
+  const [showPopover, setShowPopover] = useState(false)
 
   const zoomPct = Math.round(zoom * 100)
 
@@ -63,21 +49,22 @@ export function Toolbar({
       <div className={styles.left}>
         <span className={`${styles.wordmark} text-display`}>Brainboard</span>
         <span className={styles.divider} aria-hidden="true" />
-        {isRenaming ? (
-          <input
-            ref={inputRef}
-            className={styles.renameInput}
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={handleRenameKeyDown}
-            maxLength={80}
-            aria-label="Board name"
+
+        {/* Board name — click opens project info popover */}
+        <button
+          ref={boardNameBtnRef}
+          className={styles.boardName}
+          onClick={() => setShowPopover(v => !v)}
+          title="Project settings"
+        >
+          {boardName}
+        </button>
+
+        {showPopover && (
+          <ProjectInfoPopover
+            anchorRef={boardNameBtnRef}
+            onClose={() => setShowPopover(false)}
           />
-        ) : (
-          <button className={styles.boardName} onClick={startRename} title="Click to rename">
-            {boardName}
-          </button>
         )}
       </div>
 
@@ -91,7 +78,7 @@ export function Toolbar({
           <button className={styles.zoomPct} onClick={() => requestZoom({ type: 'reset' })} title="Reset zoom">{zoomPct}%</button>
           <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'in' })} title="Zoom in">+</button>
         </div>
-        {/* Day / Night toggle — sits immediately to the right of the zoom HUD */}
+        {/* Day / Night toggle */}
         <button
           className={styles.themeToggle}
           onClick={toggleTheme}
@@ -103,7 +90,6 @@ export function Toolbar({
       </div>
 
       <div className={styles.right}>
-        {/* New Board uses the same .action class as Import / Export for visual parity */}
         <button className={styles.action} onClick={onNewBoard} title="New blank board">New Board</button>
         <button className={styles.action} onClick={onImport}>Import</button>
         <button className={styles.action} onClick={onExport}>Export</button>

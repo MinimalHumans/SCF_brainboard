@@ -46,12 +46,15 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const closeSignal = useEditorSignalStore(s => s.closeSignal)
   useEffect(() => { if (closeSignal > 0) setIsEditing(false) }, [closeSignal])
 
-  const published   = true  // cards always published
   const hasInstance = isInstance(card, allCards)
   const attrSchema  = ATTRIBUTE_SCHEMAS[card.type] ?? []
 
   // Title always from entity to keep instances in sync
   const displayTitle = entity?.title ?? card.title
+
+  // Status — read from entity attributes; absent = treat as Active
+  const rawStatus = entity?.attributes?.['status']
+  const cardStatus = typeof rawStatus === 'string' ? rawStatus : undefined
 
   const handlePointerDown = useCardDrag(card.id, getViewerZoom, isEditing)
 
@@ -97,8 +100,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
 
   // ── Discrete action handlers (snapshot before applying the change) ────────
 
-  // Type dropdown: snapshot once before the change so each type switch is
-  // its own undo step.
   const setType = useCallback((v: string) => {
     snapshotBoard()
     updateCardContent(card.id, { type: v as any })
@@ -130,9 +131,11 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const displayNote = entity?.noteRaw ?? card.noteRaw
   const noteHtml    = useMemo(() => displayNote ? marked.parse(displayNote) as string : '', [displayNote])
 
+  // filledAttrs: exclude 'status' — it has its own visual treatment, not listed
   const filledAttrs = useMemo(() => {
     if (!entity || attrSchema.length === 0) return []
     return attrSchema
+      .filter(field => field.key !== 'status')
       .map(field => ({ field, value: (entity.attributes[field.key] as string) ?? '' }))
       .filter(({ value }) => value.trim() !== '')
   }, [entity, attrSchema])
@@ -141,12 +144,19 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const panelLeft = card.position.x + CARD_W + 8
   const panelTop  = card.position.y
 
+  // data-status attribute value for CSS hooks
+  const dataStatus =
+    cardStatus === 'Cut'   ? 'cut'   :
+    cardStatus === 'Draft' ? 'draft' :
+    undefined
+
   return (
     <>
       <div
         data-card-id={card.id}
         className={[styles.card, styles.front, isSelected ? styles.selected : ''].join(' ').trim()}
         data-swatch={card.color}
+        data-status={dataStatus}
         style={{ transform: `translate(${card.position.x}px, ${card.position.y}px)`, zIndex: card.zIndex }}
         onPointerDown={handlePointerDown}
         onDoubleClick={handleDoubleClick}
@@ -160,11 +170,17 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               <InstanceIcon />
             </span>
           )}
-          {!isEditing && (
-            <button className={styles.flipBtn} onPointerDown={handleFlipPointerDown} title="Edit card">
-              <EditIcon />
-            </button>
-          )}
+          {/* Right side of handle: DRAFT badge + edit button */}
+          <div className={styles.handleRight}>
+            {cardStatus === 'Draft' && (
+              <span className={styles.draftStatusBadge}>DRAFT</span>
+            )}
+            {!isEditing && (
+              <button className={styles.flipBtn} onPointerDown={handleFlipPointerDown} title="Edit card">
+                <EditIcon />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className={styles.frontContent}>
@@ -225,13 +241,23 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                 <div key={field.key} className={styles.field}>
                   <label className={styles.label}>{field.label}</label>
                   {field.type === 'select' ? (
-                    /* Attribute select — discrete, snapshot before change */
+                    /*
+                     * Attribute select — discrete, snapshot before change.
+                     *
+                     * defaultValue set → no blank option; value falls back to
+                     *   defaultValue when attribute is unset (e.g. status → 'Active').
+                     * emptyLabel set  → blank option uses custom display label
+                     *   (e.g. int_ext → '(inherit from Location)').
+                     * Neither set     → standard blank '—' option.
+                     */
                     <select
                       className={styles.select}
-                      value={(entity?.attributes[field.key] as string) ?? ''}
+                      value={(entity?.attributes[field.key] as string) ?? (field.defaultValue ?? '')}
                       onChange={e => setAttrSelect(field.key, e.target.value)}
                     >
-                      <option value="">—</option>
+                      {field.defaultValue === undefined && (
+                        <option value="">{field.emptyLabel ?? '—'}</option>
+                      )}
                       {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : field.type === 'textarea' ? (
@@ -297,6 +323,13 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                   aria-label={swatch} title={swatch} />
               ))}
             </div>
+          </div>
+
+          {/* Publish row — kept for API compatibility; no-op in current build */}
+          <div className={styles.publishRow}>
+            <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
+              Publish
+            </button>
           </div>
         </div>,
         worldRef.current

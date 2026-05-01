@@ -50,7 +50,7 @@
   flex-shrink:      0;
 }
 
-/* Board name */
+/* Board name — click opens project settings popover */
 .boardName {
   font-family:   var(--font-ui);
   font-size:     var(--text-sm);
@@ -58,7 +58,7 @@
   color:         var(--color-text-secondary);
   background:    transparent;
   border:        none;
-  cursor:        text;
+  cursor:        pointer;
   padding:       2px var(--space-1);
   border-radius: var(--radius-xs);
   white-space:   nowrap;
@@ -71,21 +71,6 @@
 .boardName:hover {
   color:            var(--color-text-primary);
   background-color: var(--color-surface-hover);
-}
-
-.renameInput {
-  font-family:      var(--font-ui);
-  font-size:        var(--text-sm);
-  font-weight:      var(--weight-medium);
-  color:            var(--color-text-primary);
-  background-color: var(--color-surface-inset);
-  border:           1px solid var(--color-accent);
-  border-radius:    var(--radius-xs);
-  padding:          2px var(--space-2);
-  outline:          none;
-  width:            200px;
-  max-width:        200px;
-  user-select:      text;
 }
 
 /* ==========================================================================

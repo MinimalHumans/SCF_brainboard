@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type {
-  Board, Card, Entity, Backdrop, EntityType, BackdropType, Position, Size, Viewport
+  Board, Card, Entity, Backdrop, EntityType, BackdropType, Position, Size, Viewport, ProjectInfo
 } from '@/types/board'
 import {
   TYPE_SWATCH_DEFAULTS, BACKDROP_SWATCH_DEFAULTS,
@@ -24,6 +24,7 @@ function makeBoard(): Board {
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     viewport: { x: WORLD_CENTER, y: WORLD_CENTER, zoom: 1 },
     cards: [], entities: [], backdrops: [],
+    projectInfo: {},
   }
 }
 
@@ -71,9 +72,35 @@ function normalizeBackdrops(backdrops: Backdrop[]): Backdrop[] {
   }))
 }
 
+/*
+ * migrateEntities — migrate any entity with status: 'Archived' to 'Cut'.
+ * Only runs in-memory; the file on disk updates only when the user saves.
+ */
+function migrateEntities(entities: Entity[]): Entity[] {
+  return entities.map(e => {
+    if (e.attributes?.['status'] === 'Archived') {
+      return { ...e, attributes: { ...e.attributes, status: 'Cut' } }
+    }
+    return e
+  })
+}
+
+/*
+ * migrateBackdropAttrs — migrate any backdrop with status: 'Archived' to 'Cut'.
+ */
+function migrateBackdropAttrs(backdrops: Backdrop[]): Backdrop[] {
+  return backdrops.map(b => {
+    if (b.attributes?.['status'] === 'Archived') {
+      return { ...b, attributes: { ...b.attributes, status: 'Cut' } }
+    }
+    return b
+  })
+}
+
 interface BoardStore {
   board: Board
   setBoardName:                 (name: string) => void
+  updateProjectInfo:            (patch: Partial<ProjectInfo>) => void
   setViewport:                  (viewport: Viewport) => void
   createCard:                   (position: Position, type?: EntityType) => Card
   duplicateCard:                (id: string) => Card | null
@@ -107,6 +134,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   board: makeBoard(),
 
   setBoardName: (name) => { snapshot(); set(s => ({ board: touch({ ...s.board, name }) })) },
+
+  // Shallow-merge patch into board.projectInfo; creates the object if absent.
+  // NO snapshot — callers follow the text-field pattern (snapshotBoard on focus).
+  updateProjectInfo: (patch) =>
+    set(s => ({
+      board: touch({
+        ...s.board,
+        projectInfo: { ...(s.board.projectInfo ?? {}), ...patch },
+      }),
+    })),
 
   setViewport: (viewport) => set(s => ({ board: { ...s.board, viewport } })),
 
@@ -364,10 +401,22 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     }))
   },
 
+  /*
+   * loadBoard — centralises all migration logic for boards coming from
+   * localStorage, JSON import, and template load/merge.
+   *
+   * Migrations:
+   *  1. normalizeBackdrops — fix z-index layers (pre-hierarchy boards)
+   *  2. migrateEntities    — 'Archived' status → 'Cut' (standardized set)
+   *  3. migrateBackdropAttrs — same for backdrop attributes
+   *  4. projectInfo absent → {}
+   */
   loadBoard: (board) => set({
     board: {
       ...board,
-      backdrops: normalizeBackdrops(board.backdrops ?? []),
+      projectInfo: board.projectInfo ?? {},
+      entities:  migrateEntities(board.entities ?? []),
+      backdrops: migrateBackdropAttrs(normalizeBackdrops(board.backdrops ?? [])),
     },
   }),
 

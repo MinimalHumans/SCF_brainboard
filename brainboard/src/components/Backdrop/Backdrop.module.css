@@ -26,6 +26,19 @@
 
 
 /* ==========================================================================
+   Status — visual treatment
+   ========================================================================== */
+
+/* Cut: reduced opacity; title strikethrough */
+.backdrop[data-status="cut"] {
+  opacity: 0.5;
+}
+.backdrop[data-status="cut"] .title {
+  text-decoration: line-through;
+}
+
+
+/* ==========================================================================
    Backdrop root
    ========================================================================== */
 .backdrop {
@@ -44,7 +57,8 @@
 
   transition:
     border-color     var(--duration-fast) var(--easing-out),
-    background-color var(--duration-fast) var(--easing-out);
+    background-color var(--duration-fast) var(--easing-out),
+    opacity          var(--duration-fast) var(--easing-out);
 }
 
 .backdrop:hover {
@@ -84,9 +98,26 @@
 .headerActions {
   display:     flex;
   align-items: center;
-  gap:         2px;
+  gap:         4px;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/*
+ * draftStatusBadge — "DRAFT" pill shown when status === 'Draft'.
+ * Muted so it reads as metadata rather than content.
+ */
+.draftStatusBadge {
+  font-family:      var(--font-ui);
+  font-size:        var(--text-2xs);
+  font-weight:      var(--weight-bold);
+  letter-spacing:   0.06em;
+  text-transform:   uppercase;
+  color:            rgba(255,255,255,0.35);
+  background-color: rgba(255,255,255,0.08);
+  border-radius:    var(--radius-xs);
+  padding:          1px 5px;
+  flex-shrink:      0;
 }
 
 .iconBtn {
@@ -132,18 +163,18 @@
 }
 
 .titleInput {
-  font-family:           var(--font-display);
-  font-size:             var(--text-2xl);
-  font-weight:           var(--weight-bold);
-  font-variation-settings: 'wght' 700, 'WONK' 1, 'opsz' 26;
-  color:                 var(--color-text-primary);
-  background-color:      rgba(0,0,0,0.4);
-  border:                1px solid var(--bd-swatch, var(--color-accent));
-  border-radius:         var(--radius-sm);
-  padding:               2px var(--space-2);
-  outline:               none;
-  width:                 100%;
-  user-select:           text;
+  font-family:              var(--font-display);
+  font-size:                var(--text-2xl);
+  font-weight:              var(--weight-bold);
+  font-variation-settings:  'wght' 700, 'WONK' 1, 'opsz' 26;
+  color:                    var(--color-text-primary);
+  background-color:         rgba(0,0,0,0.4);
+  border:                   1px solid var(--bd-swatch, var(--color-accent));
+  border-radius:            var(--radius-sm);
+  padding:                  2px var(--space-2);
+  outline:                  none;
+  width:                    100%;
+  user-select:              text;
 }
 
 .attrDisplay {

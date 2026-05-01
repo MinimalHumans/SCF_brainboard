@@ -80,6 +80,21 @@ export interface Backdrop {
   attributes: Record<string, string>
 }
 
+/*
+ * ProjectInfo — title-page metadata for screenplay exports.
+ * All fields are optional and string-typed. No validation — title-page
+ * metadata is notoriously freeform.
+ * Stored per-board; absent on older boards should be treated as {}.
+ */
+export interface ProjectInfo {
+  credit?:    string   // e.g. "Written by"
+  author?:    string   // e.g. "Jane Doe" (multiple: "Jane Doe & John Smith")
+  source?:    string   // e.g. "Based on the novel by John Smith"
+  draftDate?: string   // free-text date string
+  contact?:   string   // free-text — name, address, email, phone
+  copyright?: string   // e.g. "© 2026 Jane Doe"
+}
+
 export interface Board {
   schemaVersion: 1
   boardId:       string
@@ -90,6 +105,7 @@ export interface Board {
   cards:         Card[]
   entities:      Entity[]
   backdrops:     Backdrop[]
+  projectInfo?:  ProjectInfo
 }
 
 export function isInstance(card: Card, allCards: Card[]): boolean {

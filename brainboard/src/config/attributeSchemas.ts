@@ -7,18 +7,37 @@ import type { EntityType } from '@/types/board'
  *   These types intentionally have an empty schema. The card renders
  *   only the name and note; no attribute section appears.
  *
- * Theme, Arc: three text fields each.
- *
  * Edit field order in the card UI is: Name → Type → [Attributes] → Note → Placement Note.
  * Attributes with an empty value are NOT rendered on the front face.
+ *
+ * emptyLabel  — custom label for the blank <option value=""> in a select.
+ *               When absent, defaults to "—".
+ * defaultValue — when set, suppresses the blank option entirely and the
+ *               select's effective value falls back to this when the
+ *               attribute is unset. Use for fields that should always
+ *               have a value (e.g. status).
+ * help        — optional explanatory copy (not yet rendered in UI, reserved
+ *               for future tooltip / help-text treatment).
  */
 
 export interface AttributeFieldDef {
-  key:      string
-  label:    string
-  type:     'text' | 'textarea' | 'select'
-  hint?:    string
-  options?: string[]
+  key:          string
+  label:        string
+  type:         'text' | 'textarea' | 'select'
+  hint?:        string
+  help?:        string
+  options?:     string[]
+  emptyLabel?:  string    // custom label for the blank option in a select
+  defaultValue?: string   // suppresses blank option; fallback value when unset
+}
+
+/* Shared status field — appended last to every entity type */
+const STATUS_FIELD: AttributeFieldDef = {
+  key:          'status',
+  label:        'Status',
+  type:         'select',
+  options:      ['Active', 'Draft', 'Cut'],
+  defaultValue: 'Active',
 }
 
 export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
@@ -54,6 +73,7 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'textarea',
       hint:  'Who this person is in the story…',
     },
+    STATUS_FIELD,
   ],
 
   Location: [
@@ -81,9 +101,33 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'textarea',
       hint:  'Physical description of the space…',
     },
+    STATUS_FIELD,
   ],
 
+  /*
+   * Scene field order: int_ext → time_of_day → goal → conflict → outcome → status
+   * int_ext: blank = inherit from Location entity in this scene.
+   * time_of_day: blank = unspecified.
+   * Empty values are not rendered on the front face (standard rule).
+   */
   Scene: [
+    {
+      key:        'int_ext',
+      label:      'INT/EXT',
+      type:       'select',
+      options:    ['INT.', 'EXT.', 'INT/EXT.'],
+      emptyLabel: '(inherit from Location)',
+      help:       'Leave blank to inherit from the Location entity contained in this scene. Override only when the scene moves between interior and exterior, or when the contained Location has an ambiguous type.',
+    },
+    {
+      key:     'time_of_day',
+      label:   'Time of Day',
+      type:    'select',
+      options: [
+        'Dawn', 'Morning', 'Day', 'Afternoon', 'Dusk',
+        'Night', 'Continuous', 'Later', 'Moments Later',
+      ],
+    },
     {
       key:   'goal',
       label: 'Goal',
@@ -102,6 +146,7 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'textarea',
       hint:  'How it resolves, what changes…',
     },
+    STATUS_FIELD,
   ],
 
   Prop: [
@@ -117,10 +162,11 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'textarea',
       hint:  'Physical description and context…',
     },
+    STATUS_FIELD,
   ],
 
-  // Beat: name + note only — no attribute fields
-  Beat: [],
+  // Beat: name + note only — no content attribute fields
+  Beat: [STATUS_FIELD],
 
   Theme: [
     {
@@ -141,6 +187,7 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'text',
       hint:  'The counter-argument the story explores…',
     },
+    STATUS_FIELD,
   ],
 
   Arc: [
@@ -162,6 +209,7 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'text',
       hint:  'Positive, negative, flat, or cyclical…',
     },
+    STATUS_FIELD,
   ],
 
   Shot: [
@@ -183,8 +231,9 @@ export const ATTRIBUTE_SCHEMAS: Record<EntityType, AttributeFieldDef[]> = {
       type:  'textarea',
       hint:  'What this shot accomplishes narratively or visually…',
     },
+    STATUS_FIELD,
   ],
 
-  // Thought: name + note only — no attribute fields
-  Thought: [],
+  // Thought: name + note only — no content attribute fields
+  Thought: [STATUS_FIELD],
 }
