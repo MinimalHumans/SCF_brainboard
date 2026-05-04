@@ -6,15 +6,25 @@
  *
  * This is a one-way, read-only export — no round-trip is supported.
  *
+ * Data-retention approach
+ * -----------------------
+ * Every filled field on every backdrop and card is emitted somewhere.
+ * Nothing is silently dropped. Writers delete what they don't need.
+ *
+ *   Structural attrs (Act/Sequence/Scene) → bracketed Action paragraphs
+ *   Shots at any level                   → Shot paragraphs
+ *   Characters/etc. in structural scope  → bracketed Action paragraphs
+ *   Orphan entity-library cards at root  → Loose Notes section with full attributes
+ *
  * FDX format notes:
- * - Final Draft recalculates Length and Page values on open; we emit 0.
- * - Sidecar context (characters, beats, themes, etc.) goes into bracketed
- *   Action paragraphs rather than ScriptNote elements for maximum portability
- *   across FDX readers that don't all support ScriptNote the same way.
- * - Every text value is XML-escaped. Run through `esc()` exactly once.
+ * - Final Draft recalculates Length and Page on open; emit 0 for both.
+ * - Sidecar context uses bracketed Action paragraphs (not ScriptNote elements)
+ *   for maximum portability across FDX-consuming tools.
+ * - Every text value is XML-escaped through esc(). Apply once per value.
  */
 
 import type { Board, Card, Entity, Backdrop } from '@/types/board'
+import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import {
   buildBackdropParentMap,
   buildCardParentMap,
@@ -39,21 +49,21 @@ function esc(s: string): string {
     .replace(/'/g, '&apos;')
 }
 
-/** Emit a standard paragraph. Returns empty string if text is blank — never emit empty <Text>. */
-function para(type: string, text: string, alignAttr = ''): string {
+/** Emit a standard paragraph. Returns '' if text is blank — never emit empty <Text>. */
+function para(type: string, text: string, extraAttrs = ''): string {
   const t = text.trim()
   if (!t) return ''
   return [
-    `    <Paragraph Type="${type}"${alignAttr}>`,
+    `    <Paragraph Type="${type}"${extraAttrs}>`,
     `      <Text>${esc(t)}</Text>`,
     `    </Paragraph>`,
   ].join('\n')
 }
 
 /**
- * Emit a Scene Heading paragraph with optional SceneProperties metadata.
- * SceneProperties carries the synopsis and scene title for Final Draft's
- * scene navigator — Length and Page are recalculated by Final Draft on open.
+ * Emit a Scene Heading paragraph with SceneProperties metadata.
+ * SceneProperties carries the title and synopsis for Final Draft's navigator.
+ * Length and Page are recalculated by Final Draft on open.
  */
 function sceneHeadingPara(slugline: string, navTitle: string, synopsis: string): string {
   const synAttr   = synopsis ? ` Synopsis="${esc(synopsis.trim())}"` : ''
@@ -96,103 +106,33 @@ export function buildFDX(board: Board): string {
   const cardParent = buildCardParentMap(cards, backdrops)
   const content: string[] = []
 
-  // ── Recursive structural traversal ─────────────────────────────────────────
-
-  function emitBackdrop(bd: Backdrop) {
-    switch (bd.type) {
-      case 'Act': {
-        const p = para('New Act', `ACT — ${bd.title.toUpperCase()}`)
-        if (p) content.push(p)
-        if (bd.note?.trim()) {
-          const np = para('Action', bd.note.trim())
-          if (np) content.push(np)
-        }
-        for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
-          emitBackdrop(child)
-        }
-        for (const c of cardsInBackdrop(bd.id, cards, cardParent).filter(c => c.type === 'Scene')) {
-          emitSceneCard(c)
-        }
-        break
-      }
-
-      case 'Sequence': {
-        const p = para('General', `SEQUENCE: ${bd.title.toUpperCase()}`)
-        if (p) content.push(p)
-        if (bd.note?.trim()) {
-          const np = para('Action', bd.note.trim())
-          if (np) content.push(np)
-        }
-        for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
-          emitBackdrop(child)
-        }
-        for (const c of cardsInBackdrop(bd.id, cards, cardParent).filter(c => c.type === 'Scene')) {
-          emitSceneCard(c)
-        }
-        break
-      }
-
-      case 'Beat': {
-        // Structural Beat at Act/Sequence level.
-        // Beats nested inside Scene backdrops are handled as sidecar context.
-        const p = para('Action', `— BEAT: ${bd.title} —`)
-        if (p) content.push(p)
-        if (bd.note?.trim()) {
-          const np = para('Action', bd.note.trim())
-          if (np) content.push(np)
-        }
-        for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
-          emitBackdrop(child)
-        }
-        break
-      }
-
-      case 'Scene':
-        emitSceneBackdrop(bd)
-        break
-
-      // 'Custom' is transparent — children are promoted by the parent map.
-    }
+  // ── Shot paragraph helper ─────────────────────────────────────────────────
+  function emitShot(c: Card) {
+    const e       = eMap.get(c.entityId)
+    const title   = e?.title ?? c.title
+    const framing = attr(strAttrs(e?.attributes ?? {}), 'framing')
+    const purpose = attr(strAttrs(e?.attributes ?? {}), 'purpose')
+    const prefix  = framing ? framing.toUpperCase() : 'ANGLE ON'
+    const text    = purpose
+      ? `${prefix}: ${title.toUpperCase()}. ${purpose}`
+      : `${prefix}: ${title.toUpperCase()}.`
+    const p = para('Shot', text)
+    if (p) content.push(p)
   }
 
-  function emitSceneBackdrop(bd: Backdrop) {
-    const heading  = assembleSceneHeadingFromBackdrop(bd, cards, eMap, cardParent)
-    const synopsis = bd.note?.trim() || attr(bd.attributes, 'goal')
-    content.push(sceneHeadingPara(heading.raw, bd.title, synopsis))
+  // ── Scene sidecar paragraphs ──────────────────────────────────────────────
 
-    const contained     = cardsInBackdrop(bd.id, cards, cardParent)
-    const beatBackdrops = backdropsInBackdrop(bd.id, backdrops, bdParent).filter(b => b.type === 'Beat')
-
-    emitSceneSidecar(contained, beatBackdrops)
-  }
-
-  function emitSceneCard(card: Card) {
-    const entity   = eMap.get(card.entityId)
-    const heading  = assembleSceneHeadingFromCard(card, entity, cards, eMap, cardParent)
-    const note     = (entity?.noteRaw ?? card.noteRaw)?.trim() || ''
-    const goal     = attr(strAttrs(entity?.attributes ?? {}), 'goal')
-    const synopsis = note || goal
-    content.push(sceneHeadingPara(heading.raw, entity?.title ?? card.title, synopsis))
-
-    // For a standalone Scene card, contextual data comes from its attributes.
-    const conflict = attr(strAttrs(entity?.attributes ?? {}), 'conflict')
-    const outcome  = attr(strAttrs(entity?.attributes ?? {}), 'outcome')
-    if (conflict) {
-      const p = para('Action', `[Conflict: ${conflict}]`)
-      if (p) content.push(p)
-    }
-    if (outcome) {
-      const p = para('Action', `[Outcome: ${outcome}]`)
-      if (p) content.push(p)
-    }
-  }
+  interface SceneAttrs { goal?: string; conflict?: string; outcome?: string }
 
   /**
-   * Emit sidecar context Action paragraphs and Shot paragraphs for a scene.
-   * Beat backdrops nested inside the scene are folded in as context items
-   * rather than structural Beat markers.
+   * Emit bracketed Action paragraphs for scene context, followed by Shot
+   * paragraphs. Called for both Scene backdrops and standalone Scene cards.
    */
-  function emitSceneSidecar(contained: Card[], beatBackdrops: Backdrop[]) {
+  function emitSceneSidecar(
+    contained:     Card[],
+    beatBackdrops: Backdrop[],
+    sceneAttrs?:   SceneAttrs,
+  ) {
     const charCards    = contained.filter(c => c.type === 'Character')
     const propCards    = contained.filter(c => c.type === 'Prop')
     const themeCards   = contained.filter(c => c.type === 'Theme')
@@ -201,6 +141,20 @@ export function buildFDX(board: Board): string {
     const beatCards    = contained.filter(c => c.type === 'Beat')
     const shotCards    = contained.filter(c => c.type === 'Shot')
 
+    // Scene structural attributes — emit first so plan is visible above cast
+    if (sceneAttrs?.goal) {
+      const p = para('Action', `[Goal: ${sceneAttrs.goal}]`)
+      if (p) content.push(p)
+    }
+    if (sceneAttrs?.conflict) {
+      const p = para('Action', `[Conflict: ${sceneAttrs.conflict}]`)
+      if (p) content.push(p)
+    }
+    if (sceneAttrs?.outcome) {
+      const p = para('Action', `[Outcome: ${sceneAttrs.outcome}]`)
+      if (p) content.push(p)
+    }
+
     // Characters
     if (charCards.length > 0) {
       const names = charCards.map(c => (eMap.get(c.entityId)?.title ?? c.title).toUpperCase())
@@ -208,7 +162,7 @@ export function buildFDX(board: Board): string {
       if (p) content.push(p)
     }
 
-    // Beat backdrops nested inside this scene
+    // Beat backdrops nested inside scene (folded into sidecar)
     for (const bd of beatBackdrops) {
       const desc = attr(bd.attributes, 'description')
       const text = desc ? `[Beat: ${bd.title} — ${desc}]` : `[Beat: ${bd.title}]`
@@ -216,7 +170,7 @@ export function buildFDX(board: Board): string {
       if (p) content.push(p)
     }
 
-    // Beat cards inside this scene
+    // Beat cards
     for (const c of beatCards) {
       const e    = eMap.get(c.entityId)
       const desc = attr(strAttrs(e?.attributes ?? {}), 'description') || (e?.noteRaw ?? c.noteRaw)?.trim() || ''
@@ -260,7 +214,7 @@ export function buildFDX(board: Board): string {
       if (p) content.push(p)
     }
 
-    // Thoughts / loose notes
+    // Thoughts
     for (const c of thoughtCards) {
       const note = (eMap.get(c.entityId)?.noteRaw ?? c.noteRaw)?.trim()
       if (note) {
@@ -269,25 +223,233 @@ export function buildFDX(board: Board): string {
       }
     }
 
-    // Shots — use the FDX Shot paragraph type
-    for (const c of shotCards) {
-      const e       = eMap.get(c.entityId)
-      const title   = e?.title ?? c.title
-      const framing = attr(strAttrs(e?.attributes ?? {}), 'framing')
-      const purpose = attr(strAttrs(e?.attributes ?? {}), 'purpose')
-      const prefix  = framing ? framing.toUpperCase() : 'ANGLE ON'
-      const text    = purpose
-        ? `${prefix}: ${title.toUpperCase()}. ${purpose}`
-        : `${prefix}: ${title.toUpperCase()}.`
-      const p = para('Shot', text)
+    // Shots
+    for (const c of shotCards) emitShot(c)
+  }
+
+  // ── Scene backdrop ─────────────────────────────────────────────────────────
+
+  function emitSceneBackdrop(bd: Backdrop) {
+    const heading  = assembleSceneHeadingFromBackdrop(bd, cards, eMap, cardParent)
+    // Goal → FDX Synopsis (appears in Final Draft's navigator panel)
+    const goal     = attr(bd.attributes, 'goal')
+    const synopsis = bd.note?.trim() || goal
+    content.push(sceneHeadingPara(heading.raw, bd.title, synopsis))
+
+    const sceneAttrs: SceneAttrs = {
+      goal,
+      conflict: attr(bd.attributes, 'conflict'),
+      outcome:  attr(bd.attributes, 'outcome'),
+    }
+
+    const contained     = cardsInBackdrop(bd.id, cards, cardParent)
+    const beatBackdrops = backdropsInBackdrop(bd.id, backdrops, bdParent).filter(b => b.type === 'Beat')
+    emitSceneSidecar(contained, beatBackdrops, sceneAttrs)
+  }
+
+  // ── Standalone Scene card ─────────────────────────────────────────────────
+
+  function emitSceneCard(card: Card) {
+    const entity   = eMap.get(card.entityId)
+    const heading  = assembleSceneHeadingFromCard(card, entity, cards, eMap, cardParent)
+    const note     = (entity?.noteRaw ?? card.noteRaw)?.trim() || ''
+    const goal     = attr(strAttrs(entity?.attributes ?? {}), 'goal')
+    const synopsis = note || goal
+    content.push(sceneHeadingPara(heading.raw, entity?.title ?? card.title, synopsis))
+
+    const sceneAttrs: SceneAttrs = {
+      goal,
+      conflict: attr(strAttrs(entity?.attributes ?? {}), 'conflict'),
+      outcome:  attr(strAttrs(entity?.attributes ?? {}), 'outcome'),
+    }
+    // Scene cards have no spatially-contained children; attrs only in sidecar
+    emitSceneSidecar([], [], sceneAttrs)
+  }
+
+  // ── Act / Sequence structural context helper ───────────────────────────────
+  /**
+   * Emit bracketed Action paragraphs for Act or Sequence level, combining
+   * typed structural attributes with any non-Scene, non-Shot direct-child cards.
+   * Returns Shot cards for the caller to emit as Shot paragraphs.
+   */
+  function emitStructuralContext(
+    attrParas:   string[],    // pre-built attribute paragraphs
+    directCards: Card[],
+  ): Card[] {
+    const charCards    = directCards.filter(c => c.type === 'Character')
+    const propCards    = directCards.filter(c => c.type === 'Prop')
+    const beatCards    = directCards.filter(c => c.type === 'Beat')
+    const themeCards   = directCards.filter(c => c.type === 'Theme')
+    const arcCards     = directCards.filter(c => c.type === 'Arc')
+    const thoughtCards = directCards.filter(c => c.type === 'Thought')
+    const shotCards    = directCards.filter(c => c.type === 'Shot')
+
+    // Structural attributes first
+    for (const p of attrParas) if (p) content.push(p)
+
+    // Characters
+    if (charCards.length > 0) {
+      const names = charCards.map(c => (eMap.get(c.entityId)?.title ?? c.title).toUpperCase())
+      const p = para('Action', `[Characters: ${names.join(', ')}]`)
       if (p) content.push(p)
+    }
+
+    // Props
+    for (const c of propCards) {
+      const e    = eMap.get(c.entityId)
+      const desc = attr(strAttrs(e?.attributes ?? {}), 'description')
+      const title = e?.title ?? c.title
+      const p = para('Action', desc ? `[Prop: ${title} — ${desc}]` : `[Prop: ${title}]`)
+      if (p) content.push(p)
+    }
+
+    // Beats
+    for (const c of beatCards) {
+      const e    = eMap.get(c.entityId)
+      const desc = attr(strAttrs(e?.attributes ?? {}), 'description') || (e?.noteRaw ?? c.noteRaw)?.trim() || ''
+      const title = e?.title ?? c.title
+      const p = para('Action', desc ? `[Beat: ${title} — ${desc}]` : `[Beat: ${title}]`)
+      if (p) content.push(p)
+    }
+
+    // Themes
+    for (const c of themeCards) {
+      const e    = eMap.get(c.entityId)
+      const stmt = attr(strAttrs(e?.attributes ?? {}), 'statement')
+      const title = e?.title ?? c.title
+      const p = para('Action', stmt ? `[Theme: ${title} — ${stmt}]` : `[Theme: ${title}]`)
+      if (p) content.push(p)
+    }
+
+    // Arcs
+    for (const c of arcCards) {
+      const e       = eMap.get(c.entityId)
+      const subject = attr(strAttrs(e?.attributes ?? {}), 'subject')
+      const axis    = attr(strAttrs(e?.attributes ?? {}), 'axis')
+      const title   = e?.title ?? c.title
+      let text: string
+      if (subject && axis) text = `[Arc: ${title} — ${subject}: ${axis}]`
+      else if (subject)    text = `[Arc: ${title} — ${subject}]`
+      else                 text = `[Arc: ${title}]`
+      const p = para('Action', text)
+      if (p) content.push(p)
+    }
+
+    // Thoughts
+    for (const c of thoughtCards) {
+      const note = (eMap.get(c.entityId)?.noteRaw ?? c.noteRaw)?.trim()
+      if (note) {
+        const p = para('Action', `[Note: ${note}]`)
+        if (p) content.push(p)
+      }
+    }
+
+    return shotCards
+  }
+
+  // ── Recursive structural traversal ─────────────────────────────────────────
+
+  function emitBackdrop(bd: Backdrop) {
+    switch (bd.type) {
+
+      case 'Act': {
+        const actPara = para('New Act', `ACT — ${bd.title.toUpperCase()}`)
+        if (actPara) content.push(actPara)
+        if (bd.note?.trim()) {
+          const np = para('Action', bd.note.trim())
+          if (np) content.push(np)
+        }
+
+        // Act structural attribute paragraphs
+        const actAttrParas: string[] = []
+        const fn = attr(bd.attributes, 'function')
+        const dq = attr(bd.attributes, 'dramatic_question')
+        const sh = attr(bd.attributes, 'shift')
+        if (fn) actAttrParas.push(para('Action', `[Function: ${fn}]`))
+        if (dq) actAttrParas.push(para('Action', `[Dramatic Question: ${dq}]`))
+        if (sh) actAttrParas.push(para('Action', `[Shift: ${sh}]`))
+
+        // Direct-child cards
+        const directCards    = cardsInBackdrop(bd.id, cards, cardParent)
+        const directNonScene = directCards.filter(c => c.type !== 'Scene')
+
+        const directShots = emitStructuralContext(actAttrParas, directNonScene)
+        for (const c of directShots) emitShot(c)
+
+        // Recurse into child backdrops
+        for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
+          emitBackdrop(child)
+        }
+
+        // Scene entity cards directly inside this Act
+        for (const c of directCards.filter(c => c.type === 'Scene')) {
+          emitSceneCard(c)
+        }
+        break
+      }
+
+      case 'Sequence': {
+        const seqPara = para('General', `SEQUENCE: ${bd.title.toUpperCase()}`)
+        if (seqPara) content.push(seqPara)
+        if (bd.note?.trim()) {
+          const np = para('Action', bd.note.trim())
+          if (np) content.push(np)
+        }
+
+        // Sequence structural attribute paragraphs
+        const seqAttrParas: string[] = []
+        const goal     = attr(bd.attributes, 'goal')
+        const conflict = attr(bd.attributes, 'conflict')
+        const outcome  = attr(bd.attributes, 'outcome')
+        if (goal)     seqAttrParas.push(para('Action', `[Goal: ${goal}]`))
+        if (conflict) seqAttrParas.push(para('Action', `[Conflict: ${conflict}]`))
+        if (outcome)  seqAttrParas.push(para('Action', `[Outcome: ${outcome}]`))
+
+        const directCards    = cardsInBackdrop(bd.id, cards, cardParent)
+        const directNonScene = directCards.filter(c => c.type !== 'Scene')
+
+        const directShots = emitStructuralContext(seqAttrParas, directNonScene)
+        for (const c of directShots) emitShot(c)
+
+        for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
+          emitBackdrop(child)
+        }
+
+        for (const c of directCards.filter(c => c.type === 'Scene')) {
+          emitSceneCard(c)
+        }
+        break
+      }
+
+      case 'Beat': {
+        const p = para('Action', `— BEAT: ${bd.title} —`)
+        if (p) content.push(p)
+        if (bd.note?.trim()) {
+          const np = para('Action', bd.note.trim())
+          if (np) content.push(np)
+        }
+        const desc = attr(bd.attributes, 'description')
+        if (desc) {
+          const dp = para('Action', `[Description: ${desc}]`)
+          if (dp) content.push(dp)
+        }
+        for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
+          emitBackdrop(child)
+        }
+        break
+      }
+
+      case 'Scene':
+        emitSceneBackdrop(bd)
+        break
+
+      // 'Custom' is transparent — its children are promoted by the parent map
     }
   }
 
-  // ── Root-level traversal ──────────────────────────────────────────────────
+  // ── Root traversal ────────────────────────────────────────────────────────
 
-  const topBackdrops = rootBackdrops(backdrops, bdParent)
-  for (const bd of topBackdrops) {
+  for (const bd of rootBackdrops(backdrops, bdParent)) {
     emitBackdrop(bd)
   }
 
@@ -297,21 +459,49 @@ export function buildFDX(board: Board): string {
     emitSceneCard(c)
   }
 
-  // Loose Notes — orphan cards not attached to any scene structure
+  // ── Loose Notes ───────────────────────────────────────────────────────────
+  // Orphan entity-library cards (typically Character/Location/Prop reference
+  // columns outside the Act layout). Emit with full attributes. Deduplicate
+  // by entityId — multiple card instances share one entity.
   const handledAtRoot = new Set(['Scene'])
+  const seenEntityIds = new Set<string>()
   const orphans = rowSort(rootCards(cards, cardParent).filter(c => !handledAtRoot.has(c.type)))
+
   if (orphans.length > 0) {
-    const noteP = para('General', 'LOOSE NOTES')
-    if (noteP) content.push(noteP)
+    const headerP = para('General', 'LOOSE NOTES')
+    if (headerP) content.push(headerP)
+
     for (const c of orphans) {
+      if (seenEntityIds.has(c.entityId)) continue
+      seenEntityIds.add(c.entityId)
+
       const e     = eMap.get(c.entityId)
       const title = e?.title ?? c.title
+      const eType = (e?.type ?? c.type) as keyof typeof ATTRIBUTE_SCHEMAS
+      const schema = ATTRIBUTE_SCHEMAS[eType] ?? ATTRIBUTE_SCHEMAS[c.type as keyof typeof ATTRIBUTE_SCHEMAS] ?? []
       const note  = (e?.noteRaw ?? c.noteRaw)?.trim()
-      const desc  = attr(strAttrs(e?.attributes ?? {}), 'description')
-      const info  = note || desc
-      const text  = info ? `[${c.type}: ${title} — ${info}]` : `[${c.type}: ${title}]`
-      const p = para('Action', text)
+
+      // Build attribute summary from schema
+      const attrParts: string[] = []
+      for (const f of schema) {
+        if (f.key === 'status') continue
+        const v = e?.attributes[f.key]
+        if (typeof v === 'string' && v.trim()) {
+          attrParts.push(`${f.label}: ${v.trim()}`)
+        }
+      }
+
+      // Entity name + attributes on one paragraph, note on a second if present
+      const summaryParts = [`[${c.type}: ${title}`]
+      if (attrParts.length > 0) summaryParts.push(` — ${attrParts.join(' · ')}`)
+      summaryParts.push(']')
+      const p = para('Action', summaryParts.join(''))
       if (p) content.push(p)
+
+      if (note) {
+        const np = para('Action', `[${note}]`)
+        if (np) content.push(np)
+      }
     }
   }
 
@@ -320,8 +510,12 @@ export function buildFDX(board: Board): string {
   const titlePageParagraphs: string[] = []
 
   const addCentered = (text: string) => {
-    const p = para('Action', text, ' Alignment="Center"')
-    if (p) titlePageParagraphs.push(p)
+    if (!text.trim()) return
+    titlePageParagraphs.push(
+      `    <Paragraph Type="Action" Alignment="Center">`,
+      `      <Text>${esc(text.trim())}</Text>`,
+      `    </Paragraph>`,
+    )
   }
 
   addCentered(name)
@@ -329,36 +523,24 @@ export function buildFDX(board: Board): string {
   const credit = projectInfo?.credit?.trim()
   const author = projectInfo?.author?.trim()
   if (credit || author) {
-    titlePageParagraphs.push(para('Action', '', '')) // blank line
     if (credit) addCentered(credit)
     if (author) addCentered(author)
   }
 
-  if (projectInfo?.source?.trim()) {
-    titlePageParagraphs.push(para('Action', '', ''))
-    addCentered(projectInfo.source.trim())
-  }
-
-  if (projectInfo?.draftDate?.trim()) {
-    titlePageParagraphs.push(para('Action', '', ''))
-    addCentered(projectInfo.draftDate.trim())
-  }
+  if (projectInfo?.source?.trim())    addCentered(projectInfo.source.trim())
+  if (projectInfo?.draftDate?.trim()) addCentered(projectInfo.draftDate.trim())
 
   if (projectInfo?.contact?.trim()) {
-    titlePageParagraphs.push(para('Action', '', ''))
     for (const line of projectInfo.contact.trim().split('\n')) {
       addCentered(line.trim())
     }
   }
 
-  if (projectInfo?.copyright?.trim()) {
-    titlePageParagraphs.push(para('Action', '', ''))
-    addCentered(projectInfo.copyright.trim())
-  }
+  if (projectInfo?.copyright?.trim()) addCentered(projectInfo.copyright.trim())
 
   // ── Assemble document ─────────────────────────────────────────────────────
 
-  const lines: string[] = [
+  return [
     '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>',
     '<FinalDraft DocumentType="Script" Template="No" Version="6">',
     '  <Content>',
@@ -366,11 +548,9 @@ export function buildFDX(board: Board): string {
     '  </Content>',
     '  <TitlePage>',
     '    <Content>',
-    ...titlePageParagraphs.filter(Boolean),
+    ...titlePageParagraphs,
     '    </Content>',
     '  </TitlePage>',
     '</FinalDraft>',
-  ]
-
-  return lines.join('\n')
+  ].join('\n')
 }
