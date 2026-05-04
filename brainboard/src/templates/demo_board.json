@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "boardId": "kv4yBmrwjmoL--e4ZwOPS",
+  "boardId": "9z0eht-AA98gYkvl0nVEH",
   "name": "Demo Board",
-  "createdAt": "2026-04-23T14:19:29.781Z",
-  "updatedAt": "2026-04-23T16:50:23.276Z",
+  "createdAt": "2026-05-04T12:42:30.348Z",
+  "updatedAt": "2026-05-04T12:43:30.949Z",
   "viewport": {
-    "x": 1833.1525808716028,
-    "y": 2439.597395584943,
-    "zoom": 0.7151995275038858
+    "x": 1368.8380212346883,
+    "y": 2126.6997446420255,
+    "zoom": 0.5488116360940263
   },
   "cards": [
     {
@@ -15,12 +15,12 @@
       "entityId": "xbCw-TO8RSVF3fb7g-kEZ",
       "type": "Thought",
       "position": {
-        "x": 3273.3973155147096,
-        "y": 2745.5896448501344
+        "x": 3240.5991771076806,
+        "y": 2741.9454072493536
       },
       "rotation": 0,
       "color": "sage",
-      "zIndex": 9,
+      "zIndex": 1003,
       "noteRaw": "random unsorted thoughts would go here.",
       "instanceNote": "",
       "isFlipped": false,
@@ -31,12 +31,12 @@
       "entityId": "g5TmfvR-Y_yKG3139kHOq",
       "type": "Arc",
       "position": {
-        "x": 3654.2499744577144,
-        "y": 2745.734671058378
+        "x": 3621.4518360506854,
+        "y": 2742.090433457597
       },
       "rotation": 0,
       "color": "sand",
-      "zIndex": 60,
+      "zIndex": 1012,
       "noteRaw": "Additioanl notes about an Arc could go here.",
       "instanceNote": "",
       "isFlipped": false,
@@ -47,12 +47,12 @@
       "entityId": "f5Km0JDGg-yEZEkQy1POb",
       "type": "Beat",
       "position": {
-        "x": 3647.6916792818165,
-        "y": 2983.489636285346
+        "x": 3614.8935408747875,
+        "y": 2979.845398684565
       },
       "rotation": 0,
       "color": "rose",
-      "zIndex": 14,
+      "zIndex": 1011,
       "noteRaw": "This is where you would describe what happens in a specific story or emotional beat.",
       "instanceNote": "",
       "isFlipped": false,
@@ -63,12 +63,12 @@
       "entityId": "lev-RAuPvVyyfl9kLIEK9",
       "type": "Character",
       "position": {
-        "x": 3274.1825746018662,
-        "y": 2891.0193049804893
+        "x": 3241.3844361948372,
+        "y": 2887.3750673797085
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 34,
+      "zIndex": 1004,
       "noteRaw": "Additional Notes can go here",
       "instanceNote": "Cards can be instanced and this note is unique to to specific instances.",
       "isFlipped": false,
@@ -79,12 +79,12 @@
       "entityId": "mAtK1LPuQ7SXMwR3OJ0Us",
       "type": "Location",
       "position": {
-        "x": 3280.1439182132603,
-        "y": 3209.9581566887255
+        "x": 3247.3457798062313,
+        "y": 3206.3139190879447
       },
       "rotation": 0,
       "color": "sage",
-      "zIndex": 26,
+      "zIndex": 1005,
       "noteRaw": "Here's a note. You can also use\nMarkdown Syntax.",
       "instanceNote": "",
       "isFlipped": false,
@@ -95,12 +95,12 @@
       "entityId": "6IgqGGiVQwa8LEABjufu0",
       "type": "Prop",
       "position": {
-        "x": 3281.8436896743538,
-        "y": 3471.6621742713623
+        "x": 3249.0455512673248,
+        "y": 3468.0179366705815
       },
       "rotation": 0,
       "color": "violet",
-      "zIndex": 27,
+      "zIndex": 1006,
       "noteRaw": "A note about the hammer",
       "instanceNote": "",
       "isFlipped": false,
@@ -111,12 +111,12 @@
       "entityId": "PCC2Fh8BHDdSE-ZDmO4h0",
       "type": "Scene",
       "position": {
-        "x": 3653.124694579178,
-        "y": 3192.4153006759902
+        "x": 3620.326556172149,
+        "y": 3188.7710630752094
       },
       "rotation": 0,
       "color": "sky",
-      "zIndex": 30,
+      "zIndex": 1010,
       "noteRaw": "A note about the scene.",
       "instanceNote": "",
       "isFlipped": false,
@@ -127,12 +127,12 @@
       "entityId": "DvKpQnFxCP2YwAlfNN0HL",
       "type": "Shot",
       "position": {
-        "x": 3282.1726801152317,
-        "y": 3670.2932053924965
+        "x": 3249.3745417082027,
+        "y": 3666.6489677917157
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 39,
+      "zIndex": 1007,
       "noteRaw": "An extra note space.",
       "instanceNote": "",
       "isFlipped": false,
@@ -143,12 +143,12 @@
       "entityId": "yZuGsCXAz3XHx9h3Mcz-D",
       "type": "Theme",
       "position": {
-        "x": 3653.146880115652,
-        "y": 3455.3532387568944
+        "x": 3620.348741708623,
+        "y": 3451.7090011561136
       },
       "rotation": 0,
       "color": "fog",
-      "zIndex": 38,
+      "zIndex": 1009,
       "noteRaw": "An extra note about themes. Tortured thoughts about good versus evil! Or evil versus good! Or Evil versus evil!",
       "instanceNote": "",
       "isFlipped": false,
@@ -159,12 +159,12 @@
       "entityId": "DvKpQnFxCP2YwAlfNN0HL",
       "type": "Shot",
       "position": {
-        "x": 2496.839306091794,
-        "y": 3294.2932053924965
+        "x": 2504.1278925066613,
+        "y": 3432.774345435482
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 41,
+      "zIndex": 1002,
       "noteRaw": "An extra note space.",
       "instanceNote": "",
       "isFlipped": false,
@@ -180,7 +180,7 @@
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 57,
+      "zIndex": 1013,
       "noteRaw": "",
       "instanceNote": "",
       "isFlipped": false,
@@ -191,12 +191,12 @@
       "entityId": "Tl5Fxb71GAzo24GRLd5hh",
       "type": "Prop",
       "position": {
-        "x": 4293.6223741411595,
-        "y": 2951.7792677543653
+        "x": 4291.192808265102,
+        "y": 2955.423505355146
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 48,
+      "zIndex": 1015,
       "noteRaw": "",
       "instanceNote": "",
       "isFlipped": false,
@@ -212,7 +212,7 @@
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 51,
+      "zIndex": 1014,
       "noteRaw": "",
       "instanceNote": "",
       "isFlipped": false,
@@ -228,7 +228,7 @@
       },
       "rotation": 0,
       "color": "amber",
-      "zIndex": 56,
+      "zIndex": 1016,
       "noteRaw": "",
       "instanceNote": "",
       "isFlipped": false,
@@ -239,12 +239,12 @@
       "entityId": "gXOjXd49F14B90sLrtp7P",
       "type": "Thought",
       "position": {
-        "x": 3651.3880072884494,
-        "y": 3719.2268963204547
+        "x": 3618.5898688814204,
+        "y": 3715.582658719674
       },
       "rotation": 0,
       "color": "crimson",
-      "zIndex": 62,
+      "zIndex": 1008,
       "noteRaw": "**Bold**  text. \n*Italicized* text\n~~Strikethrough.~~",
       "instanceNote": "",
       "isFlipped": false,
@@ -369,15 +369,15 @@
       "type": "Act",
       "title": "Act",
       "position": {
-        "x": 2040.0091619575805,
-        "y": 2681.9841222416835
+        "x": 2019.3584080776175,
+        "y": 2748.795181993771
       },
       "size": {
         "width": 1123.5745992989873,
         "height": 1113.2991362170312
       },
       "color": "rose",
-      "zIndex": 1,
+      "zIndex": 100,
       "attributes": {
         "function": "Narrative Purpose of this Act",
         "dramatic_question": "The question this act poses...",
@@ -390,15 +390,15 @@
       "type": "Sequence",
       "title": "Sequence",
       "position": {
-        "x": 2087.200030789725,
-        "y": 2871.8661680124474
+        "x": 2070.193514510543,
+        "y": 2960.542653369221
       },
       "size": {
         "width": 1038.4149641981533,
         "height": 822.1503025823131
       },
       "color": "sky",
-      "zIndex": 2,
+      "zIndex": 150,
       "attributes": {
         "goal": "What must happen in this sequence?",
         "conflict": "What stands in the way?",
@@ -411,15 +411,15 @@
       "type": "Scene",
       "title": "Scene",
       "position": {
-        "x": 2148.694001889447,
-        "y": 3043.7062804242155
+        "x": 2104.9631506800747,
+        "y": 3146.9597161841134
       },
       "size": {
         "width": 946.28567069969,
         "height": 588.5021391258542
       },
       "color": "sky",
-      "zIndex": 3,
+      "zIndex": 200,
       "attributes": {
         "goal": "What must happen in this scene?",
         "conflict": "What stands in the way?",
@@ -432,15 +432,15 @@
       "type": "Beat",
       "title": "Beat",
       "position": {
-        "x": 2197.7493589267606,
-        "y": 3211.4800631503404
+        "x": 2144.3006890663796,
+        "y": 3332.9546869141436
       },
       "size": {
         "width": 865.8846368870607,
         "height": 364.33475941723646
       },
       "color": "rose",
-      "zIndex": 4,
+      "zIndex": 250,
       "attributes": {
         "description": "What happens in this beat?"
       }
@@ -451,15 +451,15 @@
       "type": "Custom",
       "title": "Custom",
       "position": {
-        "x": 1913.152580871603,
-        "y": 2524.3976967627045
+        "x": 1880.3544424645738,
+        "y": 2520.7534591619237
       },
       "size": {
         "width": 2247.27981674386,
         "height": 1548.8009803319337
       },
       "color": "fog",
-      "zIndex": 5,
+      "zIndex": 50,
       "attributes": {
         "description": "This is for grouping cards and backdrops in custom ways."
       }
@@ -470,15 +470,15 @@
       "type": "Scene",
       "title": "Scene 01",
       "position": {
-        "x": 4278.56281047095,
-        "y": 2798.7642691010165
+        "x": 4276.133244594893,
+        "y": 2802.4085067017973
       },
       "size": {
         "width": 390.581017110957,
         "height": 472.35220607747715
       },
       "color": "sky",
-      "zIndex": 6,
+      "zIndex": 200,
       "attributes": {}
     },
     {
@@ -495,7 +495,7 @@
         "height": 462.5574062483852
       },
       "color": "rose",
-      "zIndex": 7,
+      "zIndex": 200,
       "attributes": {}
     },
     {
@@ -512,7 +512,7 @@
         "height": 455.2168070694029
       },
       "color": "sky",
-      "zIndex": 8,
+      "zIndex": 200,
       "attributes": {}
     },
     {
@@ -529,7 +529,7 @@
         "height": 1040.635149952466
       },
       "color": "rose",
-      "zIndex": 9,
+      "zIndex": 250,
       "attributes": {
         "description": "A demonstration about how instanced cards work."
       }

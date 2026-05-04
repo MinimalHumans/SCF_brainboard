@@ -7,9 +7,6 @@ import { ProjectInfoPopover } from './ProjectInfoPopover'
 import styles                 from './Toolbar.module.css'
 
 interface ToolbarProps {
-  hasSelection?:      boolean
-  onPublishAll?:      () => void
-  onPublishSelected?: () => void
   onExport?:          () => void
   onImport?:          () => void
   onTemplates?:       () => void
@@ -19,9 +16,6 @@ interface ToolbarProps {
 }
 
 export function Toolbar({
-  hasSelection = false,
-  onPublishAll,
-  onPublishSelected,
   onExport,
   onImport,
   onTemplates,
@@ -95,18 +89,6 @@ export function Toolbar({
         <button className={styles.action} onClick={onExport}>Export</button>
         <button className={styles.action} onClick={onTemplates}>Templates</button>
         <button className={styles.action} onClick={onOutline}>Outline</button>
-        <div className={styles.publishGroup}>
-          {hasSelection && onPublishSelected && (
-            <button className={styles.action} onClick={onPublishSelected}>Publish Selected</button>
-          )}
-          <button
-            className={`${styles.action} ${styles.publishAll}`}
-            onClick={onPublishAll}
-            disabled={!onPublishAll}
-          >
-            Publish All
-          </button>
-        </div>
         <button className={styles.helpBtn} onClick={onHelp} aria-label="Help">?</button>
       </div>
     </header>

@@ -39,6 +39,22 @@ export const BACKDROP_SCHEMAS: Record<BackdropType, BackdropFieldDef[]> = {
     STATUS_FIELD,
   ],
   Scene: [
+    {
+      key:        'int_ext',
+      label:      'INT/EXT',
+      type:       'select',
+      options:    ['INT.', 'EXT.', 'INT/EXT.'],
+      emptyLabel: '(inherit from Location)',
+    },
+    {
+      key:     'time_of_day',
+      label:   'Time of Day',
+      type:    'select',
+      options: [
+        'Dawn', 'Morning', 'Day', 'Afternoon', 'Dusk',
+        'Night', 'Continuous', 'Later', 'Moments Later',
+      ],
+    },
     { key: 'goal',     label: 'Goal',     type: 'textarea', hint: 'What must happen in this scene…' },
     { key: 'conflict', label: 'Conflict', type: 'textarea', hint: 'What stands in the way…' },
     { key: 'outcome',  label: 'Outcome',  type: 'textarea', hint: 'How it resolves…' },
