@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "boardId": "WPLJRt-kwMUVyHweY53Md",
+  "boardId": "GzrzdbI4rNNnTRl7xUBfq",
   "name": "Save The Cat - Beat Sheet",
-  "createdAt": "2026-04-28T16:44:43.569Z",
-  "updatedAt": "2026-04-28T17:12:50.873Z",
+  "createdAt": "2026-05-04T15:34:18.724Z",
+  "updatedAt": "2026-05-04T15:35:43.780Z",
   "viewport": {
-    "x": -3705.9590564599403,
-    "y": 94.56273857046881,
-    "zoom": 0.16529888822158648
+    "x": 2636.2583952033456,
+    "y": 814.2654100057422,
+    "zoom": 0.5488116360940258
   },
   "cards": [],
   "entities": [],
@@ -18,15 +18,15 @@
       "type": "Beat",
       "title": "1. Opening Image",
       "position": {
-        "x": 2394.223392314681,
-        "y": 1003.1515422008374
+        "x": 2393.228903218756,
+        "y": 988.2332952244246
       },
       "size": {
         "width": 649.8579511198009,
         "height": 854.6077165411075
       },
       "color": "emerald",
-      "zIndex": 1,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -35,15 +35,15 @@
       "type": "Beat",
       "title": "2. Theme Stated",
       "position": {
-        "x": 3063.8090018697135,
-        "y": 1000.5517381150125
+        "x": 3065.7980711153173,
+        "y": 995.5790194741261
       },
       "size": {
         "width": 649.8579511198009,
         "height": 854.6077165411075
       },
       "color": "cobalt",
-      "zIndex": 2,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -52,15 +52,15 @@
       "type": "Beat",
       "title": "3. Set-Up",
       "position": {
-        "x": 3734.1954604357566,
-        "y": 995.9096553702075
+        "x": 3733.2009713398315,
+        "y": 1001.8769541607726
       },
       "size": {
         "width": 649.8579511198009,
         "height": 854.6077165411075
       },
       "color": "gold",
-      "zIndex": 3,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -70,14 +70,14 @@
       "title": "4. Catalyst",
       "position": {
         "x": 4404.581919001799,
-        "y": 996.9674397387316
+        "y": 1004.9238533017773
       },
       "size": {
         "width": 649.8579511198009,
         "height": 854.6077165411075
       },
       "color": "sage",
-      "zIndex": 4,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -86,15 +86,15 @@
       "type": "Beat",
       "title": "5. Debate",
       "position": {
-        "x": 5070.082766535201,
-        "y": 996.3967119458785
+        "x": 5071.077255631126,
+        "y": 1009.3258669132489
       },
       "size": {
         "width": 649.8579511198009,
         "height": 854.6077165411075
       },
       "color": "sky",
-      "zIndex": 5,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -111,7 +111,7 @@
         "height": 854.6077165411075
       },
       "color": "sand",
-      "zIndex": 6,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -128,7 +128,7 @@
         "height": 854.6077165411075
       },
       "color": "violet",
-      "zIndex": 7,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -145,7 +145,7 @@
         "height": 854.6077165411075
       },
       "color": "rose",
-      "zIndex": 8,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -162,7 +162,7 @@
         "height": 854.6077165411075
       },
       "color": "slate",
-      "zIndex": 9,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -179,7 +179,7 @@
         "height": 854.6077165411075
       },
       "color": "fog",
-      "zIndex": 10,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -196,7 +196,7 @@
         "height": 854.6077165411075
       },
       "color": "crimson",
-      "zIndex": 11,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -213,7 +213,7 @@
         "height": 854.6077165411075
       },
       "color": "emerald",
-      "zIndex": 12,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -230,7 +230,7 @@
         "height": 854.6077165411075
       },
       "color": "cobalt",
-      "zIndex": 13,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -247,7 +247,7 @@
         "height": 854.6077165411075
       },
       "color": "gold",
-      "zIndex": 14,
+      "zIndex": 250,
       "attributes": {}
     },
     {
@@ -264,14 +264,14 @@
         "height": 854.6077165411075
       },
       "color": "sage",
-      "zIndex": 15,
+      "zIndex": 250,
       "attributes": {}
     },
     {
+      "note": "Act One is about establishing the world, the protagonist’s flaw, and the central problem. It ends when the hero stops hesitating and makes a choice. The Debate beat is crucial here—it stretches the tension before commitment. The act culminates in the transition to Act Two.",
       "id": "52KyTduUZzUzKV96SGYKB",
       "type": "Act",
       "title": "Act One",
-      "note": "Act One is about establishing the world, the protagonist’s flaw, and the central problem. It ends when the hero stops hesitating and makes a choice. The Debate beat is crucial here—it stretches the tension before commitment. The act culminates in the transition to Act Two.",
       "position": {
         "x": 2252.1910117274942,
         "y": 820.6337774703961
@@ -281,14 +281,14 @@
         "height": 1301.587224699975
       },
       "color": "sage",
-      "zIndex": 16,
+      "zIndex": 100,
       "attributes": {}
     },
     {
+      "note": "Act Three is where the protagonist applies what they’ve learned. Break into Three is the moment of insight and renewed action, often informed by the B Story. The Finale resolves the main conflict with a transformed hero, and the Final Image mirrors the beginning to show how far things have come.",
       "id": "CzIXfTybsuzENVPQUVExO",
       "type": "Act",
       "title": "Act Three (Resolution)",
-      "note": "Act Three is where the protagonist applies what they’ve learned. Break into Three is the moment of insight and renewed action, often informed by the B Story. The Finale resolves the main conflict with a transformed hero, and the Final Image mirrors the beginning to show how far things have come.",
       "position": {
         "x": 2958.5144510956025,
         "y": 5474.275616135854
@@ -298,14 +298,14 @@
         "height": 1301.587224699975
       },
       "color": "violet",
-      "zIndex": 17,
+      "zIndex": 100,
       "attributes": {}
     },
     {
+      "note": "This section tightens the screws. The protagonist’s initial approach fails, internal flaws resurface, and external forces escalate. It all leads to All Is Lost, followed by reflection in Dark Night of the Soul, where the character begins to understand what needs to change.",
       "id": "dtcdm46E7jYtLxmkBHBeo",
       "type": "Act",
       "title": "Act Two – Part B (Rising Pressure)",
-      "note": "This section tightens the screws. The protagonist’s initial approach fails, internal flaws resurface, and external forces escalate. It all leads to All Is Lost, followed by reflection in Dark Night of the Soul, where the character begins to understand what needs to change.",
       "position": {
         "x": 2862.1151770337865,
         "y": 3928.451164116168
@@ -315,14 +315,14 @@
         "height": 1301.587224699975
       },
       "color": "sand",
-      "zIndex": 18,
+      "zIndex": 100,
       "attributes": {}
     },
     {
+      "note": "This is the “promise of the premise” section. After Break into Two, the protagonist explores the new situation or world. The B Story adds emotional depth, and Fun and Games delivers the core concept. The Midpoint then shifts everything—raising stakes and often flipping the story from reactive to proactive.",
       "id": "RHyz7g3JnOiDWa3UOhWLg",
       "type": "Act",
       "title": "Act Two – Part A (Fun & Games)",
-      "note": "This is the “promise of the premise” section. After Break into Two, the protagonist explores the new situation or world. The B Story adds emotional depth, and Fun and Games delivers the core concept. The Midpoint then shifts everything—raising stakes and often flipping the story from reactive to proactive.",
       "position": {
         "x": 2583.920723019359,
         "y": 2347.7589679113685
@@ -332,8 +332,9 @@
         "height": 1301.587224699975
       },
       "color": "sky",
-      "zIndex": 19,
+      "zIndex": 100,
       "attributes": {}
     }
-  ]
+  ],
+  "projectInfo": {}
 }
