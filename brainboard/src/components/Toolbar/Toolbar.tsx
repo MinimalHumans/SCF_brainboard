@@ -4,15 +4,16 @@ import { useViewerStore }     from '@/store/viewerStore'
 import { useHistoryStore }    from '@/store/historyStore'
 import { useThemeStore }      from '@/store/themeStore'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
+import { ExportPopover }      from './ExportPopover'
 import styles                 from './Toolbar.module.css'
 
 interface ToolbarProps {
-  onExport?:          () => void
-  onImport?:          () => void
-  onTemplates?:       () => void
-  onOutline?:         () => void
-  onHelp?:            () => void
-  onNewBoard?:        () => void
+  onExport?:    () => void
+  onImport?:    () => void
+  onTemplates?: () => void
+  onOutline?:   () => void
+  onHelp?:      () => void
+  onNewBoard?:  () => void
 }
 
 export function Toolbar({
@@ -33,8 +34,10 @@ export function Toolbar({
   const theme       = useThemeStore(s => s.theme)
   const toggleTheme = useThemeStore(s => s.toggle)
 
-  const boardNameBtnRef              = useRef<HTMLButtonElement>(null)
-  const [showPopover, setShowPopover] = useState(false)
+  const boardNameBtnRef               = useRef<HTMLButtonElement>(null)
+  const exportBtnRef                  = useRef<HTMLButtonElement>(null)
+  const [showInfoPopover,   setShowInfoPopover]   = useState(false)
+  const [showExportPopover, setShowExportPopover] = useState(false)
 
   const zoomPct = Math.round(zoom * 100)
 
@@ -48,16 +51,16 @@ export function Toolbar({
         <button
           ref={boardNameBtnRef}
           className={styles.boardName}
-          onClick={() => setShowPopover(v => !v)}
+          onClick={() => setShowInfoPopover(v => !v)}
           title="Project settings"
         >
           {boardName}
         </button>
 
-        {showPopover && (
+        {showInfoPopover && (
           <ProjectInfoPopover
             anchorRef={boardNameBtnRef}
-            onClose={() => setShowPopover(false)}
+            onClose={() => setShowInfoPopover(false)}
           />
         )}
       </div>
@@ -86,7 +89,25 @@ export function Toolbar({
       <div className={styles.right}>
         <button className={styles.action} onClick={onNewBoard} title="New blank board">New Board</button>
         <button className={styles.action} onClick={onImport}>Import</button>
-        <button className={styles.action} onClick={onExport}>Export</button>
+
+        {/* Export — opens a popover with JSON / Fountain / FDX options */}
+        <button
+          ref={exportBtnRef}
+          className={styles.action}
+          onClick={() => setShowExportPopover(v => !v)}
+          title="Export board"
+        >
+          Export
+        </button>
+
+        {showExportPopover && (
+          <ExportPopover
+            anchorRef={exportBtnRef}
+            onClose={() => setShowExportPopover(false)}
+            onExportJson={onExport}
+          />
+        )}
+
         <button className={styles.action} onClick={onTemplates}>Templates</button>
         <button className={styles.action} onClick={onOutline}>Outline</button>
         <button className={styles.helpBtn} onClick={onHelp} aria-label="Help">?</button>

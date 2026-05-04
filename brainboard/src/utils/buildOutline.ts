@@ -1,16 +1,12 @@
 import type { Board, Backdrop, Card, Entity } from '@/types/board'
 import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import { BACKDROP_SCHEMAS } from '@/config/backdropSchemas'
+import {
+  CARD_W, CARD_H, ROW_SNAP, RANK,
+  fullyInside, innermostParent, rowSort,
+} from './screenplayCommon'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const CARD_W  = 320
-const CARD_H  = 160
-const ROW_SNAP = 80
-
-const RANK: Record<string, number> = {
-  Act: 4, Sequence: 3, Scene: 2, Beat: 1, Custom: 0,
-}
 
 const CONTAINS_ORDER = [
   'Character', 'Location', 'Prop', 'Shot',
@@ -18,51 +14,6 @@ const CONTAINS_ORDER = [
 ]
 
 const CARD_GROUP_ORDER = ['Arc', 'Theme', 'Beat', 'Scene', 'Shot', 'Thought']
-
-// ─── Geometric helpers ────────────────────────────────────────────────────────
-
-function fullyInside(
-  ix: number, iy: number, iw: number, ih: number,
-  bd: Backdrop,
-): boolean {
-  return (
-    ix      >= bd.position.x &&
-    iy      >= bd.position.y &&
-    ix + iw <= bd.position.x + bd.size.width &&
-    iy + ih <= bd.position.y + bd.size.height
-  )
-}
-
-/**
- * Innermost (smallest area) non-Custom backdrop fully containing the item.
- * Skips the backdrop with `excludeId` (used when checking a backdrop against
- * itself). Custom backdrops are transparent and never returned.
- */
-function innermostParent(
-  ix: number, iy: number, iw: number, ih: number,
-  backdrops: Backdrop[],
-  excludeId?: string,
-): Backdrop | null {
-  const hits = backdrops.filter(bd =>
-    bd.type !== 'Custom' &&
-    bd.id   !== excludeId &&
-    fullyInside(ix, iy, iw, ih, bd),
-  )
-  if (!hits.length) return null
-  return hits.reduce((a, b) =>
-    a.size.width * a.size.height < b.size.width * b.size.height ? a : b,
-  )
-}
-
-// ─── Sorting ──────────────────────────────────────────────────────────────────
-
-function rowSort<T extends { position: { x: number; y: number } }>(items: T[]): T[] {
-  return [...items].sort((a, b) => {
-    const ra = Math.round(a.position.y / ROW_SNAP)
-    const rb = Math.round(b.position.y / ROW_SNAP)
-    return ra !== rb ? ra - rb : a.position.x - b.position.x
-  })
-}
 
 // ─── Markdown primitives ──────────────────────────────────────────────────────
 
