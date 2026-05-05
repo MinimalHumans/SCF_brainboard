@@ -9,6 +9,9 @@ import { ExportPopover }      from './ExportPopover'
 import styles                 from './Toolbar.module.css'
 
 interface ToolbarProps {
+  hasSelection?: boolean
+  onPublishAll?: () => void
+  onPublishSelected?: () => void
   onExport?:    () => void
   onImport?:    () => void
   onTemplates?: () => void
@@ -18,6 +21,9 @@ interface ToolbarProps {
 }
 
 export function Toolbar({
+  hasSelection,
+  onPublishAll,
+  onPublishSelected,
   onExport,
   onImport,
   onTemplates,
