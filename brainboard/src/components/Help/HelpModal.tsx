@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './HelpModal.module.css'
 
@@ -6,9 +6,10 @@ interface HelpModalProps {
   onClose: () => void
 }
 
-type Section = 'canvas' | 'cards' | 'backdrops' | 'toolbar' | 'shortcuts'
+type Section = 'about' | 'canvas' | 'cards' | 'backdrops' | 'toolbar' | 'shortcuts'
 
 const SECTIONS: { id: Section; label: string }[] = [
+  { id: 'about',     label: 'About'      },
   { id: 'canvas',    label: 'Canvas'     },
   { id: 'cards',     label: 'Cards'      },
   { id: 'backdrops', label: 'Backdrops'  },
@@ -17,7 +18,13 @@ const SECTIONS: { id: Section; label: string }[] = [
 ]
 
 export function HelpModal({ onClose }: HelpModalProps) {
-  const [activeSection, setActiveSection] = useState<Section>('canvas')
+  const [activeSection, setActiveSection] = useState<Section>('about')
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
 
   return createPortal(
     <div className={styles.overlay} onClick={onClose}>
@@ -39,6 +46,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
         </div>
 
         <div className={styles.content}>
+          {activeSection === 'about'     && <AboutHelp />}
           {activeSection === 'canvas'    && <CanvasHelp />}
           {activeSection === 'cards'     && <CardsHelp />}
           {activeSection === 'backdrops' && <BackdropsHelp />}
@@ -50,6 +58,8 @@ export function HelpModal({ onClose }: HelpModalProps) {
     document.body
   )
 }
+
+// ── Shared primitives ─────────────────────────────────────────────────────────
 
 function H2({ children }: { children: React.ReactNode }) {
   return <h2 className={styles.h2}>{children}</h2>
@@ -64,6 +74,46 @@ function Kbd({ children }: { children: React.ReactNode }) {
   return <kbd className={styles.kbd}>{children}</kbd>
 }
 
+// ── About ─────────────────────────────────────────────────────────────────────
+
+function AboutHelp() {
+  return (
+    <div>
+      <H2>About Brainboard</H2>
+      <P>
+        Brainboard is a spatial story-planning tool built for screenwriters and storytellers.
+        Arrange cards and backdrops on an infinite canvas to map your characters, locations,
+        scenes, and structure — then export to Markdown, Fountain, or Final Draft to start writing.
+      </P>
+      <P>
+        Created by <strong>Minimal Humans</strong>.
+      </P>
+
+      <H3>Website</H3>
+      <P>
+        <a href="http://minimal-humans.com/" target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--color-accent)' }}>
+          minimal-humans.com
+        </a>
+      </P>
+
+      <H3>Feedback &amp; Feature Requests</H3>
+      <P>
+        Have a suggestion, found a bug, or want to talk story structure? Join the community
+        on Discord — we'd love to hear from you.
+      </P>
+      <P>
+        <a href="https://discord.gg/T42Y2tPXsJ" target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--color-accent)' }}>
+          discord.gg/T42Y2tPXsJ
+        </a>
+      </P>
+    </div>
+  )
+}
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+
 function CanvasHelp() {
   return (
     <div>
@@ -73,11 +123,12 @@ function CanvasHelp() {
       <H3>Navigation</H3>
       <P><strong>Pan</strong> — hold <Kbd>Space</Kbd> and drag, or drag with the middle mouse button.</P>
       <P><strong>Zoom</strong> — scroll the mouse wheel. Zooms toward the cursor position. Use the <Kbd>−</Kbd> / <Kbd>%</Kbd> / <Kbd>+</Kbd> controls in the toolbar to step through zoom levels or reset to 100%.</P>
-      <P><strong>Frame all</strong> — press <Kbd>F</Kbd> to fit all cards in view.</P>
+      <P><strong>Frame all</strong> — press <Kbd>F</Kbd> to fit everything in view.</P>
 
-      <H3>Creating cards</H3>
+      <H3>Creating cards and backdrops</H3>
       <P><strong>Double-click</strong> any empty area of the canvas to create a new card at that position.</P>
-      <P><strong>Right-click</strong> the canvas to open the canvas context menu, which lets you create a card at that exact position or draw a new backdrop.</P>
+      <P><strong>Tab</strong> opens a spotlight-style menu at the cursor. Type to filter, use <Kbd>↑</Kbd> <Kbd>↓</Kbd> to move through results, and press <Kbd>Enter</Kbd> or <Kbd>Tab</Kbd> again to create the selected card or backdrop type. Press <Kbd>Esc</Kbd> to close without creating.</P>
+      <P><strong>Right-click</strong> the canvas to open the context menu, which lets you create a card at that exact position or draw a new backdrop.</P>
 
       <H3>Selection</H3>
       <P><strong>Click</strong> a card to select it. <strong>Shift-click</strong> to add or remove from the selection.</P>
@@ -90,121 +141,165 @@ function CanvasHelp() {
   )
 }
 
+// ── Cards ─────────────────────────────────────────────────────────────────────
+
 function CardsHelp() {
   return (
     <div>
       <H2>Cards</H2>
-      <P>Cards are story entity placements — each card represents one instance of a Character, Location, Scene, Prop, Beat, Theme, Arc, or Thought on the board.</P>
+      <P>Cards are story entity placements. Each card represents one instance of an entity — a Character, Location, Scene, Prop, Beat, Theme, Arc, Shot, or Thought — placed on the board.</P>
 
-      <H3>Two states</H3>
-      <P><strong>Front (view mode)</strong> — compact display showing the card's title, filled attribute values, note preview, and placement note. This is the default state. The whole card is draggable.</P>
-      <P><strong>Edit mode</strong> — click the pencil icon in the card's handle bar to open full editing. The card widens. Drag from the handle bar only.</P>
+      <H3>Entity types</H3>
+      <P><strong>Character</strong> — a person in the story. Attributes: Pronouns, Role, Occupation, Age, Character Summary.</P>
+      <P><strong>Location</strong> — a place. Attributes: Type (Interior/Exterior/etc.), Time Period, Mood, Setting Description.</P>
+      <P><strong>Scene</strong> — a discrete scene. Attributes: INT/EXT, Time of Day, Goal, Conflict, Outcome.</P>
+      <P><strong>Prop</strong> — an object with story function. Attributes: Story Function, Description.</P>
+      <P><strong>Beat</strong> — a unit of action or turning point. Name and note only.</P>
+      <P><strong>Theme</strong> — a thematic idea. Attributes: Statement, Expression, Opposition.</P>
+      <P><strong>Arc</strong> — a character or story arc. Attributes: Subject, Axis, Direction.</P>
+      <P><strong>Shot</strong> — a specific camera setup. Attributes: Subject, Framing, Purpose.</P>
+      <P><strong>Thought</strong> — a freeform note with no fixed schema. Name and note only.</P>
+      <P>All entity types share a <strong>Status</strong> field (see below).</P>
+
+      <H3>Card states</H3>
+      <P><strong>View mode</strong> — compact display showing the title, any filled attribute values, and the note preview. The whole card is draggable.</P>
+      <P><strong>Edit mode</strong> — click the pencil icon in the handle bar to open full editing. Drag from the handle bar only in this state.</P>
 
       <H3>The handle bar</H3>
-      <P>Every card has a coloured bar at the top showing the entity type and the edit/view toggle button. This bar is always draggable in both states.</P>
+      <P>The coloured bar at the top of every card shows the entity type. It is always draggable. The right side of the bar shows the Status badge (if set to Draft) and the edit button.</P>
 
-      <H3>Card content</H3>
-      <P><strong>Type</strong> — select from Arc, Beat, Character, Location, Prop, Scene, Theme, Thought. Changing type changes the attribute schema and the default swatch colour.</P>
-      <P><strong>Name</strong> — the card's primary title, displayed in Fraunces on the front face.</P>
-      <P><strong>Attributes</strong> — type-specific fields (e.g. Role and Occupation for a Character). Filled attributes are displayed on the front face. Attribute fields are disabled until the card is published.</P>
-      <P><strong>Note</strong> — a shared entity note. If the same entity appears on the board multiple times as instances, all instances share this note. Supports markdown (bold, italic, inline code).</P>
-      <P><strong>Placement note</strong> — local to this card only, never shared. Use it for spatial context: "Ezra at the saloon" vs "Ezra in flashback".</P>
-      <P><strong>Color</strong> — eight muted swatches, one per type by default. Override per card.</P>
-
-      <H3>Publishing</H3>
-      <P>A card starts as a <strong>Draft</strong> (shown with a dashed border). Drafts have a name and note but no stable entity ID. Publishing assigns a permanent entity ID and unlocks attributes.</P>
-      <P>Publish a single card via the Publish button in edit mode. Publish all drafts at once with Publish All in the toolbar.</P>
+      <H3>Status</H3>
+      <P>Every entity has a <strong>Status</strong> attribute with three options:</P>
+      <P><strong>Active</strong> — default. No visual indicator.</P>
+      <P><strong>Draft</strong> — shows a DRAFT badge in the card handle. Use this to mark elements that are planned but not yet confirmed.</P>
+      <P><strong>Cut</strong> — fades the card to 50% opacity and strikes through the title. Use this to keep cut elements visible without deleting them.</P>
 
       <H3>Instances</H3>
-      <P>Right-click a published card → Create Instance to place the same entity in a different location. Instances share the entity note and attributes. Each has its own placement note and swatch color. The ◈ glyph marks cards with multiple instances.</P>
+      <P>Right-click a card → <strong>Create Instance</strong> to place the same entity in a different location on the board. Instances share the entity note and attributes. Each has its own placement note and color. The ◈ glyph in the handle bar marks cards that have multiple instances.</P>
 
       <H3>Duplicating vs instancing</H3>
-      <P><strong>Duplicate</strong> (<Kbd>Ctrl</Kbd> <Kbd>D</Kbd>) — creates a fully independent draft copy with a new entity ID. Use when you want a separate entity that starts from the same content.</P>
+      <P><strong>Duplicate</strong> (<Kbd>Ctrl</Kbd> <Kbd>D</Kbd>) — creates a fully independent copy with a new entity. Use when you want a separate entity that starts from the same content.</P>
       <P><strong>Instance</strong> (<Kbd>Ctrl</Kbd> <Kbd>I</Kbd>) — creates a new placement of the same entity. Use when the same story element appears in multiple contexts on the board.</P>
+
+      <H3>Color</H3>
+      <P>Cards have 24 color swatches, with a default color assigned per entity type. Override per card in edit mode.</P>
+
+      <H3>Notes</H3>
+      <P>The <strong>Note</strong> is shared across all instances of an entity — editing it on one card updates all of them. It supports Markdown (bold, italic, inline code).</P>
+      <P>The <strong>Placement note</strong> is local to a single card. Use it for spatial context: "Ezra at the saloon" vs "Ezra in the flashback".</P>
     </div>
   )
 }
+
+// ── Backdrops ─────────────────────────────────────────────────────────────────
 
 function BackdropsHelp() {
   return (
     <div>
       <H2>Backdrops</H2>
-      <P>Backdrops are spatial regions — resizable containers that visually group cards by act, sequence, or beat. They always sit behind all cards.</P>
+      <P>Backdrops are resizable spatial regions that visually group cards by story structure. They always sit behind all cards on the canvas.</P>
 
       <H3>Creating a backdrop</H3>
-      <P>Right-click empty canvas → choose <strong>Add Sequence backdrop</strong>, <strong>Add Act backdrop</strong>, or <strong>Add Beat backdrop</strong>. The cursor becomes a crosshair and a hint banner appears.</P>
-      <P><strong>Click and drag</strong> to draw the backdrop bounds. Release to create it. Press <Kbd>Esc</Kbd> to cancel before drawing.</P>
+      <P><strong>Right-click</strong> empty canvas and choose a backdrop type from the menu. The cursor becomes a crosshair and a hint banner appears at the bottom of the screen. <strong>Click and drag</strong> to draw the bounds, then release to create. Press <Kbd>Esc</Kbd> to cancel.</P>
+      <P>You can also use the <strong>Tab menu</strong> — press <Kbd>Tab</Kbd>, type the backdrop type, and press <Kbd>Enter</Kbd>. This creates a backdrop at a preset size centered on the cursor.</P>
 
-      <H3>Types</H3>
-      <P><strong>Act</strong> — highest level structural container. Has Function, Dramatic Question, and Shift attributes.</P>
-      <P><strong>Sequence</strong> — a group of scenes that accomplish one narrative goal. Has Goal, Conflict, and Outcome attributes.</P>
-      <P><strong>Beat</strong> — the smallest structural unit. Has a description field only.</P>
+      <H3>Backdrop types</H3>
+      <P><strong>Act</strong> — highest level structural container. Attributes: Function, Dramatic Question, Shift.</P>
+      <P><strong>Sequence</strong> — a group of scenes that accomplish one narrative goal. Attributes: Goal, Conflict, Outcome.</P>
+      <P><strong>Scene</strong> — a discrete scene container. Attributes: INT/EXT, Time of Day, Goal, Conflict, Outcome. Scene backdrops use the INT/EXT and Time of Day attributes to assemble a proper slugline when exporting to Fountain or Final Draft.</P>
+      <P><strong>Beat</strong> — the smallest structural unit. Attribute: Description.</P>
+      <P><strong>Custom</strong> — a freeform grouping region with no fixed schema. Useful for visual organisation without imposing structural meaning. Custom backdrops are transparent to the outline and screenplay exports — their children are treated as if they belong to the nearest non-Custom parent.</P>
+
+      <H3>Status</H3>
+      <P>Backdrops also have a Status attribute (Active/Draft/Cut). Draft shows a DRAFT badge in the header. Cut fades the entire backdrop and strikes through its title.</P>
 
       <H3>Moving backdrops</H3>
-      <P>Drag the coloured header bar at the top. Cards whose bounding boxes are fully inside the backdrop move with it. This spatial membership is computed at drag start — not stored.</P>
+      <P>Drag the coloured header bar. Cards whose bounding boxes are fully inside the backdrop move with it. Spatial membership is computed at drag start — it is not stored.</P>
 
       <H3>Resizing</H3>
-      <P>Hover over the header bar or an edge handle — eight resize handles appear at the corners and edge midpoints. Drag any handle to resize. Corner handles resize two axes; edge handles resize one.</P>
+      <P>Hover over the header — eight resize handles appear at the corners and edge midpoints. Drag any handle to resize.</P>
 
       <H3>Editing</H3>
-      <P>Click the pencil icon in the header bar to open the edit panel. The title, type-specific attributes, note, and color swatch are all editable here.</P>
-      <P>The <strong>title</strong> defaults to the type name. Edit it in the panel to name the act or sequence.</P>
-      <P>The <strong>note</strong> appears in the lower-right corner of the backdrop — useful for brief stage direction or purpose reminders.</P>
-      <P>Double-click the title text in the backdrop body (when not editing) to jump straight to editing.</P>
+      <P>Click the pencil icon in the header to open the edit panel. Title, type, type-specific attributes, note, and color are all editable here.</P>
+      <P>The <strong>note</strong> appears in the lower-left corner of the backdrop — useful for brief stage direction or reminders about the section's purpose.</P>
+      <P><strong>Double-click</strong> the title text in the backdrop body to jump straight to editing.</P>
 
       <H3>Canvas interaction within backdrops</H3>
-      <P>The backdrop body is pointer-events transparent — you can double-click inside a backdrop to create a card, right-click for the canvas menu, and pan/zoom normally. Only the header bar and resize handles intercept interaction.</P>
+      <P>The backdrop body is pointer-events transparent — you can double-click inside a backdrop to create a card, right-click for the canvas menu, and pan or zoom normally. Only the header bar and resize handles intercept input.</P>
     </div>
   )
 }
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
 
 function ToolbarHelp() {
   return (
     <div>
       <H2>Toolbar</H2>
 
-      <H3>Board name</H3>
-      <P>Click the board name to rename it inline. Press <Kbd>Enter</Kbd> to confirm or <Kbd>Esc</Kbd> to cancel. The name is used as the filename when exporting.</P>
+      <H3>About (Brainboard logo)</H3>
+      <P>Click the <strong>Brainboard</strong> wordmark in the top-left to open the About panel, which has links to the Minimal Humans website and the Discord community.</P>
+
+      <H3>Board name and project info</H3>
+      <P>Click the <strong>board name</strong> to open the Project Info panel. Here you can rename the board and fill in screenplay title-page fields — Credit, Author, Source, Draft Date, Contact, and Copyright. These fields are used when exporting to Fountain or Final Draft.</P>
+
+      <H3>Undo / Redo</H3>
+      <P>The <strong>↩</strong> and <strong>↪</strong> buttons undo and redo board changes. Keyboard shortcuts: <Kbd>Ctrl</Kbd> <Kbd>Z</Kbd> to undo, <Kbd>Ctrl</Kbd> <Kbd>Y</Kbd> or <Kbd>Ctrl</Kbd> <Kbd>Shift</Kbd> <Kbd>Z</Kbd> to redo. Up to 50 steps are stored. Viewport changes (pan, zoom) are not tracked.</P>
 
       <H3>Zoom controls</H3>
       <P>The <Kbd>−</Kbd> and <Kbd>+</Kbd> buttons zoom out and in by 25% increments, keeping the viewport center fixed. Click the percentage display to reset to 100%. The scroll wheel zooms toward the cursor position.</P>
 
-      <H3>Import / Export</H3>
-      <P><strong>Export</strong> — downloads the current board as a <code>.brainboard.json</code> file. The file includes all cards, entities, backdrops, and the viewport position.</P>
-      <P><strong>Import</strong> — opens a file picker. Loading a board replaces the current board. Unsupported schema versions are rejected with an error toast.</P>
+      <H3>Day / Night toggle</H3>
+      <P>The sun/moon icon in the center of the toolbar switches between dark and light themes. Your preference is saved to the browser.</P>
+
+      <H3>New Board</H3>
+      <P>Creates a new blank board. You will be prompted to confirm — your current board will be lost unless you export it first.</P>
+
+      <H3>Import</H3>
+      <P>Opens a file picker. Loading a board replaces the current board. Only <code>.brainboard.json</code> files (schema version 1) are accepted.</P>
+
+      <H3>Export</H3>
+      <P>Opens a format picker with three options:</P>
+      <P><strong>Board Data (.json)</strong> — the full Brainboard format. Use this to archive or reimport your board.</P>
+      <P><strong>Fountain (.fountain)</strong> — a screenplay skeleton for Highland, Slugline, Final Draft, or any Fountain-aware tool. Structural data (Act/Sequence/Scene attributes, beats, characters, shots) is emitted as Fountain boneyard blocks and action lines.</P>
+      <P><strong>Final Draft (.fdx)</strong> — a screenplay skeleton for Final Draft 10+. Scene headings carry title and synopsis metadata for Final Draft's navigator panel.</P>
 
       <H3>Templates</H3>
-      <P>Opens the template browser. Each template can be loaded as a new board (replacing current content) or merged into the existing board (content is appended and offset by 300px to avoid overlap).</P>
-      <P>To create your own template: make a board, export it, and place the <code>.json</code> file in <code>src/templates/</code>. Restart the dev server and it appears in the browser.</P>
+      <P>Opens the template browser. Each template can be loaded as a new board (replacing current content) or merged into the existing board (content is appended and offset to avoid overlap).</P>
+      <P><strong>My Templates</strong> tab — save your current board as a reusable template using the "Save current board" button. Saved templates persist in the browser.</P>
 
-      <H3>Publish All / Publish Selected</H3>
-      <P><strong>Publish All</strong> — converts every draft card to a published entity in one action.</P>
-      <P><strong>Publish Selected</strong> — appears when cards are selected. Publishes only the selected drafts.</P>
+      <H3>Outline</H3>
+      <P>Generates a Markdown outline of the current board, derived from the spatial structure of your backdrops and cards. The outline updates live while the modal is open. Use <strong>Copy Markdown</strong> to copy to the clipboard, or <strong>Export .md</strong> to download the file.</P>
 
       <H3>Status bar</H3>
-      <P>The bar at the bottom shows: selection count (left), and board statistics on the right — Backdrops, Cards, Entities, Drafts.</P>
+      <P>The bar at the bottom shows the current selection count on the left. On the right: Backdrops, Cards, and Entities counts. If any cards have Status set to Draft, a Drafts count also appears.</P>
     </div>
   )
 }
 
+// ── Shortcuts ─────────────────────────────────────────────────────────────────
+
 function ShortcutsHelp() {
-  const rows: [string, string][] = [
-    ['Double-click canvas',  'Create card at cursor position'],
-    ['Double-click card',    'Enter edit mode'],
-    ['Right-click canvas',   'Canvas context menu (new card, new backdrop)'],
-    ['Right-click card',     'Card context menu (edit, duplicate, instance, delete)'],
-    ['Drag card',            'Move card (drag handle bar in edit mode)'],
-    ['Drag canvas',          'Rubber-band select cards'],
-    ['Space + Drag',         'Pan the canvas'],
-    ['Middle mouse + Drag',  'Pan the canvas'],
-    ['Scroll wheel',         'Zoom toward cursor'],
-    ['F',                    'Frame all cards in view'],
-    ['Ctrl A',               'Select all cards'],
-    ['Shift + Click',        'Add or remove from selection'],
-    ['Esc',                  'Clear selection / cancel creation mode / exit edit mode'],
-    ['Ctrl D',               'Duplicate selected card(s)'],
-    ['Ctrl I',               'Create instance of selected published card'],
-    ['Delete / Backspace',   'Delete selected card(s)'],
+  const rows: [string[], string][] = [
+    [['Double-click canvas'],     'Create card at cursor position'],
+    [['Double-click card'],       'Enter edit mode'],
+    [['Tab'],                     'Open spotlight menu — type to filter, Enter to create'],
+    [['Right-click canvas'],      'Canvas context menu (new card, new backdrop)'],
+    [['Right-click card'],        'Card context menu (edit, duplicate, instance, delete)'],
+    [['Space', 'Drag'],           'Pan the canvas'],
+    [['Middle mouse', 'Drag'],    'Pan the canvas'],
+    [['Scroll wheel'],            'Zoom toward cursor'],
+    [['F'],                       'Frame all cards and backdrops in view'],
+    [['Ctrl', 'Z'],               'Undo'],
+    [['Ctrl', 'Y'],               'Redo (also Ctrl Shift Z)'],
+    [['Ctrl', 'A'],               'Select all cards'],
+    [['Click'],                   'Select card'],
+    [['Shift', 'Click'],          'Add or remove card from selection'],
+    [['Drag canvas'],             'Rubber-band select cards'],
+    [['Ctrl', 'D'],               'Duplicate selected card(s)'],
+    [['Ctrl', 'I'],               'Create instance of selected card'],
+    [['Delete / Backspace'],      'Delete selected card(s)'],
+    [['Esc'],                     'Clear selection / cancel creation mode / close menus'],
   ]
 
   return (
@@ -213,19 +308,19 @@ function ShortcutsHelp() {
       <table className={styles.table}>
         <thead>
           <tr>
-            <th className={styles.th}>Action</th>
             <th className={styles.th}>Shortcut</th>
+            <th className={styles.th}>Action</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(([shortcut, desc]) => (
-            <tr key={shortcut} className={styles.tr}>
+          {rows.map(([keys, desc]) => (
+            <tr key={desc} className={styles.tr}>
               <td className={styles.tdShortcut}>
-                {shortcut.split(' + ').map((k, i, arr) => (
-                  <span key={k}>
+                {keys.map((k, i) => (
+                  <React.Fragment key={k}>
                     <Kbd>{k}</Kbd>
-                    {i < arr.length - 1 && <span className={styles.plus}> + </span>}
-                  </span>
+                    {i < keys.length - 1 && <span className={styles.plus}> + </span>}
+                  </React.Fragment>
                 ))}
               </td>
               <td className={styles.tdDesc}>{desc}</td>

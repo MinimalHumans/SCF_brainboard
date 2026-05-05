@@ -3,6 +3,7 @@ import { useBoardStore }      from '@/store/boardStore'
 import { useViewerStore }     from '@/store/viewerStore'
 import { useHistoryStore }    from '@/store/historyStore'
 import { useThemeStore }      from '@/store/themeStore'
+import { AboutPopover }       from './AboutPopover'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
 import { ExportPopover }      from './ExportPopover'
 import styles                 from './Toolbar.module.css'
@@ -36,15 +37,31 @@ export function Toolbar({
 
   const boardNameBtnRef               = useRef<HTMLButtonElement>(null)
   const exportBtnRef                  = useRef<HTMLButtonElement>(null)
+  const wordmarkBtnRef                = useRef<HTMLButtonElement>(null)
   const [showInfoPopover,   setShowInfoPopover]   = useState(false)
   const [showExportPopover, setShowExportPopover] = useState(false)
+  const [showAboutPopover,  setShowAboutPopover]  = useState(false)
 
   const zoomPct = Math.round(zoom * 100)
 
   return (
     <header className={styles.toolbar}>
       <div className={styles.left}>
-        <span className={`${styles.wordmark} text-display`}>Brainboard</span>
+        <button
+          ref={wordmarkBtnRef}
+          className={`${styles.wordmark} ${styles.wordmarkBtn} text-display`}
+          onClick={() => setShowAboutPopover(v => !v)}
+          title="About Brainboard"
+        >
+          Brainboard
+        </button>
+
+        {showAboutPopover && (
+          <AboutPopover
+            anchorRef={wordmarkBtnRef}
+            onClose={() => setShowAboutPopover(false)}
+          />
+        )}
         <span className={styles.divider} aria-hidden="true" />
 
         {/* Board name — click opens project info popover */}

@@ -43,6 +43,17 @@
   flex-shrink:    0;
 }
 
+/* When the wordmark is a button it needs reset styles + a subtle hover */
+.wordmarkBtn {
+  background:    transparent;
+  border:        none;
+  padding:       2px var(--space-1);
+  border-radius: var(--radius-xs);
+  cursor:        pointer;
+  transition:    opacity var(--duration-fast) var(--easing-out);
+}
+.wordmarkBtn:hover { opacity: 0.75; }
+
 .divider {
   width:            1px;
   height:           18px;
