@@ -1,0 +1,55 @@
+name: Build and Deploy
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd brainboard
+          npm install
+
+      - name: Build project
+        run: |
+          cd brainboard
+          npm run build
+
+      - name: Zip dist directory
+        run: |
+          cd brainboard/dist
+          zip -r ../../dist.zip .
+          cd ../..
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Deployment Webhook
+        if: success()
+        run: |
+          curl -X POST \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_SECRET }}" \
+            "${{ secrets.DEPLOY_WEBHOOK_URL }}"

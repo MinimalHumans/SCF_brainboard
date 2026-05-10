@@ -1,0 +1,8 @@
+<?php
+// php/deploy/config.php - DO NOT COMMIT THIS FILE IF IT CONTAINS REAL SECRETS
+// On your server, create this file manually or via your host's file manager.
+
+define('DEPLOY_SECRET', 'your_super_secret_hash_here');
+
+// Optional: override default target directory
+// define('DEPLOY_TARGET', '/home/user/public_html/'); 
