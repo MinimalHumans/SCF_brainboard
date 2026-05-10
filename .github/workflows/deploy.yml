@@ -49,6 +49,5 @@ jobs:
       - name: Trigger Deployment Webhook
         if: success()
         run: |
-          curl -X POST \
-            -H "X-Deploy-Token: ${{ secrets.DEPLOY_SECRET }}" \
-            "${{ secrets.DEPLOY_WEBHOOK_URL }}"
+          curl --fail -X POST \
+            "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_SECRET }}"
