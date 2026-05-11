@@ -72,7 +72,7 @@ export function ExportPopover({ anchorRef, onClose, onExportJson }: ExportPopove
   const options: ExportOption[] = [
     {
       label:  'Board Data',
-      desc:   'Full Brainboard format — reimport or archive',
+      desc:   'Full Scriptyard format — reimport or archive',
       ext:    '.json',
       action: () => {
         onExportJson?.()

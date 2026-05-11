@@ -57,9 +57,9 @@ export function Toolbar({
           ref={wordmarkBtnRef}
           className={`${styles.wordmark} ${styles.wordmarkBtn} text-display`}
           onClick={() => setShowAboutPopover(v => !v)}
-          title="About Brainboard"
+          title="About Scriptyard"
         >
-          Brainboard
+          Scriptyard
         </button>
 
         {showAboutPopover && (

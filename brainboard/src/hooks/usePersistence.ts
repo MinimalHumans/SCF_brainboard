@@ -45,7 +45,7 @@ export function usePersistence() {
     const a        = document.createElement('a')
     const safeName = board.name.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() || 'board'
     a.href         = url
-    a.download     = `${safeName}.brainboard.json`
+    a.download     = `${safeName}.scriptyard.json`
     a.click()
     URL.revokeObjectURL(url)
     toast.success(`Exported "${board.name}"`)
@@ -55,7 +55,7 @@ export function usePersistence() {
   const importBoard = useCallback(() => {
     const input    = document.createElement('input')
     input.type     = 'file'
-    input.accept   = '.json,.brainboard.json'
+    input.accept   = '.json,.brainboard.json,.scriptyard.json'
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return

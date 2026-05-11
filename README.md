@@ -1,8 +1,8 @@
-# Brainboard
+# Scriptyard
 
 **A spatial story-planning tool for screenwriters.**
 
-Brainboard lets you arrange cards and backdrops on an infinite canvas to map your characters, locations, scenes, and story structure — then export directly to Markdown, Fountain, or Final Draft to start writing.
+Scriptyard lets you arrange cards and backdrops on an infinite canvas to map your characters, locations, scenes, and story structure — then export directly to Markdown, Fountain, or Final Draft to start writing.
 
 Built by [Minimal Humans](http://minimal-humans.com/).  
 Questions, feedback, and feature requests → [Discord](https://discord.gg/T42Y2tPXsJ)
@@ -164,9 +164,9 @@ src/
 
 ## Adding templates
 
-1. Create a board in Brainboard.
+1. Create a board in Scriptyard.
 2. Export it — toolbar → Export → Board Data.
-3. Copy the `.brainboard.json` file into `src/templates/`.
+3. Copy the `.Scriptyard.json` file into `src/templates/`.
 4. Rename it to something descriptive, e.g. `three-act-structure.json`.
 5. Restart the dev server (`npm run dev`).
 

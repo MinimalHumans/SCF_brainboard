@@ -79,9 +79,9 @@ function Kbd({ children }: { children: React.ReactNode }) {
 function AboutHelp() {
   return (
     <div>
-      <H2>About Brainboard</H2>
+      <H2>About Scriptyard</H2>
       <P>
-        Brainboard is a spatial story-planning tool built for screenwriters and storytellers.
+        Scriptyard is a spatial story-planning tool built for screenwriters and storytellers.
         Arrange cards and backdrops on an infinite canvas to map your characters, locations,
         scenes, and structure — then export to Markdown, Fountain, or Final Draft to start writing.
       </P>
@@ -237,8 +237,8 @@ function ToolbarHelp() {
     <div>
       <H2>Toolbar</H2>
 
-      <H3>About (Brainboard logo)</H3>
-      <P>Click the <strong>Brainboard</strong> wordmark in the top-left to open the About panel, which has links to the Minimal Humans website and the Discord community.</P>
+      <H3>About (Scriptyard logo)</H3>
+      <P>Click the <strong>Scriptyard</strong> wordmark in the top-left to open the About panel, which has links to the Minimal Humans website and the Discord community.</P>
 
       <H3>Board name and project info</H3>
       <P>Click the <strong>board name</strong> to open the Project Info panel. Here you can rename the board and fill in screenplay title-page fields — Credit, Author, Source, Draft Date, Contact, and Copyright. These fields are used when exporting to Fountain or Final Draft.</P>
@@ -256,11 +256,11 @@ function ToolbarHelp() {
       <P>Creates a new blank board. You will be prompted to confirm — your current board will be lost unless you export it first.</P>
 
       <H3>Import</H3>
-      <P>Opens a file picker. Loading a board replaces the current board. Only <code>.brainboard.json</code> files (schema version 1) are accepted.</P>
+      <P>Opens a file picker. Loading a board replaces the current board. Only <code>.scriptyard.json</code> files (schema version 1) are accepted.</P>
 
       <H3>Export</H3>
       <P>Opens a format picker with three options:</P>
-      <P><strong>Board Data (.json)</strong> — the full Brainboard format. Use this to archive or reimport your board.</P>
+      <P><strong>Board Data (.json)</strong> — the full Scriptyard format. Use this to archive or reimport your board.</P>
       <P><strong>Fountain (.fountain)</strong> — a screenplay skeleton for Highland, Slugline, Final Draft, or any Fountain-aware tool. Structural data (Act/Sequence/Scene attributes, beats, characters, shots) is emitted as Fountain boneyard blocks and action lines.</P>
       <P><strong>Final Draft (.fdx)</strong> — a screenplay skeleton for Final Draft 10+. Scene headings carry title and synopsis metadata for Final Draft's navigator panel.</P>
 

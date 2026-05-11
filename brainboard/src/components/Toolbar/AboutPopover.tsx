@@ -44,7 +44,7 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
       onClick={e => e.stopPropagation()}
     >
       <div className={styles.brand}>
-        <span className={`${styles.wordmark} text-display`}>Brainboard</span>
+        <span className={`${styles.wordmark} text-display`}>Scriptyard</span>
         <span className={styles.byline}>Created by Minimal Humans</span>
       </div>
 
