@@ -1,10 +1,8 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react'
-import InfiniteViewer from 'react-infinite-viewer'
 import Selecto from 'react-selecto'
 import { useBoardStore, WORLD_SIZE, WORLD_CENTER, CARD_W, CARD_H } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { useViewerStore } from '@/store/viewerStore'
-import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { CardComponent } from '@/components/Card/Card'
 import { BackdropComponent } from '@/components/Backdrop/Backdrop'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
@@ -13,56 +11,120 @@ import type { BackdropType } from '@/types/board'
 import { TabMenu } from '@/components/TabMenu/TabMenu'
 import styles from './Canvas.module.css'
 
-// ---------------------------------------------------------------------------
-// Backdrop draw-to-create state
-// ---------------------------------------------------------------------------
+/*
+ * Canvas — manual pan/zoom implementation.
+ * ----------------------------------------
+ *
+ * This file replaces a previous react-infinite-viewer implementation. The
+ * reason for the rewrite is a stubborn "double transform" bug on touch
+ * devices: when dragging a card with a finger, both the card AND the canvas
+ * would move in parallel. Every CSS-side fix (touch-action: none, cascaded
+ * through descendants) failed in the field, even though the spec says it
+ * should suffice. The simplest explanation is that something — either iOS
+ * Safari's nested-scrollable-container quirks or an InfiniteViewer-internal
+ * touch handler — was still initiating a parallel pan on the
+ * native-scrollable wrapper that the library used to position its content.
+ *
+ * The bypass: drop the scroll-based positioning entirely. The .world is now
+ * a position:absolute div sitting inside an overflow:hidden shell, and pan
+ * is implemented as a CSS transform we write directly. There is no
+ * scrollable container anywhere in the canvas tree, so the browser has
+ * nothing to native-scroll regardless of touch-action.
+ *
+ * Coordinate system (unchanged from the old code, just sourced differently):
+ *   - viewport.x, viewport.y = world-coord top-left of the visible shell
+ *   - viewport.zoom          = scale factor
+ *   - world transform        = translate3d(-vx*z, -vy*z, 0) scale(z)
+ *     with transform-origin: 0 0
+ *   - screenToWorld(sx, sy)  = (sx/z + vx, sy/z + vy)  (relative to shell)
+ *
+ * Pan triggers:
+ *   - Mouse middle button
+ *   - Mouse left + Space held
+ *   - Touch (primary finger) anywhere on empty world
+ *   - Pen (primary contact) anywhere on empty world
+ *
+ * Pinch zoom (two-finger) is NOT implemented here. The existing build never
+ * had it; this fix is scoped to the double-transform bug. Wheel zoom and
+ * the toolbar zoom controls still work for desktop, and the keyboard
+ * shortcuts (F to frame, Ctrl+Z, etc.) are untouched.
+ */
+
 interface DrawState {
-  type:    BackdropType
-  startX:  number  // world coords
-  startY:  number
+  type:     BackdropType
+  startX:   number  // world coords
+  startY:   number
   currentX: number
   currentY: number
 }
 
+const MIN_ZOOM = 0.1
+const MAX_ZOOM = 4
+
 export function Canvas() {
-  const viewerRef      = useRef<InfiniteViewer>(null)
   const worldRef       = useRef<HTMLDivElement>(null)
   const canvasShellRef = useRef<HTMLDivElement>(null)
   const isSpaceDownRef = useRef(false)
-  const suppressNextClickRef = useRef(false)
-  const lastMouseWorldRef     = useRef({ x: 4000, y: 4000 })
+  const suppressNextClickRef  = useRef(false)
+  const lastMouseWorldRef     = useRef({ x: WORLD_CENTER, y: WORLD_CENTER })
   const lastMouseScreenRef    = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
 
-  const [shellEl, setShellEl]         = useState<HTMLDivElement | null>(null)
-  // Tab menu: stores viewport-center world coords when opened
-  const [tabMenu, setTabMenu]           = useState<{ worldX: number; worldY: number; screenX: number; screenY: number } | null>(null)
+  const [shellEl,      setShellEl]      = useState<HTMLDivElement | null>(null)
+  const [tabMenu,      setTabMenu]      = useState<{ worldX: number; worldY: number; screenX: number; screenY: number } | null>(null)
   const [creationMode, setCreationMode] = useState<BackdropType | null>(null)
-  const [drawState, setDrawState]       = useState<DrawState | null>(null)
-  const [canvasMenu, setCanvasMenu]     = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
+  const [drawState,    setDrawState]    = useState<DrawState | null>(null)
+  const [canvasMenu,   setCanvasMenu]   = useState<{ x: number; y: number; wx: number; wy: number } | null>(null)
 
-  const { board, createCard, duplicateCard, createInstance, deleteCards, setViewport, createBackdrop } = useBoardStore()
-  const undo             = useBoardStore(s => s.undo)
-  const redo             = useBoardStore(s => s.redo)
-  const requestCloseAll  = useEditorSignalStore(s => s.requestCloseAll)
+  // Board state — board updates re-render Canvas (matching the previous
+  // file's pattern). The world's CSS transform is recomputed on render
+  // from viewport, which makes pan/zoom visually update without any
+  // imperative DOM manipulation.
+  const board    = useBoardStore(s => s.board)
+  const viewport = board.viewport
+  const { cards, backdrops } = board
+
+  const createCard      = useBoardStore(s => s.createCard)
+  const duplicateCard   = useBoardStore(s => s.duplicateCard)
+  const createInstance  = useBoardStore(s => s.createInstance)
+  const deleteCards     = useBoardStore(s => s.deleteCards)
+  const createBackdrop  = useBoardStore(s => s.createBackdrop)
+  const undo            = useBoardStore(s => s.undo)
+  const redo            = useBoardStore(s => s.redo)
+
   const { clearSelection, selectMany } = useSelectionStore()
-  const { cards, backdrops }           = board
 
-  // ── Mount: center viewport ────────────────────────────────────────────────
-  useEffect(() => {
-    let frame: number
-    const tryScroll = () => {
-      try {
-        viewerRef.current?.scrollTo(
-          WORLD_CENTER - window.innerWidth  / 2,
-          WORLD_CENTER - (window.innerHeight - 76) / 2
-        )
-      } catch { frame = requestAnimationFrame(tryScroll) }
+  // ── Helpers: read viewport from store synchronously ───────────────────────
+  const getViewport   = useCallback(() => useBoardStore.getState().board.viewport, [])
+  const getViewerZoom = useCallback(() => getViewport().zoom, [getViewport])
+
+  // ── screen → world ─────────────────────────────────────────────────────────
+  const screenToWorld = useCallback((clientX: number, clientY: number) => {
+    const shell = canvasShellRef.current
+    if (!shell) return { x: 0, y: 0 }
+    const rect = shell.getBoundingClientRect()
+    const vp = getViewport()
+    return {
+      x: (clientX - rect.left) / vp.zoom + vp.x,
+      y: (clientY - rect.top)  / vp.zoom + vp.y,
     }
-    frame = requestAnimationFrame(tryScroll)
-    return () => cancelAnimationFrame(frame)
+  }, [getViewport])
+
+  // ── Mount: center viewport on world center ────────────────────────────────
+  // Matches previous behavior (always center on mount). If you ever want to
+  // restore the saved viewport from localStorage instead, you'd skip this
+  // when the loaded viewport is not the default.
+  useEffect(() => {
+    const shell = canvasShellRef.current
+    if (!shell) return
+    const rect = shell.getBoundingClientRect()
+    useBoardStore.getState().setViewport({
+      x: WORLD_CENTER - rect.width / 2,
+      y: WORLD_CENTER - rect.height / 2,
+      zoom: 1,
+    })
   }, [])
 
-  // ── Space key ─────────────────────────────────────────────────────────────
+  // ── Space key tracking ────────────────────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space') return
@@ -81,7 +143,7 @@ export function Canvas() {
     }
   }, [])
 
-  // ── Tab → TabMenu; Escape → cancel modes ────────────────────────────────
+  // ── Tab → TabMenu; Escape → cancel modes ─────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
@@ -90,10 +152,12 @@ export function Canvas() {
       if (e.key === 'Tab') {
         e.preventDefault()
         if (tabMenu) { setTabMenu(null); return }
-        const viewer = viewerRef.current
-        const el     = canvasShellRef.current
-        if (!viewer || !el) return
-        setTabMenu({ worldX: lastMouseWorldRef.current.x, worldY: lastMouseWorldRef.current.y, screenX: lastMouseScreenRef.current.x, screenY: lastMouseScreenRef.current.y })
+        setTabMenu({
+          worldX:  lastMouseWorldRef.current.x,
+          worldY:  lastMouseWorldRef.current.y,
+          screenX: lastMouseScreenRef.current.x,
+          screenY: lastMouseScreenRef.current.y,
+        })
         return
       }
 
@@ -121,21 +185,24 @@ export function Canvas() {
     if (!el) return
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const viewer = viewerRef.current
-      if (!viewer) return
       const rawDelta = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY
-      const oldZoom  = viewer.getZoom()
-      const newZoom  = Math.max(0.1, Math.min(4, oldZoom * Math.exp(-rawDelta / 500)))
-      const rect     = el.getBoundingClientRect()
-      const screenX  = e.clientX - rect.left
-      const screenY  = e.clientY - rect.top
-      const worldX   = screenX / oldZoom + viewer.getScrollLeft()
-      const worldY   = screenY / oldZoom + viewer.getScrollTop()
-      viewer.setTo({ x: worldX - screenX / newZoom, y: worldY - screenY / newZoom, zoom: newZoom })
+      const vp = getViewport()
+      const oldZoom = vp.zoom
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * Math.exp(-rawDelta / 500)))
+      const rect = el.getBoundingClientRect()
+      const sx = e.clientX - rect.left
+      const sy = e.clientY - rect.top
+      const worldX = sx / oldZoom + vp.x
+      const worldY = sy / oldZoom + vp.y
+      useBoardStore.getState().setViewport({
+        x: worldX - sx / newZoom,
+        y: worldY - sy / newZoom,
+        zoom: newZoom,
+      })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [getViewport])
 
   // ── Toolbar zoom commands ─────────────────────────────────────────────────
   const zoomCommand      = useViewerStore(s => s.zoomCommand)
@@ -143,30 +210,35 @@ export function Canvas() {
 
   useEffect(() => {
     if (!zoomCommand) return
-    const viewer = viewerRef.current
-    const el     = canvasShellRef.current
-    if (!viewer || !el) return
-    const vpCx   = el.getBoundingClientRect().width  / 2
-    const vpCy   = el.getBoundingClientRect().height / 2
-    const oldZoom = viewer.getZoom()
-    let newZoom   = oldZoom
-    if (zoomCommand.type === 'in')    newZoom = Math.min(4,   oldZoom * 1.25)
-    if (zoomCommand.type === 'out')   newZoom = Math.max(0.1, oldZoom / 1.25)
+    const el = canvasShellRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const vpCx = rect.width  / 2
+    const vpCy = rect.height / 2
+    const vp = getViewport()
+    const oldZoom = vp.zoom
+    let newZoom = oldZoom
+    if (zoomCommand.type === 'in')    newZoom = Math.min(MAX_ZOOM, oldZoom * 1.25)
+    if (zoomCommand.type === 'out')   newZoom = Math.max(MIN_ZOOM, oldZoom / 1.25)
     if (zoomCommand.type === 'reset') newZoom = 1
-    const worldX = vpCx / oldZoom + viewer.getScrollLeft()
-    const worldY = vpCy / oldZoom + viewer.getScrollTop()
-    viewer.setTo({ x: worldX - vpCx / newZoom, y: worldY - vpCy / newZoom, zoom: newZoom })
+    const worldX = vpCx / oldZoom + vp.x
+    const worldY = vpCy / oldZoom + vp.y
+    useBoardStore.getState().setViewport({
+      x: worldX - vpCx / newZoom,
+      y: worldY - vpCy / newZoom,
+      zoom: newZoom,
+    })
     clearZoomCommand()
-  }, [zoomCommand, clearZoomCommand])
+  }, [zoomCommand, clearZoomCommand, getViewport])
 
-  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  // ── Frame all ─────────────────────────────────────────────────────────────
   const frameAll = useCallback(() => {
-    const viewer = viewerRef.current
     const { cards, backdrops } = useBoardStore.getState().board
-    if (!viewer || (cards.length === 0 && backdrops.length === 0)) return
-    const PAD = 80, TH = 76
+    if (cards.length === 0 && backdrops.length === 0) return
+    const shell = canvasShellRef.current
+    if (!shell) return
+    const PAD = 80
 
-    // Collect all bounding box corners: cards + backdrops
     const x1s = [
       ...cards.map(c => c.position.x),
       ...backdrops.map(b => b.position.x),
@@ -188,23 +260,25 @@ export function Canvas() {
     const minY = Math.min(...y1s) - PAD
     const maxX = Math.max(...x2s) + PAD
     const maxY = Math.max(...y2s) + PAD
-    const vpW  = window.innerWidth
-    const vpH  = window.innerHeight - TH
-    const z    = Math.min(vpW / (maxX - minX), vpH / (maxY - minY), 1)
-    viewer.setTo({ x: (minX+maxX)/2 - vpW/(2*z), y: (minY+maxY)/2 - vpH/(2*z), zoom: z })
+    const rect = shell.getBoundingClientRect()
+    const vpW = rect.width
+    const vpH = rect.height
+    const newZoom = Math.min(vpW / (maxX - minX), vpH / (maxY - minY), 1)
+    useBoardStore.getState().setViewport({
+      x: (minX + maxX) / 2 - vpW / (2 * newZoom),
+      y: (minY + maxY) / 2 - vpH / (2 * newZoom),
+      zoom: newZoom,
+    })
   }, [])
 
-  // ── Toolbar Frame All button via viewer command bus ──────────────────────
-  // The F key still works through the keyboard handler below; this just adds
-  // a second entry point so the toolbar button (and any future tap target)
-  // can trigger the same behaviour without lifting the viewer ref.
+  // Frame All command from toolbar
   const frameCommand = useViewerStore(s => s.frameCommand)
   useEffect(() => {
     if (frameCommand > 0) frameAll()
-    // frameAll reads state via useBoardStore.getState() — identity is stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frameCommand])
 
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
@@ -235,7 +309,7 @@ export function Canvas() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, selectMany, clearSelection, duplicateCard, deleteCards])
+  }, [cards, selectMany, clearSelection, duplicateCard, deleteCards, undo, redo, frameAll, createInstance])
 
   // ── Instance creation ─────────────────────────────────────────────────────
   const handleCreateInstance = useCallback((cardId: string) => {
@@ -244,21 +318,12 @@ export function Canvas() {
     createInstance(cardId, { x: card.position.x + 32, y: card.position.y + 32 })
   }, [createInstance])
 
-  // ── Screen → world coordinate helper ─────────────────────────────────────
-  const screenToWorld = useCallback((clientX: number, clientY: number) => {
-    const viewer = viewerRef.current
-    const world  = worldRef.current
-    if (!viewer || !world) return { x: 0, y: 0 }
-    const zoom = viewer.getZoom()
-    const rect = world.getBoundingClientRect()
-    return { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom }
-  }, [])
-
-  // ── Pan ────────────────────────────────────────────────────────────────────
+  // ── World pointerdown — pan / draw ─────────────────────────────────────────
   const handleWorldPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only respond when the pointer hit empty world (not a card / backdrop).
     if (e.target !== e.currentTarget) return
 
-    // In creation mode: start drawing a backdrop
+    // Creation mode: start drawing a backdrop
     if (creationMode && e.button === 0) {
       const { x, y } = screenToWorld(e.clientX, e.clientY)
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -266,20 +331,36 @@ export function Canvas() {
       return
     }
 
-    const isPan = e.button === 1 || (e.button === 0 && isSpaceDownRef.current)
-    if (!isPan) return
+    // Second touch ignored — we only handle primary pointer pan. Reserved
+    // for a future pinch-zoom implementation if Chris wants it.
+    if (e.pointerType === 'touch' && !e.isPrimary) return
+
+    // Pan triggers:
+    //   - mouse: middle button OR left + Space
+    //   - touch: primary finger
+    //   - pen:   primary contact
+    const isPanIntent =
+      (e.pointerType === 'mouse' && (e.button === 1 || (e.button === 0 && isSpaceDownRef.current))) ||
+      (e.pointerType === 'touch' && e.isPrimary) ||
+      (e.pointerType === 'pen'   && e.isPrimary)
+
+    if (!isPanIntent) return
 
     const target = e.currentTarget
     target.setPointerCapture(e.pointerId)
     target.style.cursor = 'grabbing'
 
-    const viewer = viewerRef.current!
     const startX = e.clientX, startY = e.clientY
-    const startSX = viewer.getScrollLeft(), startSY = viewer.getScrollTop()
+    const start  = getViewport()
 
     const onMove = (me: PointerEvent) => {
-      const zoom = viewer.getZoom()
-      viewer.scrollTo(startSX - (me.clientX - startX) / zoom, startSY - (me.clientY - startY) / zoom)
+      const dx = me.clientX - startX
+      const dy = me.clientY - startY
+      useBoardStore.getState().setViewport({
+        x: start.x - dx / start.zoom,
+        y: start.y - dy / start.zoom,
+        zoom: start.zoom,
+      })
     }
     const onUp = () => {
       target.style.cursor = ''
@@ -288,27 +369,26 @@ export function Canvas() {
     }
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup',   onUp)
-  }, [creationMode, screenToWorld])
+  }, [creationMode, screenToWorld, getViewport])
 
   const handleWorldPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Always track cursor world position for Tab menu placement
-    const viewer = viewerRef.current
-    const world  = worldRef.current
-    if (viewer && world) {
-      const zoom = viewer.getZoom()
-      const rect = world.getBoundingClientRect()
+    // Track cursor world position for Tab menu placement
+    const vp = getViewport()
+    const shell = canvasShellRef.current
+    if (shell) {
+      const rect = shell.getBoundingClientRect()
       lastMouseWorldRef.current = {
-        x: (e.clientX - rect.left) / zoom,
-        y: (e.clientY - rect.top)  / zoom,
+        x: (e.clientX - rect.left) / vp.zoom + vp.x,
+        y: (e.clientY - rect.top)  / vp.zoom + vp.y,
       }
     }
     lastMouseScreenRef.current = { x: e.clientX, y: e.clientY }
     if (!drawState) return
     const { x, y } = screenToWorld(e.clientX, e.clientY)
     setDrawState(s => s ? { ...s, currentX: x, currentY: y } : null)
-  }, [drawState, screenToWorld])
+  }, [drawState, screenToWorld, getViewport])
 
-  const handleWorldPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  const handleWorldPointerUp = useCallback(() => {
     if (!drawState) return
     const { type, startX, startY, currentX, currentY } = drawState
 
@@ -317,7 +397,6 @@ export function Canvas() {
     const w = Math.abs(currentX - startX)
     const h = Math.abs(currentY - startY)
 
-    // Only create if large enough to be intentional
     if (w >= 80 && h >= 60) {
       createBackdrop({ x, y }, { width: w, height: h }, type)
     }
@@ -327,7 +406,7 @@ export function Canvas() {
     suppressNextClickRef.current = true
   }, [drawState, createBackdrop])
 
-  // ── Canvas right-click menu ───────────────────────────────────────────────
+  // ── Right-click menu ─────────────────────────────────────────────────────
   const handleWorldContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return
     e.preventDefault()
@@ -335,7 +414,6 @@ export function Canvas() {
     setCanvasMenu({ x: e.clientX, y: e.clientY, wx: x, wy: y })
   }, [screenToWorld])
 
-  // Menu items use setCreationMode so the user draws the backdrop bounds
   const canvasMenuItems: ContextMenuItem[] = canvasMenu ? [
     { label: 'New Card here', onClick: () => createCard({ x: canvasMenu.wx - CARD_W / 2, y: canvasMenu.wy - CARD_H / 2 }) },
     { label: 'Draw Act backdrop',      divider: true, onClick: () => setCreationMode('Act')      },
@@ -359,13 +437,6 @@ export function Canvas() {
     if (!creationMode) clearSelection()
   }, [clearSelection, creationMode])
 
-  const syncViewport = useCallback(() => {
-    const v = viewerRef.current
-    if (v) setViewport({ x: v.getScrollLeft(), y: v.getScrollTop(), zoom: v.getZoom() })
-  }, [setViewport])
-
-  const getViewerZoom = useCallback(() => viewerRef.current?.getZoom() ?? 1, [])
-
   // ── Draw preview dimensions ───────────────────────────────────────────────
   const drawPreview = drawState ? {
     x: Math.min(drawState.startX, drawState.currentX),
@@ -373,6 +444,11 @@ export function Canvas() {
     w: Math.abs(drawState.currentX - drawState.startX),
     h: Math.abs(drawState.currentY - drawState.startY),
   } : null
+
+  // ── World transform — recomputed on every viewport change ─────────────────
+  // translate3d + scale, transform-origin: 0 0 (set in CSS).
+  // translate3d nudges the browser onto the GPU compositor for smoother pan.
+  const worldTransform = `translate3d(${-viewport.x * viewport.zoom}px, ${-viewport.y * viewport.zoom}px, 0) scale(${viewport.zoom})`
 
   return (
     <div
@@ -382,66 +458,61 @@ export function Canvas() {
         creationMode ? styles.drawMode : '',
       ].join(' ').trim()}
     >
-      <InfiniteViewer
-        ref={viewerRef}
-        className={styles.viewer}
-        useMouseDrag={false}
-        useWheelScroll={false}
-        onScroll={syncViewport}
-        onZoom={syncViewport}
+      <div
+        ref={worldRef}
+        className={`${styles.world} canvas-grid`}
+        style={{
+          width:     WORLD_SIZE,
+          height:    WORLD_SIZE,
+          transform: worldTransform,
+        }}
+        onPointerDown={handleWorldPointerDown}
+        onPointerMove={handleWorldPointerMove}
+        onPointerUp={handleWorldPointerUp}
+        onDoubleClick={handleWorldDoubleClick}
+        onClick={handleWorldClick}
+        onContextMenu={handleWorldContextMenu}
       >
-        <div
-          ref={worldRef}
-          className={`${styles.world} canvas-grid`}
-          style={{ width: WORLD_SIZE, height: WORLD_SIZE }}
-          onPointerDown={handleWorldPointerDown}
-          onPointerMove={handleWorldPointerMove}
-          onPointerUp={handleWorldPointerUp}
-          onDoubleClick={handleWorldDoubleClick}
-          onClick={handleWorldClick}
-          onContextMenu={handleWorldContextMenu}
-        >
-          {/* Backdrop layer — always behind cards */}
-          <div className={styles.backdropLayer}>
-            {backdrops.map(backdrop => (
-              <BackdropComponent
-                key={backdrop.id}
-                backdrop={backdrop}
-                getViewerZoom={getViewerZoom}
-                worldRef={worldRef}
-              />
-            ))}
+        {/* Backdrop layer — always behind cards */}
+        <div className={styles.backdropLayer}>
+          {backdrops.map(backdrop => (
+            <BackdropComponent
+              key={backdrop.id}
+              backdrop={backdrop}
+              getViewerZoom={getViewerZoom}
+              worldRef={worldRef}
+            />
+          ))}
 
-            {/* Draw preview rect */}
-            {drawPreview && drawPreview.w > 4 && drawPreview.h > 4 && (
-              <div
-                className={styles.drawPreview}
-                style={{
-                  transform: `translate(${drawPreview.x}px, ${drawPreview.y}px)`,
-                  width:     drawPreview.w,
-                  height:    drawPreview.h,
-                }}
-              />
-            )}
-          </div>
-
-          {/* Card layer */}
-          <div className={styles.cardLayer}>
-            {cards.map(card => (
-              <CardComponent
-                key={card.id}
-                card={card}
-                allCards={cards}
-                getViewerZoom={getViewerZoom}
-                onCreateInstance={handleCreateInstance}
-                worldRef={worldRef}
-              />
-            ))}
-          </div>
+          {/* Draw preview rect */}
+          {drawPreview && drawPreview.w > 4 && drawPreview.h > 4 && (
+            <div
+              className={styles.drawPreview}
+              style={{
+                transform: `translate(${drawPreview.x}px, ${drawPreview.y}px)`,
+                width:     drawPreview.w,
+                height:    drawPreview.h,
+              }}
+            />
+          )}
         </div>
-      </InfiniteViewer>
 
-      {/* Selecto rubber-band */}
+        {/* Card layer */}
+        <div className={styles.cardLayer}>
+          {cards.map(card => (
+            <CardComponent
+              key={card.id}
+              card={card}
+              allCards={cards}
+              getViewerZoom={getViewerZoom}
+              onCreateInstance={handleCreateInstance}
+              worldRef={worldRef}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Selecto rubber-band — desktop only via dragCondition */}
       {shellEl && !creationMode && (
         <Selecto
           container={shellEl}
@@ -451,37 +522,9 @@ export function Canvas() {
           selectByClick={false}
           continueSelect={false}
           dragCondition={e => {
-            /*
-             * Touch bail-out — Phase 2.
-             *
-             * Selecto's `inputEvent` can be a PointerEvent, MouseEvent, or
-             * TouchEvent depending on the browser and which event family
-             * Selecto's internal gesto layer chose for this gesture. We
-             * check for touch via both paths because either may surface:
-             *
-             *  - Modern browsers using Pointer Events: PointerEvent with
-             *    pointerType === 'touch'.
-             *  - Browsers/paths falling back to legacy touch handling:
-             *    TouchEvent instance (typeof guard for desktop Safari
-             *    where TouchEvent may not exist as a constructor).
-             *
-             * When touch is detected we bail out, leaving InfiniteViewer's
-             * built-in touch scroll to handle single-finger pan. Without
-             * this bail-out, touch drags double-fire as both pan AND
-             * rubber-band, which was the reported bug.
-             *
-             * Multi-select is intentionally desktop-only — confirmed with
-             * Chris in the planning step.
-             */
             const ie = e.inputEvent as PointerEvent | MouseEvent | TouchEvent
-
-            if ('pointerType' in ie && (ie as PointerEvent).pointerType === 'touch') {
-              return false
-            }
-            if (typeof TouchEvent !== 'undefined' && ie instanceof TouchEvent) {
-              return false
-            }
-
+            if ('pointerType' in ie && (ie as PointerEvent).pointerType === 'touch') return false
+            if (typeof TouchEvent !== 'undefined' && ie instanceof TouchEvent) return false
             const target = ie.target as Element
             if (target.closest('[data-card-id]') || target.closest('[data-backdrop-id]')) return false
             if (isSpaceDownRef.current) return false

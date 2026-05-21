@@ -2,6 +2,32 @@
   flex:     1;
   position: relative;
   overflow: hidden;
+
+  /*
+   * Suppress browser-native touch behaviour at the canvas boundary.
+   *
+   *   touch-action: none
+   *     Tells the browser not to initiate any native gesture (scroll,
+   *     pinch-zoom, double-tap-zoom) on touches that start inside the
+   *     canvas. Since we now do all panning via CSS transform on the
+   *     .world child, there is no longer any scrollable container for
+   *     the browser to scroll — but setting this also blocks page-zoom
+   *     gestures and pull-to-refresh, which are unwanted inside an app
+   *     canvas.
+   *
+   *   overscroll-behavior: contain
+   *     If anything inside the canvas ever does become scrollable, this
+   *     prevents the scroll from chaining up to ancestor scroll
+   *     containers (e.g. the page). Defence in depth.
+   *
+   * The previous CSS-only touch-action cascade through card and backdrop
+   * descendants is preserved in those component CSS modules. It's now
+   * redundant for the double-transform bug specifically (because there
+   * is no scrollable ancestor), but still useful for blocking iOS
+   * gestures that originate on a card.
+   */
+  touch-action:        none;
+  overscroll-behavior: contain;
 }
 
 .drawMode {
@@ -9,11 +35,33 @@
 }
 .drawMode * { cursor: crosshair !important; }
 
-.viewer { width: 100%; height: 100%; }
-
+/*
+ * .world
+ *
+ * The world is a fixed-size (WORLD_SIZE x WORLD_SIZE) div positioned
+ * absolutely inside the canvasShell. Pan/zoom is implemented as a
+ * CSS transform written from React state on every render:
+ *
+ *   transform: translate3d(-vx*z, -vy*z, 0) scale(z)
+ *   transform-origin: 0 0
+ *
+ * The translate3d (rather than translate) is a deliberate compositor
+ * hint — it pushes the world onto the GPU layer in most browsers,
+ * which makes pan feel smoother during touch drag.
+ */
 .world {
-  position: relative;
-  cursor:   default;
+  position:         absolute;
+  left:             0;
+  top:              0;
+  cursor:           default;
+  transform-origin: 0 0;
+
+  /*
+   * Same touch-action rationale as .canvasShell. Belt and braces —
+   * if any future change makes the world a scroll container, this
+   * still suppresses native scroll on it.
+   */
+  touch-action:     none;
 }
 
 /*
