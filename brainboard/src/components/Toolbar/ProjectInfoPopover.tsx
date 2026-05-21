@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useBoardStore, snapshotBoard } from '@/store/boardStore'
 import type { ProjectInfo } from '@/types/board'
 import styles from './ProjectInfoPopover.module.css'
+import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
 
 interface ProjectInfoPopoverProps {
   anchorRef: React.RefObject<HTMLButtonElement>
@@ -85,7 +86,7 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
           onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}
           placeholder="Board name"
           maxLength={80}
-          autoFocus
+          autoFocus={!IS_TOUCH_PRIMARY}
         />
       </div>
 
