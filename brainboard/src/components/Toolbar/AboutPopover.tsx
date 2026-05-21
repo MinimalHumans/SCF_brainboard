@@ -45,7 +45,7 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     >
       <div className={styles.brand}>
         <span className={`${styles.wordmark} text-display`}>Scriptyard</span>
-        <span className={styles.byline}>Created by Minimal Humans - v0.1.5</span>
+        <span className={styles.byline}>Created by Minimal Humans - v0.1.6</span>
       </div>
 
       <div className={styles.divider} />
@@ -55,11 +55,11 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
           <span className={styles.linkLabel}>Website</span>
           <a
             className={styles.link}
-            href="https://minimal-humans.com/"
+            href="https://minimalhumans.com/"
             target="_blank"
             rel="noopener noreferrer"
           >
-            minimal-humans.com
+            minimalhumans.com
           </a>
         </div>
 
