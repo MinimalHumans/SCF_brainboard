@@ -31,15 +31,16 @@ export function Toolbar({
   onHelp,
   onNewBoard,
 }: ToolbarProps) {
-  const boardName   = useBoardStore(s => s.board.name)
-  const zoom        = useBoardStore(s => s.board.viewport.zoom)
-  const requestZoom = useViewerStore(s => s.requestZoom)
-  const undo        = useBoardStore(s => s.undo)
-  const redo        = useBoardStore(s => s.redo)
-  const canUndo     = useHistoryStore(s => s.canUndo())
-  const canRedo     = useHistoryStore(s => s.canRedo())
-  const theme       = useThemeStore(s => s.theme)
-  const toggleTheme = useThemeStore(s => s.toggle)
+  const boardName    = useBoardStore(s => s.board.name)
+  const zoom         = useBoardStore(s => s.board.viewport.zoom)
+  const requestZoom  = useViewerStore(s => s.requestZoom)
+  const requestFrame = useViewerStore(s => s.requestFrame)
+  const undo         = useBoardStore(s => s.undo)
+  const redo         = useBoardStore(s => s.redo)
+  const canUndo      = useHistoryStore(s => s.canUndo())
+  const canRedo      = useHistoryStore(s => s.canRedo())
+  const theme        = useThemeStore(s => s.theme)
+  const toggleTheme  = useThemeStore(s => s.toggle)
 
   const boardNameBtnRef               = useRef<HTMLButtonElement>(null)
   const exportBtnRef                  = useRef<HTMLButtonElement>(null)
@@ -98,6 +99,15 @@ export function Toolbar({
           <button className={styles.zoomPct} onClick={() => requestZoom({ type: 'reset' })} title="Reset zoom">{zoomPct}%</button>
           <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'in' })} title="Zoom in">+</button>
         </div>
+        {/* Frame all — fits everything in view (same as pressing F) */}
+        <button
+          className={styles.frameBtn}
+          onClick={requestFrame}
+          title="Frame all (F)"
+          aria-label="Frame all"
+        >
+          <FrameIcon />
+        </button>
         {/* Day / Night toggle */}
         <button
           className={styles.themeToggle}
@@ -140,6 +150,15 @@ export function Toolbar({
 }
 
 /* ── Icons ───────────────────────────────────────────────────────────────── */
+
+function FrameIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="10" height="10" rx="1.5"
+        stroke="currentColor" strokeWidth="1.4" fill="none"/>
+    </svg>
+  )
+}
 
 function SunIcon() {
   return (

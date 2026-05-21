@@ -194,6 +194,17 @@ export function Canvas() {
     viewer.setTo({ x: (minX+maxX)/2 - vpW/(2*z), y: (minY+maxY)/2 - vpH/(2*z), zoom: z })
   }, [])
 
+  // ── Toolbar Frame All button via viewer command bus ──────────────────────
+  // The F key still works through the keyboard handler below; this just adds
+  // a second entry point so the toolbar button (and any future tap target)
+  // can trigger the same behaviour without lifting the viewer ref.
+  const frameCommand = useViewerStore(s => s.frameCommand)
+  useEffect(() => {
+    if (frameCommand > 0) frameAll()
+    // frameAll reads state via useBoardStore.getState() — identity is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameCommand])
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const inInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
@@ -440,7 +451,38 @@ export function Canvas() {
           selectByClick={false}
           continueSelect={false}
           dragCondition={e => {
-            const target = (e.inputEvent as MouseEvent).target as Element
+            /*
+             * Touch bail-out — Phase 2.
+             *
+             * Selecto's `inputEvent` can be a PointerEvent, MouseEvent, or
+             * TouchEvent depending on the browser and which event family
+             * Selecto's internal gesto layer chose for this gesture. We
+             * check for touch via both paths because either may surface:
+             *
+             *  - Modern browsers using Pointer Events: PointerEvent with
+             *    pointerType === 'touch'.
+             *  - Browsers/paths falling back to legacy touch handling:
+             *    TouchEvent instance (typeof guard for desktop Safari
+             *    where TouchEvent may not exist as a constructor).
+             *
+             * When touch is detected we bail out, leaving InfiniteViewer's
+             * built-in touch scroll to handle single-finger pan. Without
+             * this bail-out, touch drags double-fire as both pan AND
+             * rubber-band, which was the reported bug.
+             *
+             * Multi-select is intentionally desktop-only — confirmed with
+             * Chris in the planning step.
+             */
+            const ie = e.inputEvent as PointerEvent | MouseEvent | TouchEvent
+
+            if ('pointerType' in ie && (ie as PointerEvent).pointerType === 'touch') {
+              return false
+            }
+            if (typeof TouchEvent !== 'undefined' && ie instanceof TouchEvent) {
+              return false
+            }
+
+            const target = ie.target as Element
             if (target.closest('[data-card-id]') || target.closest('[data-backdrop-id]')) return false
             if (isSpaceDownRef.current) return false
             return true
