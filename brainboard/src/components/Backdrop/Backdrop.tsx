@@ -7,6 +7,7 @@ import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import { SWATCH_KEYS, BACKDROP_TYPES, getContainedCardIds, getContainedBackdropIds } from '@/types/board'
 import { BACKDROP_SCHEMAS } from '@/config/backdropSchemas'
 import type { Backdrop } from '@/types/board'
+import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
 import styles from './Backdrop.module.css'
 
 type HandlePos = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
@@ -52,7 +53,15 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     if (e.button !== 0) return
     const target = e.target as HTMLElement
     if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT') return
+
+    // Stop the NATIVE event from reaching gesto / InfiniteViewer.
+    // Without this, touch-dragging the header double-fires as both our
+    // pointer-event drag AND a parallel canvas pan from gesto's native
+    // listener. See useCardDrag.ts top-of-file comment for full details.
+    e.nativeEvent.stopImmediatePropagation()
+
     e.stopPropagation()
+
     const headerEl   = e.currentTarget
     headerEl.setPointerCapture(e.pointerId)
     const backdropEl = headerEl.closest('[data-backdrop-id]') as HTMLElement | null
@@ -110,7 +119,13 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   }, [liveBackdrop, board.cards, board.backdrops, getViewerZoom, moveBackdropWithCards])
 
   const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, pos: HandlePos) => {
-    e.stopPropagation(); e.preventDefault()
+    // Same native-stop as header drag — resize handles also need to block
+    // gesto from starting a parallel pan on touch.
+    e.nativeEvent.stopImmediatePropagation()
+
+    e.stopPropagation()
+    e.preventDefault()
+
     const handleEl   = e.currentTarget
     handleEl.setPointerCapture(e.pointerId)
     const backdropEl = handleEl.closest('[data-backdrop-id]') as HTMLElement | null
@@ -247,7 +262,11 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             </select>
           </div>
 
-          {/* Title — snapshot on focus, then free-type */}
+          {/* Title — snapshot on focus, then free-type.
+              autoFocus is gated to non-touch devices: on touch, autoFocus
+              would summon the iOS keyboard the moment the panel opens,
+              shifting the visual viewport and pushing the toolbar offscreen.
+              Touch users tap the field to focus when they want to edit. */}
           <div className={styles.field}>
             <label className={styles.label}>Title</label>
             <input
@@ -256,7 +275,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
               onFocus={() => snapshotBoard()}
               onChange={e => updateBackdropContent(liveBackdrop.id, { title: e.target.value })}
               placeholder={liveBackdrop.type}
-              autoFocus
+              autoFocus={!IS_TOUCH_PRIMARY}
             />
           </div>
 

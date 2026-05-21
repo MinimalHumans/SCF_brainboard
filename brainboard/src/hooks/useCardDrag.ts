@@ -13,6 +13,27 @@ import type { Card } from '@/types/board'
  *   - When card is in 'open' mode, only drag if the pointer hit the drag
  *     handle bar (data-drag-handle attribute on the handle element).
  *   - Selection logic unchanged.
+ *
+ * Touch fix (current):
+ *   InfiniteViewer is built on the `gesto` library, which attaches NATIVE
+ *   pointerdown/touchstart listeners directly to its container element.
+ *   React's `e.stopPropagation()` only stops the synthetic event tree, NOT
+ *   the native event — so without an explicit native stop, gesto receives
+ *   the same pointerdown that started our card drag and runs its own pan
+ *   in parallel. Visible result: the card moves AND the canvas pans (the
+ *   "double transform" bug, identical in Chrome and Safari since it's a
+ *   JS-listener conflict, not a browser-native gesture issue).
+ *
+ *   The fix is `e.nativeEvent.stopImmediatePropagation()` immediately after
+ *   we decide this pointerdown is ours. stopImmediatePropagation is the
+ *   strong form: it stops bubbling AND prevents other listeners on the
+ *   same element from firing, which matters because gesto may attach at a
+ *   shared ancestor.
+ *
+ *   We still call React's e.stopPropagation() for the synthetic tree so
+ *   parent React components (selection clearer on canvas click etc) also
+ *   don't see this event. Both calls are needed; they cover separate
+ *   event paths.
  */
 
 const INTERACTIVE_TAGS = new Set(['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'])
@@ -38,6 +59,11 @@ export function useCardDrag(
       // When open (edit mode), only drag from the designated drag handle bar.
       // Clicking anywhere else in an open card is for text editing, not dragging.
       if (isOpen && !target.closest('[data-drag-handle]')) return
+
+      // Stop the NATIVE event from reaching gesto / InfiniteViewer.
+      // Must happen before React's stopPropagation — see top-of-file comment
+      // for why both are needed.
+      e.nativeEvent.stopImmediatePropagation()
 
       e.stopPropagation()
 
