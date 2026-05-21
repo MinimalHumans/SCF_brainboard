@@ -361,3 +361,24 @@
   transition: background-color var(--duration-fast) var(--easing-out);
 }
 .publishBtn:hover { background-color: var(--color-accent-hover); }
+
+/* ==========================================================================
+   Touch hit targets (Phase 6)
+   ==========================================================================
+ *
+ * Coarse-pointer (touch) devices need bigger tap targets. Apple HIG and
+ * Material both recommend ~44px minimum, but 32px is the practical floor
+ * for a button-in-a-handle where the surrounding handle bar (28-36px tall)
+ * already provides extra slop.
+ *
+ * Only .flipBtn is targeted here — the SVG icon inside (13x13) stays the
+ * same size, so the visual stays consistent with desktop. Only the
+ * clickable bounding box grows. The handle bar's own min-height (28px) is
+ * left alone — bumping it would cost vertical density on every card.
+ */
+@media (pointer: coarse) {
+  .flipBtn {
+    width:  32px;
+    height: 32px;
+  }
+}

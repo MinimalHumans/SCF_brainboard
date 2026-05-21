@@ -9,48 +9,27 @@ import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { BackdropType, Viewport } from '@/types/board'
 import { TabMenu } from '@/components/TabMenu/TabMenu'
+import { useLongPress } from '@/hooks/useLongPress'
 import styles from './Canvas.module.css'
 
 /*
- * Canvas — pan + pinch zoom + double-tap state machine.
- * -----------------------------------------------------
+ * Canvas — pan + pinch + double-tap + long-press state machine.
+ * -------------------------------------------------------------
  *
- * History: this file used to host react-infinite-viewer for pan/zoom. That
- * was replaced with a transform-based world because of an iOS Safari
- * double-transform bug. This iteration extends the manual implementation
- * with two-finger pinch zoom (Phase 3) and custom touch double-tap-to-
- * create (Phase 5).
+ * Phase 4 (long-press) is wired into the same pointer event loop as
+ * pan/pinch. When the user touches empty world and holds for 500ms
+ * without moving more than 8px, useLongPress fires the canvas context
+ * menu. The callback clears the in-flight pan gesture and releases
+ * pointer capture so the menu (rendered as a portal) can receive
+ * subsequent pointer events normally.
  *
- * Coordinate system (unchanged):
- *   viewport.x, viewport.y = world-coord top-left of the visible shell
- *   viewport.zoom          = scale factor
- *   world transform        = translate3d(-vx*z, -vy*z, 0) scale(z)
- *   screenToWorld(sx, sy)  = (sx/z + vx, sy/z + vy)  relative to shell
+ * A second touch arriving (pinch upgrade) cancels the long-press timer
+ * via canvasLongPress.cancel(), since the user is clearly not holding.
  *
- * Gesture state machine
- *   idle  ──(1 ptr down)─────────> pan
- *   pan   ──(2nd touch ptr)──────> pinch    (fresh baselines)
- *   pinch ──(1 ptr up)───────────> pan      (fresh baselines on remaining ptr)
- *   pinch ──(both up)────────────> idle
- *   pan   ──(ptr up)─────────────> idle
- *
- * Notes:
- *  - Mouse and pen never enter pinch — pinch requires two touch pointers.
- *  - 3+ touch pointers are tracked but don't reassign the pinch pair.
- *    The pinch stays with its original two pointers until one lifts.
- *  - When one pinch finger lifts, the remaining finger becomes a fresh
- *    pan with a new baseline — this prevents a position jump from
- *    midpoint math suddenly reverting to single-finger pan math.
- *
- * Tap / double-tap (touch only)
- *   A pointerdown→pointerup with movement < TAP_MAX_DIST_PX and elapsed
- *   < TAP_MAX_DURATION ms = a tap. Two taps within DOUBLE_TAP_INTERVAL_MS
- *   and DOUBLE_TAP_DIST_PX of each other = double-tap, which creates a
- *   card centred at the tap position.
- *
- *   Mouse double-click is left to the React onDoubleClick handler — it
- *   fires reliably on mouse. The browser never fires a consistent
- *   dblclick on touch, which is why touch has its own detection path.
+ * See useLongPress.ts for the full rationale on why cancelDrag is needed
+ * for cards/backdrops (it isn't strictly needed for canvas, because
+ * canvas uses gestureRef rather than capture-bound document listeners,
+ * but the capture release is still important so the menu works).
  */
 
 interface DrawState {
@@ -64,13 +43,11 @@ interface DrawState {
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
 
-// Tap / double-tap thresholds (touch only)
 const TAP_MAX_DIST_PX        = 12
 const TAP_MAX_DURATION       = 500
 const DOUBLE_TAP_INTERVAL_MS = 300
 const DOUBLE_TAP_DIST_PX     = 24
 
-// Gesture state — null when idle.
 type GestureState =
   | {
       kind: 'pan'
@@ -100,13 +77,9 @@ export function Canvas() {
   const lastMouseWorldRef    = useRef({ x: WORLD_CENTER, y: WORLD_CENTER })
   const lastMouseScreenRef   = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
 
-  // Every pointer currently captured by the world. pointerId → screen pos + type.
   const pointersRef = useRef<Map<number, { x: number; y: number; type: string }>>(new Map())
+  const gestureRef  = useRef<GestureState>(null)
 
-  // Current gesture (mutually exclusive).
-  const gestureRef = useRef<GestureState>(null)
-
-  // Tap / double-tap detection (touch only).
   const tapDownRef = useRef<{ pointerId: number; x: number; y: number; time: number } | null>(null)
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null)
 
@@ -145,7 +118,6 @@ export function Canvas() {
     }
   }, [getViewport])
 
-  // Midpoint of two screen positions, relative to the shell (for pinch math).
   const screenMidRelativeToShell = useCallback((p1: { x: number; y: number }, p2: { x: number; y: number }) => {
     const shell = canvasShellRef.current
     if (!shell) return { x: 0, y: 0 }
@@ -172,7 +144,7 @@ export function Canvas() {
     const p2 = pointersRef.current.get(p2Id)
     if (!p1 || !p2) return
     const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y)
-    if (dist < 1) return  // degenerate — wait until fingers separate
+    if (dist < 1) return
     const mid = screenMidRelativeToShell(p1, p2)
     const vp  = useBoardStore.getState().board.viewport
     gestureRef.current = {
@@ -186,6 +158,31 @@ export function Canvas() {
       startZoom: vp.zoom,
     }
   }, [screenMidRelativeToShell])
+
+  // ── Long-press on empty canvas → canvas context menu ─────────────────────
+  const canvasLongPress = useLongPress((payload) => {
+    // Clear in-flight pan gesture
+    gestureRef.current = null
+    pointersRef.current.delete(payload.pointerId)
+    tapDownRef.current = null
+
+    // Release the world's pointer capture so the menu can receive events.
+    // We don't use payload.cancelDrag here because canvas isn't using
+    // capture-bound document listeners — the world's React handlers
+    // managed via gestureRef are sufficient to "cancel" by clearing.
+    const w = worldRef.current
+    if (w) {
+      if (w.hasPointerCapture(payload.pointerId)) {
+        try { w.releasePointerCapture(payload.pointerId) }
+        catch { /* already released */ }
+      }
+      w.style.cursor = ''
+    }
+
+    // Show the same context menu as right-click
+    const { x, y } = screenToWorld(payload.clientX, payload.clientY)
+    setCanvasMenu({ x: payload.clientX, y: payload.clientY, wx: x, wy: y })
+  })
 
   // ── Mount: center viewport ────────────────────────────────────────────────
   useEffect(() => {
@@ -314,22 +311,10 @@ export function Canvas() {
     if (!shell) return
     const PAD = 80
 
-    const x1s = [
-      ...cards.map(c => c.position.x),
-      ...backdrops.map(b => b.position.x),
-    ]
-    const y1s = [
-      ...cards.map(c => c.position.y),
-      ...backdrops.map(b => b.position.y),
-    ]
-    const x2s = [
-      ...cards.map(c => c.position.x + CARD_W),
-      ...backdrops.map(b => b.position.x + b.size.width),
-    ]
-    const y2s = [
-      ...cards.map(c => c.position.y + CARD_H),
-      ...backdrops.map(b => b.position.y + b.size.height),
-    ]
+    const x1s = [...cards.map(c => c.position.x), ...backdrops.map(b => b.position.x)]
+    const y1s = [...cards.map(c => c.position.y), ...backdrops.map(b => b.position.y)]
+    const x2s = [...cards.map(c => c.position.x + CARD_W), ...backdrops.map(b => b.position.x + b.size.width)]
+    const y2s = [...cards.map(c => c.position.y + CARD_H), ...backdrops.map(b => b.position.y + b.size.height)]
 
     const minX = Math.min(...x1s) - PAD
     const minY = Math.min(...y1s) - PAD
@@ -392,11 +377,10 @@ export function Canvas() {
     createInstance(cardId, { x: card.position.x + 32, y: card.position.y + 32 })
   }, [createInstance])
 
-  // ── World pointer events: pan / pinch / draw / tap detection ──────────────
+  // ── World pointer events ──────────────────────────────────────────────────
   const onWorldPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return
 
-    // Creation mode (drawing a backdrop)
     if (creationMode && e.button === 0) {
       const { x, y } = screenToWorld(e.clientX, e.clientY)
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -406,40 +390,36 @@ export function Canvas() {
       return
     }
 
-    // Mouse: only pan with middle button or Space+left
     if (e.pointerType === 'mouse') {
       const isPanIntent = e.button === 1 || (e.button === 0 && isSpaceDownRef.current)
       if (!isPanIntent) return
     }
 
-    // Capture and record
     e.currentTarget.setPointerCapture(e.pointerId)
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType })
 
-    // Touch — track start for tap / double-tap detection
     if (e.pointerType === 'touch') {
       tapDownRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now() }
     }
 
-    // State machine — decide what this pointerdown means
+    // Long-press detection (touch-only, filtered by hook)
+    canvasLongPress.onPointerDown(e)
+
     const g = gestureRef.current
     if (!g) {
-      // First pointer in a gesture → pan
       startPan(e.pointerId, e.clientX, e.clientY, e.currentTarget)
     } else if (
       g.kind === 'pan' &&
       e.pointerType === 'touch' &&
       pointersRef.current.get(g.pointerId)?.type === 'touch'
     ) {
-      // Pan → pinch upgrade (only when both pointers are touch)
+      // Pinch upgrade — cancel long-press (user is clearly not holding still)
+      canvasLongPress.cancel()
       startPinch(g.pointerId, e.pointerId)
     }
-    // else: already in pinch (3+ fingers ignored), or pan can't upgrade
-    // because the in-flight pointer isn't touch — leave state alone.
-  }, [creationMode, screenToWorld, startPan, startPinch])
+  }, [creationMode, screenToWorld, startPan, startPinch, canvasLongPress])
 
   const onWorldPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Track last cursor position (for tab menu, hover effects, etc.)
     const shell = canvasShellRef.current
     if (shell) {
       const vp = useBoardStore.getState().board.viewport
@@ -451,7 +431,6 @@ export function Canvas() {
     }
     lastMouseScreenRef.current = { x: e.clientX, y: e.clientY }
 
-    // Only respond if this pointer is part of our active gesture
     if (!pointersRef.current.has(e.pointerId)) return
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType })
 
@@ -470,7 +449,6 @@ export function Canvas() {
         zoom: g.startViewport.zoom,
       })
     } else if (g.kind === 'pinch') {
-      // Read both pinch pointers and recompute zoom + viewport
       const p1 = pointersRef.current.get(g.p1Id)
       const p2 = pointersRef.current.get(g.p2Id)
       if (!p1 || !p2) return
@@ -479,10 +457,6 @@ export function Canvas() {
       let newZoom = g.startZoom * (newDist / g.startDist)
       newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom))
       const mid = screenMidRelativeToShell(p1, p2)
-      // Place the world point that was originally under the midpoint
-      // back under the current midpoint, at the new zoom level.
-      // This makes the pinch feel like the fingers are "grabbing" the
-      // world at the midpoint — pan + zoom together as fingers move.
       useBoardStore.getState().setViewport({
         x: g.startWorldAtMid.x - mid.x / newZoom,
         y: g.startWorldAtMid.y - mid.y / newZoom,
@@ -492,7 +466,6 @@ export function Canvas() {
   }, [screenToWorld, screenMidRelativeToShell])
 
   const onWorldPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    // Was this pointerup a tap? (touch only — small movement, short time)
     let isTap = false
     if (e.pointerType === 'touch' && tapDownRef.current?.pointerId === e.pointerId) {
       const td      = tapDownRef.current
@@ -506,7 +479,6 @@ export function Canvas() {
 
     const g = gestureRef.current
     if (g?.kind === 'draw' && e.pointerId === g.pointerId) {
-      // Commit the backdrop draw
       if (drawState) {
         const { type, startX, startY, currentX, currentY } = drawState
         const x = Math.min(startX, currentX)
@@ -525,10 +497,6 @@ export function Canvas() {
       gestureRef.current = null
       e.currentTarget.style.cursor = ''
     } else if (g?.kind === 'pinch' && (e.pointerId === g.p1Id || e.pointerId === g.p2Id)) {
-      // One finger of the pinch lifted. If the other is still down, demote
-      // to single-finger pan with a fresh baseline so the user doesn't
-      // experience a position jump from midpoint math suddenly switching
-      // to single-finger pan math.
       const remainingId = e.pointerId === g.p1Id ? g.p2Id : g.p1Id
       const remaining   = pointersRef.current.get(remainingId)
       if (remaining) {
@@ -539,9 +507,6 @@ export function Canvas() {
       }
     }
 
-    // Touch double-tap detection. Only fires when this pointerup was a tap
-    // (no significant movement). Mouse double-click is handled separately
-    // by the React onDoubleClick handler.
     if (isTap && e.pointerType === 'touch' && !creationMode) {
       const now  = Date.now()
       const last = lastTapRef.current
@@ -550,7 +515,6 @@ export function Canvas() {
         now - last.time < DOUBLE_TAP_INTERVAL_MS &&
         Math.hypot(e.clientX - last.x, e.clientY - last.y) < DOUBLE_TAP_DIST_PX
       ) {
-        // Double-tap → create card centred at the tap position
         const { x, y } = screenToWorld(e.clientX, e.clientY)
         createCard({ x: x - CARD_W / 2, y: y - CARD_H / 2 })
         lastTapRef.current = null
@@ -561,9 +525,6 @@ export function Canvas() {
     }
   }, [drawState, createBackdrop, creationMode, screenToWorld, createCard, startPan])
 
-  // Pointer cancel — iOS interrupts (notification banner, system gesture,
-  // browser palm rejection). Clear state cleanly so we don't leave a stale
-  // gesture fighting the next touch.
   const onWorldPointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     pointersRef.current.delete(e.pointerId)
     tapDownRef.current = null
@@ -599,7 +560,6 @@ export function Canvas() {
     { label: 'Draw Custom backdrop',                 onClick: () => setCreationMode('Custom')    },
   ] : []
 
-  // Mouse double-click → create card. Touch double-tap handled in onPointerUp.
   const handleWorldDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return
     if (creationMode) return
@@ -767,7 +727,7 @@ function EmptyState() {
         </svg>
       </div>
       <p className={styles.emptyPrimary}>Your board is empty</p>
-      <p className={styles.emptySecondary}>Double-click or double-tap to add a card · Right-click for more options</p>
+      <p className={styles.emptySecondary}>Double-click or double-tap to add a card · Right-click or long-press for more options</p>
       <div className={styles.shortcuts}>
         <Shortcut keys={['Double-click']}  label="New card"     />
         <Shortcut keys={['Right-click']}   label="New backdrop" />

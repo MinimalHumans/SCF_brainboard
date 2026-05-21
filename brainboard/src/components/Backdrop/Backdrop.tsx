@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useBoardStore, CARD_W, CARD_H, BACKDROP_MIN_W, BACKDROP_MIN_H, snapshotBoard } from '@/store/boardStore'
 import { useEditorSignalStore } from '@/store/editorSignalStore'
+import { useLongPress } from '@/hooks/useLongPress'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import { SWATCH_KEYS, BACKDROP_TYPES, getContainedCardIds, getContainedBackdropIds } from '@/types/board'
@@ -12,6 +13,8 @@ import styles from './Backdrop.module.css'
 
 type HandlePos = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 const HANDLES: HandlePos[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+
+const INTERACTIVE_TAGS = new Set(['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'])
 
 interface BackdropProps {
   backdrop:      Backdrop
@@ -39,28 +42,47 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   useEffect(() => { if (closeSignal > 0) setIsEditing(false) }, [closeSignal])
 
   const schema = BACKDROP_SCHEMAS[liveBackdrop.type] ?? []
-
-  // Status — read from attributes; absent or 'Active' = no indicator
   const backdropStatus = liveBackdrop.attributes['status'] as string | undefined
 
-  // filledAttrs: exclude 'status' — it has its own visual treatment, not listed
   const filledAttrs = schema
     .filter(f => f.key !== 'status')
     .map(f => ({ field: f, value: liveBackdrop.attributes[f.key] ?? '' }))
     .filter(({ value }) => value.trim() !== '')
+
+  /*
+   * Long-press on the backdrop header opens the context menu at the press
+   * position. The header's drag listeners are attached to headerEl
+   * directly (not document), so cancelDrag() relies on bubbling — the
+   * synthetic pointerup is dispatched on the capturing element
+   * (which IS headerEl), where the drag listeners catch it and tear
+   * down with dx/dy = 0 (no position commit).
+   */
+  const headerLongPress = useLongPress(
+    (payload) => {
+      payload.cancelDrag()
+      setCtxMenu({ x: payload.clientX, y: payload.clientY })
+    },
+    {
+      filter: (e) => {
+        const t = e.target as HTMLElement
+        return !INTERACTIVE_TAGS.has(t.tagName)
+      },
+    }
+  )
 
   const handleHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
     if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT') return
 
-    // Stop the NATIVE event from reaching gesto / InfiniteViewer.
-    // Without this, touch-dragging the header double-fires as both our
-    // pointer-event drag AND a parallel canvas pan from gesto's native
-    // listener. See useCardDrag.ts top-of-file comment for full details.
     e.nativeEvent.stopImmediatePropagation()
-
     e.stopPropagation()
+
+    // Long-press tracking — independent of the drag below; coexists via
+    // separate document listeners. cancelDrag() in the long-press callback
+    // will terminate the listeners attached on headerEl below if the user
+    // holds without moving for 500ms.
+    headerLongPress.onPointerDown(e)
 
     const headerEl   = e.currentTarget
     headerEl.setPointerCapture(e.pointerId)
@@ -116,13 +138,10 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
 
     headerEl.addEventListener('pointermove', onMove)
     headerEl.addEventListener('pointerup',   onUp)
-  }, [liveBackdrop, board.cards, board.backdrops, getViewerZoom, moveBackdropWithCards])
+  }, [liveBackdrop, board.cards, board.backdrops, getViewerZoom, moveBackdropWithCards, headerLongPress])
 
   const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, pos: HandlePos) => {
-    // Same native-stop as header drag — resize handles also need to block
-    // gesto from starting a parallel pan on touch.
     e.nativeEvent.stopImmediatePropagation()
-
     e.stopPropagation()
     e.preventDefault()
 
@@ -176,7 +195,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   const panelLeft = liveBackdrop.position.x + liveBackdrop.size.width + 8
   const panelTop  = liveBackdrop.position.y
 
-  // data-status attribute value for CSS hooks
   const dataStatus =
     backdropStatus === 'Cut'   ? 'cut'   :
     backdropStatus === 'Draft' ? 'draft' :
@@ -253,7 +271,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
               title="Close">×</button>
           </div>
 
-          {/* Type — updateBackdropType snapshots internally, one undo step per change */}
           <div className={styles.field}>
             <label className={styles.label}>Type</label>
             <select className={styles.select} value={liveBackdrop.type}
@@ -262,11 +279,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             </select>
           </div>
 
-          {/* Title — snapshot on focus, then free-type.
-              autoFocus is gated to non-touch devices: on touch, autoFocus
-              would summon the iOS keyboard the moment the panel opens,
-              shifting the visual viewport and pushing the toolbar offscreen.
-              Touch users tap the field to focus when they want to edit. */}
           <div className={styles.field}>
             <label className={styles.label}>Title</label>
             <input
@@ -279,16 +291,10 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             />
           </div>
 
-          {/* Type-specific attribute fields — supports text, textarea, and select */}
           {schema.map(field => (
             <div key={field.key} className={styles.field}>
               <label className={styles.label}>{field.label}</label>
               {field.type === 'select' ? (
-                /*
-                 * Attribute select — discrete action, snapshot before change.
-                 * defaultValue set → no blank option (e.g. status → 'Active').
-                 * emptyLabel set  → blank option with custom label.
-                 */
                 <select
                   className={styles.select}
                   value={liveBackdrop.attributes[field.key] ?? (field.defaultValue ?? '')}
@@ -303,7 +309,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
                   {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               ) : field.type === 'textarea' ? (
-                /* Attribute textarea — snapshot on focus, then free-type */
                 <textarea
                   className={styles.textarea}
                   value={liveBackdrop.attributes[field.key] ?? ''}
@@ -313,7 +318,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
                   rows={2}
                 />
               ) : (
-                /* Attribute text input — snapshot on focus, then free-type */
                 <input
                   className={styles.input}
                   value={liveBackdrop.attributes[field.key] ?? ''}
@@ -325,7 +329,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             </div>
           ))}
 
-          {/* Note — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Note <span className={styles.noteHint}>· lower-left</span></label>
             <textarea
@@ -338,7 +341,6 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             />
           </div>
 
-          {/* Colour — snapshot before applying so each swatch click is its own undo step */}
           <div className={styles.field}>
             <label className={styles.label}>Color</label>
             <div className={styles.swatches}>

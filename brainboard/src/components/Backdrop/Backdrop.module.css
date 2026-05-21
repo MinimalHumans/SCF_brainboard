@@ -440,3 +440,68 @@
   line-height: var(--leading-normal);
   user-select: none;
 }
+
+/* ==========================================================================
+   Touch hit targets (Phase 6)
+   ==========================================================================
+ *
+ * Three things change for coarse pointers (touch):
+ *
+ * 1) .iconBtn — header edit button bumped 20x20 → 32x32. The 12x12 SVG
+ *    inside stays the same; only the clickable box grows.
+ *
+ * 2) .handle — resize handles bumped from 12x12 hit area to 24x24 hit
+ *    area, while keeping the visual indicator at 12x12. Implementation:
+ *    .handle itself becomes a transparent 24x24 box (background/border
+ *    removed); the visual is moved into a ::before pseudo-element with
+ *    `inset: 6px` (6px padding on each side → 12x12 inner). The
+ *    .handle_* corner/edge offsets shift from -6px → -12px so the
+ *    24px box stays centered on the corner/edge like before. Net
+ *    result: visually identical handles, twice the touch surface.
+ *
+ * 3) Handles become opacity: 1 always on coarse. Reason: :hover doesn't
+ *    reliably fire on touch, so the existing `.backdrop:hover .handle`
+ *    rule means handles are effectively invisible on tablets. Making
+ *    them always-visible on coarse hurts visual density slightly when
+ *    many backdrops are on screen, but the alternative is unfindable
+ *    resize handles, which is worse. If this proves too noisy, the
+ *    next iteration could surface them only on "selected" backdrops —
+ *    but backdrops don't have selection state today, so it would need
+ *    that machinery first.
+ *
+ * touch-action: none cascade from above still applies to .handle * — the
+ * ::before pseudo-element matches because pseudo-elements are children
+ * of their host in the rendered tree.
+ */
+@media (pointer: coarse) {
+  .iconBtn {
+    width:  32px;
+    height: 32px;
+  }
+
+  .handle {
+    width:            24px;
+    height:           24px;
+    background-color: transparent;
+    border:           none;
+    border-radius:    0;
+    opacity:          1;
+  }
+  .handle::before {
+    content:          '';
+    position:         absolute;
+    inset:            6px;
+    background-color: var(--bd-swatch, var(--color-border-strong));
+    border:           2px solid var(--color-surface-base);
+    border-radius:    var(--radius-xs);
+  }
+
+  .handle_nw { top: -12px;                left:  -12px;               }
+  .handle_n  { top: -12px;                left:  calc(50% - 12px);    }
+  .handle_ne { top: -12px;                right: -12px;               }
+  .handle_e  { top: calc(50% - 12px);     right: -12px;               }
+  .handle_se { bottom: -12px;             right: -12px;               }
+  .handle_s  { bottom: -12px;             left:  calc(50% - 12px);    }
+  .handle_sw { bottom: -12px;             left:  -12px;               }
+  .handle_w  { top: calc(50% - 12px);     left:  -12px;               }
+}

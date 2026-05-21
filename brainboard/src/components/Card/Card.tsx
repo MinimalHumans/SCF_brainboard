@@ -5,6 +5,7 @@ import { useBoardStore, snapshotBoard } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { useCardDrag } from '@/hooks/useCardDrag'
+import { useLongPress } from '@/hooks/useLongPress'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { Card } from '@/types/board'
@@ -13,6 +14,10 @@ import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import styles from './Card.module.css'
 
 marked.use({ breaks: true, gfm: true })
+
+// Mirrored from useCardDrag.ts — long-press skips these so a held touch on
+// the flip button doesn't open the context menu by accident.
+const INTERACTIVE_TAGS = new Set(['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'])
 
 interface CardProps {
   card:             Card
@@ -32,7 +37,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const duplicateCard         = useBoardStore(s => s.duplicateCard)
   const deleteCard            = useBoardStore(s => s.deleteCard)
 
-  // Read entity live from store for realtime attribute updates
   const entity = useBoardStore(s =>
     card.entityId ? s.board.entities.find(e => e.id === card.entityId) : undefined
   )
@@ -42,21 +46,51 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const clearSelection = useSelectionStore(s => s.clearSelection)
   const select       = useSelectionStore(s => s.select)
 
-  // Close when canvas signals
   const closeSignal = useEditorSignalStore(s => s.closeSignal)
   useEffect(() => { if (closeSignal > 0) setIsEditing(false) }, [closeSignal])
 
   const hasInstance = isInstance(card, allCards)
   const attrSchema  = ATTRIBUTE_SCHEMAS[card.type] ?? []
 
-  // Title always from entity to keep instances in sync
   const displayTitle = entity?.title ?? card.title
 
-  // Status — read from entity attributes; absent = treat as Active
   const rawStatus = entity?.attributes?.['status']
   const cardStatus = typeof rawStatus === 'string' ? rawStatus : undefined
 
-  const handlePointerDown = useCardDrag(card.id, getViewerZoom, isEditing)
+  const handleCardDrag = useCardDrag(card.id, getViewerZoom, isEditing)
+
+  /*
+   * Long-press: 500ms hold on touch opens the context menu at the press
+   * position. cancelDrag() in the callback terminates useCardDrag's
+   * in-flight document listeners (dispatched as a synthetic pointerup at
+   * the original press coords, so dx/dy = 0 = no position commit) and
+   * releases pointer capture so the menu can receive subsequent events.
+   *
+   * Filter skips interactive children — a 500ms hold on the flip button
+   * shouldn't open the card menu.
+   */
+  const cardLongPress = useLongPress(
+    (payload) => {
+      payload.cancelDrag()
+      if (!selectedIds.has(card.id)) select(card.id)
+      setCtxMenu({ x: payload.clientX, y: payload.clientY })
+    },
+    {
+      filter: (e) => {
+        const t = e.target as HTMLElement
+        return !INTERACTIVE_TAGS.has(t.tagName)
+      },
+    }
+  )
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Long-press first — starts its own document listeners + timer that
+    // are independent of useCardDrag's bookkeeping. The hook's filter
+    // matches useCardDrag's INTERACTIVE_TAGS skip, so behavior is
+    // consistent between the two subsystems.
+    cardLongPress.onPointerDown(e)
+    handleCardDrag(e)
+  }, [cardLongPress, handleCardDrag])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation(); setIsEditing(true)
@@ -92,31 +126,24 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
     ]
   }, [card.id, selectedIds, duplicateCard, deleteCard, onCreateInstance, clearSelection])
 
-  // ── Text field change handlers (no snapshot — snapshot happens on focus) ──
-
   const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
   const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
   const setInstanceNote = useCallback((v: string) => updateCardContent(card.id, { instanceNote: v }), [card.id, updateCardContent])
-
-  // ── Discrete action handlers (snapshot before applying the change) ────────
 
   const setType = useCallback((v: string) => {
     snapshotBoard()
     updateCardContent(card.id, { type: v as any })
   }, [card.id, updateCardContent])
 
-  // Entity attribute change for text/textarea fields (no snapshot — onFocus handles it).
   const setAttr = useCallback((key: string, value: string) => {
     if (entity) updateEntityAttribute(entity.id, key, value)
   }, [entity, updateEntityAttribute])
 
-  // Entity attribute change for select fields (snapshot before applying).
   const setAttrSelect = useCallback((key: string, value: string) => {
     snapshotBoard()
     if (entity) updateEntityAttribute(entity.id, key, value)
   }, [entity, updateEntityAttribute])
 
-  // Swatch: snapshot before applying so each colour switch is its own undo step.
   const handleSwatchPointerDown = useCallback((e: React.PointerEvent, swatch: string) => {
     e.stopPropagation(); e.preventDefault()
     snapshotBoard()
@@ -131,7 +158,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const displayNote = entity?.noteRaw ?? card.noteRaw
   const noteHtml    = useMemo(() => displayNote ? marked.parse(displayNote) as string : '', [displayNote])
 
-  // filledAttrs: exclude 'status' — it has its own visual treatment, not listed
   const filledAttrs = useMemo(() => {
     if (!entity || attrSchema.length === 0) return []
     return attrSchema
@@ -144,7 +170,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const panelLeft = card.position.x + CARD_W + 8
   const panelTop  = card.position.y
 
-  // data-status attribute value for CSS hooks
   const dataStatus =
     cardStatus === 'Cut'   ? 'cut'   :
     cardStatus === 'Draft' ? 'draft' :
@@ -170,7 +195,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               <InstanceIcon />
             </span>
           )}
-          {/* Right side of handle: DRAFT badge + edit button */}
           <div className={styles.handleRight}>
             {cardStatus === 'Draft' && (
               <span className={styles.draftStatusBadge}>DRAFT</span>
@@ -213,7 +237,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
               title="Close">×</button>
           </div>
 
-          {/* Type — discrete dropdown, snapshot before change */}
           <div className={styles.field}>
             <label className={styles.label}>Type</label>
             <select className={styles.select} value={card.type} onChange={e => setType(e.target.value)}>
@@ -221,7 +244,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
             </select>
           </div>
 
-          {/* Name — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Name</label>
             <input
@@ -241,15 +263,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                 <div key={field.key} className={styles.field}>
                   <label className={styles.label}>{field.label}</label>
                   {field.type === 'select' ? (
-                    /*
-                     * Attribute select — discrete, snapshot before change.
-                     *
-                     * defaultValue set → no blank option; value falls back to
-                     *   defaultValue when attribute is unset (e.g. status → 'Active').
-                     * emptyLabel set  → blank option uses custom display label
-                     *   (e.g. int_ext → '(inherit from Location)').
-                     * Neither set     → standard blank '—' option.
-                     */
                     <select
                       className={styles.select}
                       value={(entity?.attributes[field.key] as string) ?? (field.defaultValue ?? '')}
@@ -261,7 +274,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                       {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : field.type === 'textarea' ? (
-                    /* Attribute textarea — snapshot on focus, then free-type */
                     <textarea
                       className={styles.textarea}
                       value={(entity?.attributes[field.key] as string) ?? ''}
@@ -271,7 +283,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
                       rows={2}
                     />
                   ) : (
-                    /* Attribute text input — snapshot on focus, then free-type */
                     <input
                       className={styles.input}
                       value={(entity?.attributes[field.key] as string) ?? ''}
@@ -285,7 +296,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
             </div>
           )}
 
-          {/* Note — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Note <span className={styles.tag}> · shared</span></label>
             <textarea
@@ -298,7 +308,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
             />
           </div>
 
-          {/* Placement note — snapshot on focus, then free-type */}
           <div className={styles.field}>
             <label className={styles.label}>Placement note <span className={styles.tag}> · this card only</span></label>
             <textarea
@@ -311,7 +320,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
             />
           </div>
 
-          {/* Colour — discrete swatch click, snapshot before change */}
           <div className={styles.field}>
             <label className={styles.label}>Color</label>
             <div className={styles.swatches}>
@@ -325,7 +333,6 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
             </div>
           </div>
 
-          {/* Publish row — kept for API compatibility; no-op in current build */}
           <div className={styles.publishRow}>
             <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
               Publish
