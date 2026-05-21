@@ -39,6 +39,47 @@
 
 
 /* ==========================================================================
+   Touch-action cascade — the real double-transform fix
+   ==========================================================================
+ *
+ * See Card.module.css for the full rationale. Short version: touch-action
+ * is not inherited, and iOS Safari unreliably walks the ancestor chain to
+ * find a touch-action value when nested scrollable containers are involved
+ * (InfiniteViewer's wrapper qualifies). The fix is to apply touch-action:
+ * none directly to every element that can be touched as part of dragging
+ * or resizing a backdrop.
+ *
+ * Scope is deliberately narrow on backdrops — only the .header subtree and
+ * the .handle resize targets get touch-action: none. The .backdrop ROOT
+ * keeps default touch-action because it has pointer-events: none anyway,
+ * and the .body keeps default touch-action because touches on the body
+ * SHOULD pass through to the canvas for native pan. This is what makes
+ * backdrops feel transparent — drawing on top of them with your finger
+ * pans the canvas underneath, just like empty canvas space.
+ *
+ * What this fixes:
+ *   - Drag the backdrop header on touch → backdrop moves, canvas stays put
+ *     (previously: both moved — double transform).
+ *   - Drag a resize handle on touch → backdrop resizes, canvas stays put.
+ *
+ * What stays unchanged:
+ *   - Touch on backdrop body → canvas pans (pointer-events: none means
+ *     the event passes through to whatever is underneath).
+ *   - Edit panels (portaled into worldRef) → text inputs work normally.
+ */
+
+.header,
+.header * {
+  touch-action: none;
+}
+
+.handle,
+.handle * {
+  touch-action: none;
+}
+
+
+/* ==========================================================================
    Backdrop root
    ========================================================================== */
 .backdrop {
@@ -80,22 +121,6 @@
   background-color: rgba(0, 0, 0, 0.12);
   border-radius:    calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px) 0 0;
   user-select:      none;
-  /*
-   * touch-action: none — Phase 2 fix.
-   *
-   * The header is the draggable surface of a backdrop (drag here to move
-   * the backdrop and its contained cards). Without this, touch-dragging
-   * the header triggers both our pointer-event drag AND the browser's
-   * native touch-scroll on the InfiniteViewer scrollable ancestor — the
-   * "double transform" bug.
-   *
-   * The .backdrop root has pointer-events: none and is deliberately
-   * pass-through (so touches on empty backdrop body fall through to the
-   * canvas for pan), which means touch-action on .backdrop is irrelevant
-   * for hit-testing. The property goes on the actual touch-target
-   * surfaces: the header (here) and the resize handles (below).
-   */
-  touch-action:     none;
 }
 
 .header:active { cursor: grabbing; }
@@ -227,7 +252,12 @@
 
 /* ==========================================================================
    Edit panel — world-space portal
-   ========================================================================== */
+   ==========================================================================
+ *
+ * Like card edit panels, backdrop edit panels are portaled into worldRef
+ * and are NOT children of .header. The touch-action: none cascade above
+ * does not apply to them, so inputs and textareas behave normally on touch.
+ */
 .editPanel {
   width:            300px;
   padding:          var(--space-3);
@@ -385,14 +415,6 @@
   opacity:          0;
   transition:       opacity var(--duration-fast) var(--easing-out);
   z-index:          1;
-  /*
-   * touch-action: none — Phase 2 fix.
-   * Same rationale as .header above: resize handles are touch targets with
-   * pointer-events: auto, and without this, dragging a handle on touch
-   * would simultaneously pan the canvas. The 12px hit target is also too
-   * small for fingers — Phase 6 bumps that to ~24px.
-   */
-  touch-action:     none;
 }
 .backdrop:hover .handle { opacity: 1; }
 

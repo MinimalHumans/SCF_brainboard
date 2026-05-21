@@ -37,6 +37,45 @@
 }
 
 /* ==========================================================================
+   Touch-action cascade — the real double-transform fix
+   ==========================================================================
+ *
+ * touch-action is NOT an inherited CSS property. The spec says the browser
+ * walks the ancestor chain to find a touch-action value when a touch begins,
+ * but in practice — especially iOS Safari over a nested scrollable container
+ * like InfiniteViewer's wrapper (`overflow: auto`) — that walk is unreliable.
+ * The visible result is the "double transform": card moves AND canvas pans
+ * because the browser starts native scroll on the InfiniteViewer ancestor
+ * while our pointer handler simultaneously drags the card.
+ *
+ * Setting touch-action: none ONLY on .card root works when the finger lands
+ * on the card chrome. It fails when the finger lands on a child — the
+ * markdown <p> inside .noteMarkdown, the .title text, the attribute rows,
+ * the draft badge, the handle bar contents. Those children get the default
+ * `auto` and iOS Safari often won't walk up to find .card's `none`.
+ *
+ * The robust fix: cascade touch-action: none through every descendant.
+ * Browsers can't get this wrong because there's no ambiguity — every
+ * element directly under the finger has the value set on itself.
+ *
+ * Why this is safe:
+ *   - touch-action: none disables browser-native gestures (pan, pinch,
+ *     double-tap-zoom). It does NOT disable taps or pointer events.
+ *     Buttons inside cards (edit pencil) still tap fine.
+ *   - Edit panels are portaled into worldRef, OUTSIDE the .card subtree,
+ *     so text inputs, textareas, and dropdowns keep the default
+ *     touch-action: auto and behave normally.
+ *   - The same JS-side fix (e.nativeEvent.stopImmediatePropagation in
+ *     useCardDrag) is left in place as defence against any gesto-style
+ *     library listener that might be attached to a shared ancestor.
+ */
+
+.card,
+.card * {
+  touch-action: none;
+}
+
+/* ==========================================================================
    Card root
    ========================================================================== */
 .card {
@@ -46,27 +85,6 @@
   border-radius: var(--radius-md); overflow: hidden;
   box-shadow: var(--shadow-card); user-select: none; cursor: grab;
   pointer-events: auto;
-  /*
-   * touch-action: none — Phase 2 fix.
-   *
-   * Without this, touching a card triggers TWO simultaneous behaviours:
-   *   1. Our pointer-event drag handler (useCardDrag) starts moving the card
-   *   2. The browser's native touch-scroll on the InfiniteViewer scrollable
-   *      ancestor starts panning the canvas
-   * Both happen in parallel because they're independent event paths
-   * (pointer events vs browser default scroll behaviour). The visible result
-   * was a "double transform" — the card moved AND the canvas panned.
-   *
-   * Setting touch-action: none on the card tells the browser to skip its
-   * default touch behaviour for touches starting on this element. Pointer
-   * events still fire normally, so card drag works. Browser scroll only
-   * fires when touching empty canvas (which is what we want for pan).
-   *
-   * Edit panels, text inputs, and dropdowns are portaled into worldRef
-   * (outside the .card subtree) and are unaffected — they keep default
-   * touch-action and behave normally.
-   */
-  touch-action: none;
   transition: box-shadow  var(--duration-fast) var(--easing-out),
               opacity     var(--duration-fast) var(--easing-out),
               width       var(--duration-normal) var(--easing-standard);
@@ -194,7 +212,13 @@
 
 /* ==========================================================================
    Edit panel — portal-rendered, world-space
-   ========================================================================== */
+   ==========================================================================
+ *
+ * Editor panels are rendered via React.createPortal into worldRef. They are
+ * NOT children of .card in the DOM, so the touch-action: none cascade above
+ * does not apply to them. Inputs, textareas, swatches, and dropdowns inside
+ * the panel keep default touch-action: auto and behave normally on touch.
+ */
 .editPanel {
   width:            300px;
   padding:          var(--space-3);
