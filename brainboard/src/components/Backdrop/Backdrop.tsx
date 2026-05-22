@@ -26,6 +26,32 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
+  /*
+   * isActive — local "this backdrop is being worked with" flag.
+   *
+   * Becomes true on a header or resize-handle pointerdown. Becomes false
+   * when the user taps anything outside this backdrop's DOM tree (with
+   * carve-outs for the portaled edit panel and for the period while
+   * isEditing is true — see the dismiss useEffect below).
+   *
+   * Bound to the `data-active` attribute on the backdrop root. CSS uses
+   * that attribute for two things:
+   *   - Border colour highlight (so the user sees which backdrop they're
+   *     working with, replacing the unreliable sticky :hover behaviour on
+   *     touch devices).
+   *   - Resize handle visibility (the actual ask: handles only show when
+   *     this backdrop is "active").
+   *
+   * Desktop hover behaviour is preserved alongside — :hover continues to
+   * highlight border + reveal handles for mouse users.
+   *
+   * Not a real selection. Each backdrop tracks its own flag independently;
+   * tapping a second backdrop sets its flag and the first's dismiss
+   * listener clears its own flag. If multi-backdrop selection is needed
+   * later, this should be lifted into selectionStore alongside cards.
+   */
+  const [isActive, setIsActive] = useState(false)
+
   const liveBackdrop = useBoardStore(s => s.board.backdrops.find(b => b.id === backdrop.id) ?? backdrop)
 
   const updateBackdropContent         = useBoardStore(s => s.updateBackdropContent)
@@ -50,12 +76,43 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     .filter(({ value }) => value.trim() !== '')
 
   /*
+   * Document-level dismiss listener for isActive.
+   *
+   * Attached only when there's something to dismiss (isActive OR isEditing
+   * is true). When the user taps anywhere, we check whether the tap target
+   * is inside this backdrop's DOM tree OR inside this backdrop's edit
+   * panel (tagged with data-backdrop-panel-for). If not, the active flag
+   * clears.
+   *
+   * While isEditing is true, the dismiss path early-returns — the user
+   * is in the middle of an edit session and we don't want to clear the
+   * active visual just because they tapped inside an unrelated UI element
+   * for a moment.
+   *
+   * The pointerdown that activated this backdrop won't itself fire this
+   * listener: React batches the setState, the listener attaches after
+   * the next render commit, and the original pointerdown has already
+   * bubbled past document by then.
+   */
+  useEffect(() => {
+    if (!isActive && !isEditing) return
+    const onDoc = (e: PointerEvent) => {
+      if (isEditing) return
+      const target = e.target as Element | null
+      if (!target) return
+      const sel = `[data-backdrop-id="${liveBackdrop.id}"], [data-backdrop-panel-for="${liveBackdrop.id}"]`
+      if (target.closest?.(sel)) return
+      setIsActive(false)
+    }
+    document.addEventListener('pointerdown', onDoc)
+    return () => document.removeEventListener('pointerdown', onDoc)
+  }, [isActive, isEditing, liveBackdrop.id])
+
+  /*
    * Long-press on the backdrop header opens the context menu at the press
-   * position. The header's drag listeners are attached to headerEl
-   * directly (not document), so cancelDrag() relies on bubbling — the
-   * synthetic pointerup is dispatched on the capturing element
-   * (which IS headerEl), where the drag listeners catch it and tear
-   * down with dx/dy = 0 (no position commit).
+   * position. cancelDrag() relies on bubbling — the synthetic pointerup
+   * is dispatched on the capturing element (which IS headerEl), where the
+   * drag listeners catch it and tear down with dx/dy = 0 (no commit).
    */
   const headerLongPress = useLongPress(
     (payload) => {
@@ -75,13 +132,11 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     const target = e.target as HTMLElement
     if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT') return
 
+    setIsActive(true)
+
     e.nativeEvent.stopImmediatePropagation()
     e.stopPropagation()
 
-    // Long-press tracking — independent of the drag below; coexists via
-    // separate document listeners. cancelDrag() in the long-press callback
-    // will terminate the listeners attached on headerEl below if the user
-    // holds without moving for 500ms.
     headerLongPress.onPointerDown(e)
 
     const headerEl   = e.currentTarget
@@ -141,6 +196,8 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
   }, [liveBackdrop, board.cards, board.backdrops, getViewerZoom, moveBackdropWithCards, headerLongPress])
 
   const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, pos: HandlePos) => {
+    setIsActive(true)
+
     e.nativeEvent.stopImmediatePropagation()
     e.stopPropagation()
     e.preventDefault()
@@ -182,6 +239,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
+    setIsActive(true)
     setCtxMenu({ x: e.clientX, y: e.clientY })
   }, [])
 
@@ -200,6 +258,8 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     backdropStatus === 'Draft' ? 'draft' :
     undefined
 
+  const isShownActive = isActive || isEditing
+
   return (
     <>
       <div
@@ -208,6 +268,7 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
         className={styles.backdrop}
         data-swatch={liveBackdrop.color}
         data-status={dataStatus}
+        data-active={isShownActive ? 'true' : undefined}
         style={{
           transform: `translate(${liveBackdrop.position.x}px, ${liveBackdrop.position.y}px)`,
           width:  liveBackdrop.size.width,
@@ -259,7 +320,9 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
       </div>
 
       {isEditing && worldRef.current && createPortal(
-        <div className={styles.editPanel}
+        <div
+          className={styles.editPanel}
+          data-backdrop-panel-for={liveBackdrop.id}
           style={{ position: 'absolute', left: panelLeft, top: panelTop, zIndex: liveBackdrop.zIndex + 9000 }}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}

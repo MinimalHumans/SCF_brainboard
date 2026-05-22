@@ -44,28 +44,13 @@
  *
  * See Card.module.css for the full rationale. Short version: touch-action
  * is not inherited, and iOS Safari unreliably walks the ancestor chain to
- * find a touch-action value when nested scrollable containers are involved
- * (InfiniteViewer's wrapper qualifies). The fix is to apply touch-action:
- * none directly to every element that can be touched as part of dragging
- * or resizing a backdrop.
+ * find a touch-action value when nested scrollable containers are involved.
+ * Setting touch-action: none directly on every element that can be touched
+ * as part of dragging or resizing a backdrop removes the ambiguity.
  *
- * Scope is deliberately narrow on backdrops — only the .header subtree and
- * the .handle resize targets get touch-action: none. The .backdrop ROOT
- * keeps default touch-action because it has pointer-events: none anyway,
- * and the .body keeps default touch-action because touches on the body
- * SHOULD pass through to the canvas for native pan. This is what makes
- * backdrops feel transparent — drawing on top of them with your finger
- * pans the canvas underneath, just like empty canvas space.
- *
- * What this fixes:
- *   - Drag the backdrop header on touch → backdrop moves, canvas stays put
- *     (previously: both moved — double transform).
- *   - Drag a resize handle on touch → backdrop resizes, canvas stays put.
- *
- * What stays unchanged:
- *   - Touch on backdrop body → canvas pans (pointer-events: none means
- *     the event passes through to whatever is underneath).
- *   - Edit panels (portaled into worldRef) → text inputs work normally.
+ * Scope is deliberately narrow on backdrops — only .header and .handle
+ * subtrees. The .body keeps default touch-action so touches on the body
+ * pass through to the canvas for pan.
  */
 
 .header,
@@ -102,8 +87,21 @@
     opacity          var(--duration-fast) var(--easing-out);
 }
 
-.backdrop:hover {
-  border-color:     var(--bd-swatch, var(--color-border));
+/*
+ * Border highlight conditions:
+ *
+ *   :hover           — desktop mouse users get hover-reveal for discovery.
+ *   [data-active]    — set by JS in Backdrop.tsx on header/handle tap, and
+ *                      cleared by a document pointerdown listener when the
+ *                      user taps outside this backdrop. This is what works
+ *                      on touch (where :hover is unreliable / sticky).
+ *
+ * Both selectors point at the same border-colour rule, so the highlight is
+ * shown when either condition is true.
+ */
+.backdrop:hover,
+.backdrop[data-active="true"] {
+  border-color: var(--bd-swatch, var(--color-border));
 }
 
 /* ==========================================================================
@@ -144,10 +142,6 @@
   flex-shrink: 0;
 }
 
-/*
- * draftStatusBadge — "DRAFT" pill shown when status === 'Draft'.
- * Muted so it reads as metadata rather than content.
- */
 .draftStatusBadge {
   font-family:      var(--font-ui);
   font-size:        var(--text-2xs);
@@ -254,9 +248,14 @@
    Edit panel — world-space portal
    ==========================================================================
  *
- * Like card edit panels, backdrop edit panels are portaled into worldRef
- * and are NOT children of .header. The touch-action: none cascade above
- * does not apply to them, so inputs and textareas behave normally on touch.
+ * Edit panels are portaled into worldRef and tagged with the
+ * data-backdrop-panel-for attribute. The dismiss-isActive document
+ * listener in Backdrop.tsx uses that attribute to recognise the panel
+ * as "still inside this backdrop's UI" — so taps in the panel don't
+ * deactivate the backdrop's border + handle highlight.
+ *
+ * The panel is NOT a child of .header, so the touch-action: none cascade
+ * does not apply — inputs and textareas behave normally on touch.
  */
 .editPanel {
   width:            300px;
@@ -403,7 +402,15 @@
 
 /* ==========================================================================
    Resize handles
-   ========================================================================== */
+   ==========================================================================
+ *
+ * Visibility rules:
+ *   - Hidden by default (opacity: 0).
+ *   - Visible on desktop :hover.
+ *   - Visible when the backdrop has data-active="true" (set by JS on tap;
+ *     cleared by document pointerdown listener on tap-outside). This is
+ *     the touch-friendly path.
+ */
 .handle {
   position:         absolute;
   width:            12px;
@@ -416,7 +423,10 @@
   transition:       opacity var(--duration-fast) var(--easing-out);
   z-index:          1;
 }
-.backdrop:hover .handle { opacity: 1; }
+.backdrop:hover .handle,
+.backdrop[data-active="true"] .handle {
+  opacity: 1;
+}
 
 .handle_nw { top: -6px; left:  -6px;              cursor: nw-resize; }
 .handle_n  { top: -6px; left:  calc(50% - 6px);   cursor: n-resize;  }
@@ -445,7 +455,7 @@
    Touch hit targets (Phase 6)
    ==========================================================================
  *
- * Three things change for coarse pointers (touch):
+ * For coarse pointers (touch):
  *
  * 1) .iconBtn — header edit button bumped 20x20 → 32x32. The 12x12 SVG
  *    inside stays the same; only the clickable box grows.
@@ -456,22 +466,11 @@
  *    removed); the visual is moved into a ::before pseudo-element with
  *    `inset: 6px` (6px padding on each side → 12x12 inner). The
  *    .handle_* corner/edge offsets shift from -6px → -12px so the
- *    24px box stays centered on the corner/edge like before. Net
- *    result: visually identical handles, twice the touch surface.
+ *    24px box stays centered on the corner/edge.
  *
- * 3) Handles become opacity: 1 always on coarse. Reason: :hover doesn't
- *    reliably fire on touch, so the existing `.backdrop:hover .handle`
- *    rule means handles are effectively invisible on tablets. Making
- *    them always-visible on coarse hurts visual density slightly when
- *    many backdrops are on screen, but the alternative is unfindable
- *    resize handles, which is worse. If this proves too noisy, the
- *    next iteration could surface them only on "selected" backdrops —
- *    but backdrops don't have selection state today, so it would need
- *    that machinery first.
- *
- * touch-action: none cascade from above still applies to .handle * — the
- * ::before pseudo-element matches because pseudo-elements are children
- * of their host in the rendered tree.
+ * Visibility (opacity) is NOT changed in this media query — handles
+ * follow the same rules as desktop: hidden by default, visible on hover
+ * (desktop), visible when data-active is true (driven by Backdrop.tsx).
  */
 @media (pointer: coarse) {
   .iconBtn {
@@ -485,7 +484,6 @@
     background-color: transparent;
     border:           none;
     border-radius:    0;
-    opacity:          1;
   }
   .handle::before {
     content:          '';
