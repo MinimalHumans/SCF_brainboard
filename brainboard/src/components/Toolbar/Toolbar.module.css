@@ -43,8 +43,12 @@
   flex-shrink:    0;
 }
 
-/* When the wordmark is a button it needs reset styles + a subtle hover */
+/* When the wordmark is a button it needs reset styles + a subtle hover.
+   Flex so the brand icon and the word sit on one baseline-aligned row. */
 .wordmarkBtn {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           var(--space-2);
   background:    transparent;
   border:        none;
   padding:       2px var(--space-1);
@@ -53,6 +57,17 @@
   transition:    opacity var(--duration-fast) var(--easing-out);
 }
 .wordmarkBtn:hover { opacity: 0.75; }
+
+/* Brand mark to the left of the "Scriptyard" word. Sized to the cap height
+   of the wordmark (~21px text → 20px mark reads as matched, not oversized).
+   The source SVG is slightly taller than wide (86.11 x 87.54), so width is
+   nudged to keep the optical box square-ish next to the text. */
+.wordmarkIcon {
+  width:       20px;
+  height:      20px;
+  flex-shrink: 0;
+  display:     block;
+}
 
 .divider {
   width:            1px;

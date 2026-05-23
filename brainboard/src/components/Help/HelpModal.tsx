@@ -93,9 +93,9 @@ function AboutHelp() {
 
       <H3>Website</H3>
       <P>
-        <a href="http://minimal-humans.com/" target="_blank" rel="noopener noreferrer"
+        <a href="http://minimalhumans.com/" target="_blank" rel="noopener noreferrer"
           style={{ color: 'var(--color-accent)' }}>
-          minimal-humans.com
+          minimalhumans.com
         </a>
       </P>
 
