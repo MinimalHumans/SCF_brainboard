@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { marked } from 'marked'
 import { useBoardStore, snapshotBoard } from '@/store/boardStore'
@@ -19,6 +19,13 @@ marked.use({ breaks: true, gfm: true })
 // the flip button doesn't open the context menu by accident.
 const INTERACTIVE_TAGS = new Set(['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A'])
 
+// Window after mount during which a dblclick is ignored. On iPhone, the
+// double-tap that CREATES a card synthesizes a dblclick that lands on the
+// freshly-mounted card (which now sits under the finger), auto-opening it.
+// No human creates a card then intentionally double-taps to edit within this
+// window, so suppressing it here is safe. Anchored to mount, not a free timer.
+const CREATE_DBLCLICK_GUARD_MS = 350
+
 interface CardProps {
   card:             Card
   allCards:         Card[]
@@ -30,6 +37,10 @@ interface CardProps {
 export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance, worldRef }: CardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
+
+  // Timestamp of this card instance's first render. Used to ignore the
+  // synthesized dblclick that immediately follows touch-create on iOS.
+  const mountedAtRef = useRef(Date.now())
 
   const updateCardContent     = useBoardStore(s => s.updateCardContent)
   const updateEntityAttribute = useBoardStore(s => s.updateEntityAttribute)
@@ -93,7 +104,12 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   }, [cardLongPress, handleCardDrag])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation(); setIsEditing(true)
+    e.stopPropagation()
+    // Ignore the dblclick synthesized by the touch double-tap that just
+    // created this card — see CREATE_DBLCLICK_GUARD_MS. A real double-tap to
+    // edit an existing card is unaffected, since its mount timestamp is old.
+    if (Date.now() - mountedAtRef.current < CREATE_DBLCLICK_GUARD_MS) return
+    setIsEditing(true)
   }, [])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

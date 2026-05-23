@@ -6,13 +6,14 @@ interface HelpModalProps {
   onClose: () => void
 }
 
-type Section = 'about' | 'canvas' | 'cards' | 'backdrops' | 'toolbar' | 'shortcuts'
+type Section = 'about' | 'canvas' | 'cards' | 'backdrops' | 'touch' | 'toolbar' | 'shortcuts'
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'about',     label: 'About'      },
   { id: 'canvas',    label: 'Canvas'     },
   { id: 'cards',     label: 'Cards'      },
   { id: 'backdrops', label: 'Backdrops'  },
+  { id: 'touch',     label: 'Touch'      },
   { id: 'toolbar',   label: 'Toolbar'    },
   { id: 'shortcuts', label: 'Shortcuts'  },
 ]
@@ -50,6 +51,7 @@ export function HelpModal({ onClose }: HelpModalProps) {
           {activeSection === 'canvas'    && <CanvasHelp />}
           {activeSection === 'cards'     && <CardsHelp />}
           {activeSection === 'backdrops' && <BackdropsHelp />}
+          {activeSection === 'touch'     && <TouchHelp />}
           {activeSection === 'toolbar'   && <ToolbarHelp />}
           {activeSection === 'shortcuts' && <ShortcutsHelp />}
         </div>
@@ -135,6 +137,9 @@ function CanvasHelp() {
       <P><strong>Drag</strong> over empty canvas space to rubber-band select multiple cards. Release to confirm the selection.</P>
       <P><Kbd>Ctrl</Kbd> <Kbd>A</Kbd> selects all cards. <Kbd>Esc</Kbd> clears the selection.</P>
 
+      <H3>Touch</H3>
+      <P>On a tablet or phone, navigation and creation use touch gestures instead. See the <strong>Touch</strong> section for the full list.</P>
+
       <H3>Persistence</H3>
       <P>Your board autosaves to the browser's local storage 500ms after any change. Refreshing the page restores your work. Use Export to save a portable file.</P>
     </div>
@@ -217,7 +222,7 @@ function BackdropsHelp() {
       <P>Drag the coloured header bar. Cards whose bounding boxes are fully inside the backdrop move with it. Spatial membership is computed at drag start — it is not stored.</P>
 
       <H3>Resizing</H3>
-      <P>Hover over the header — eight resize handles appear at the corners and edge midpoints. Drag any handle to resize.</P>
+      <P>Hover over the header — eight resize handles appear at the corners and edge midpoints. Drag any handle to resize. On touch, tap the header or a handle to activate the backdrop and reveal its handles.</P>
 
       <H3>Editing</H3>
       <P>Click the pencil icon in the header to open the edit panel. Title, type, type-specific attributes, note, and color are all editable here.</P>
@@ -226,6 +231,43 @@ function BackdropsHelp() {
 
       <H3>Canvas interaction within backdrops</H3>
       <P>The backdrop body is pointer-events transparent — you can double-click inside a backdrop to create a card, right-click for the canvas menu, and pan or zoom normally. Only the header bar and resize handles intercept input.</P>
+    </div>
+  )
+}
+
+// ── Touch ───────────────────────────────────────────────────────────────────
+
+function TouchHelp() {
+  return (
+    <div>
+      <H2>Touch &amp; Mobile</H2>
+      <P>Scriptyard works on tablets and phones. Every action available with a mouse and keyboard has a touch equivalent. This page maps the gestures to what they do.</P>
+
+      <H3>Navigating the canvas</H3>
+      <P><strong>Pan</strong> — drag one finger across empty canvas. The board follows your finger.</P>
+      <P><strong>Zoom</strong> — pinch with two fingers. The canvas zooms toward the midpoint between them; spreading zooms in, pinching together zooms out.</P>
+      <P><strong>Frame all</strong> — tap the frame button in the toolbar (the square icon) to fit every card and backdrop in view. This is the touch equivalent of pressing <Kbd>F</Kbd>.</P>
+
+      <H3>Creating things</H3>
+      <P><strong>Double-tap</strong> empty canvas to create a new card at that spot — the same as a double-click.</P>
+      <P><strong>Long-press</strong> empty canvas (hold roughly half a second without moving) to open the canvas menu, where you can add a card or start drawing a backdrop. To draw, pick a backdrop type, then drag one finger to define its bounds and lift to create.</P>
+
+      <H3>Working with cards</H3>
+      <P><strong>Drag</strong> — press a card and drag to move it. In edit mode you can only drag from the coloured handle bar; tapping the body is for editing.</P>
+      <P><strong>Edit</strong> — tap the pencil button in the handle bar to open the edit panel. On touch the tap targets are enlarged so they're easy to hit. The panel does not auto-focus a field, so the on-screen keyboard only appears once you tap into a text field — this keeps the toolbar from being pushed off-screen.</P>
+      <P><strong>Card menu</strong> — long-press a card to open its context menu (Edit, Duplicate, Create Instance, Delete).</P>
+
+      <H3>Working with backdrops</H3>
+      <P><strong>Activate</strong> — tap a backdrop's header bar or a resize handle. The border highlights and the eight resize handles appear. Because touch devices have no hover, this replaces the hover-to-reveal behaviour used with a mouse. Tap anywhere outside the backdrop to deactivate it.</P>
+      <P><strong>Move</strong> — drag the header bar. Contained cards move with it, just as on desktop.</P>
+      <P><strong>Resize</strong> — drag any of the eight handles. The hit area around each handle is enlarged on touch so they're easier to grab; the visible dot stays small.</P>
+      <P><strong>Edit</strong> — tap the pencil button in the header, or double-tap the title text in the backdrop body to jump straight to editing.</P>
+      <P><strong>Backdrop menu</strong> — long-press the header bar to open the context menu (Edit attributes, Duplicate, Duplicate with contents, Delete).</P>
+
+      <H3>What works differently on touch</H3>
+      <P><strong>No rubber-band select</strong> — dragging across empty canvas pans rather than selecting, since one-finger drag is reserved for panning. Select cards individually instead.</P>
+      <P><strong>No keyboard shortcuts</strong> — gestures replace them. The Shortcuts page still applies when a hardware keyboard is attached (e.g. an iPad with a Magic Keyboard).</P>
+      <P><strong>Browser gestures are suppressed</strong> inside the canvas — pull-to-refresh, double-tap page zoom, and pinch page zoom won't fire over the board, so they don't interfere with editing.</P>
     </div>
   )
 }
@@ -248,6 +290,9 @@ function ToolbarHelp() {
 
       <H3>Zoom controls</H3>
       <P>The <Kbd>−</Kbd> and <Kbd>+</Kbd> buttons zoom out and in by 25% increments, keeping the viewport center fixed. Click the percentage display to reset to 100%. The scroll wheel zooms toward the cursor position.</P>
+
+      <H3>Frame all</H3>
+      <P>The square frame button fits every card and backdrop on the board into view, choosing a zoom level and position that shows them all with a margin. It does the same thing as pressing <Kbd>F</Kbd>, and is the main way to recenter on touch devices where the keyboard shortcut isn't available. If the board is empty it does nothing.</P>
 
       <H3>Day / Night toggle</H3>
       <P>The sun/moon icon in the center of the toolbar switches between dark and light themes. Your preference is saved to the browser.</P>
@@ -305,6 +350,7 @@ function ShortcutsHelp() {
   return (
     <div>
       <H2>Keyboard Shortcuts</H2>
+      <P>These apply when using a mouse and keyboard. On a tablet or phone, see the <strong>Touch</strong> section for the gesture equivalents.</P>
       <table className={styles.table}>
         <thead>
           <tr>
