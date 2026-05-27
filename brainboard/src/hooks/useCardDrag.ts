@@ -14,6 +14,13 @@ import type { Card } from '@/types/board'
  *     handle bar (data-drag-handle attribute on the handle element).
  *   - Selection logic unchanged.
  *
+ * Undo granularity (current):
+ *   The whole drag — however many cards are selected and moved together — is
+ *   committed in ONE call to updateCardPositions on pointerup. That action
+ *   takes a single history snapshot, so a multi-card move is a single undo
+ *   step rather than one step per card. A single-card drag uses the same path
+ *   with a one-element batch, so it's unchanged.
+ *
  * Touch fix (current):
  *   InfiniteViewer is built on the `gesto` library, which attaches NATIVE
  *   pointerdown/touchstart listeners directly to its container element.
@@ -43,8 +50,8 @@ export function useCardDrag(
   getViewerZoom: () => number,
   isOpen:        boolean,       // when true, only drag from drag handle
 ) {
-  const updateCardPosition = useBoardStore(s => s.updateCardPosition)
-  const bringToFront       = useBoardStore(s => s.bringToFront)
+  const updateCardPositions = useBoardStore(s => s.updateCardPositions)
+  const bringToFront        = useBoardStore(s => s.bringToFront)
 
   return useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -122,15 +129,21 @@ export function useCardDrag(
 
         const dx = (ue.clientX - startX) / zoom
         const dy = (ue.clientY - startY) / zoom
-        for (const [id, start] of startPos) {
-          updateCardPosition(id, { x: start.x + dx, y: start.y + dy })
-        }
+
+        // Commit the entire group in ONE batched action → a single history
+        // snapshot, so the whole move is one undo step regardless of how many
+        // cards were dragged.
+        const updates = [...startPos.entries()].map(([id, start]) => ({
+          id,
+          position: { x: start.x + dx, y: start.y + dy },
+        }))
+        updateCardPositions(updates)
       }
 
       document.addEventListener('pointermove', onMove)
       document.addEventListener('pointerup',   onUp)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cardId, isOpen, getViewerZoom, bringToFront, updateCardPosition]
+    [cardId, isOpen, getViewerZoom, bringToFront, updateCardPositions]
   )
 }

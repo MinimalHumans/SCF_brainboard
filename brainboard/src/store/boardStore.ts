@@ -5,7 +5,7 @@ import type {
 } from '@/types/board'
 import {
   TYPE_SWATCH_DEFAULTS, BACKDROP_SWATCH_DEFAULTS,
-  getContainedCardIds, getContainedBackdropIds,
+  getContainedCardIds, getContainedBackdropIds, isInstance,
   BACKDROP_Z_LAYERS, CARD_Z_BASE,
 } from '@/types/board'
 import { useHistoryStore } from '@/store/historyStore'
@@ -417,33 +417,69 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       }
 
       const containedCardIds = getContainedCardIds(source, s.board.cards, CARD_W, CARD_H)
-      const newCards:    Card[]   = []
-      const newEntities: Entity[] = []
+      const containedSet     = new Set(containedCardIds)
+      // Preserve board order; getContainedCardIds already returns board order,
+      // but filtering keeps it explicit and avoids a find() per id.
+      const containedCards   = s.board.cards.filter(c => containedSet.has(c.id))
 
+      // Per-card decision: preserve the instance link, or mint a fresh entity?
+      //
+      // Instances are a canvas-wide linkage primitive — the whole point is
+      // that a card placed in one backdrop and another placed elsewhere can
+      // share one entity, so editing the character (or location, etc.) once
+      // updates every placement. Duplicating the contents of a backdrop
+      // shouldn't orphan those linked copies. This is the inverse of the
+      // regular duplicate action (Ctrl+D / duplicateCards / duplicateCard),
+      // which always breaks instance links because "duplicate" there means
+      // "make an independent copy."
+      //
+      // Rule applied here:
+      //   - If the source card IS an instance (isInstance returns true,
+      //     meaning its entity has at least one other card on the board
+      //     pointing to it — anywhere, inside or outside this backdrop):
+      //     the copy keeps the SAME entityId. It becomes an additional
+      //     instance of the existing entity.
+      //   - If the source card is NOT an instance (its entity is held by
+      //     this card alone): the copy gets a fresh entity — a standard
+      //     independent duplicate.
+      //
+      // Edge case worth noting: two contained cards that are instances of
+      // EACH OTHER and nothing else (entity held by them alone, no outside
+      // placements) are still "instances" by isInstance — each is the
+      // other's sibling. Both copies will keep the original entityId, so
+      // the entity ends up with four cards pointing at it (originals plus
+      // copies), all linked. Consistent with the linkage-preservation rule.
+      const newEntities: Entity[] = []
       let runningZ = maxCardZ(s.board.cards)
-      for (const cardId of containedCardIds) {
-        const card = s.board.cards.find(c => c.id === cardId)
-        if (!card) continue
-        const srcEntity = s.board.entities.find(e => e.id === card.entityId)
-        const newEntityId = nanoid()
-        const newEntity: Entity = {
-          id:         newEntityId,
-          type:       card.type,
-          title:      srcEntity?.title  ?? card.title,
-          noteRaw:    srcEntity?.noteRaw ?? card.noteRaw,
-          attributes: { ...(srcEntity?.attributes ?? {}) },
-        }
+
+      const newCards: Card[] = containedCards.map(card => {
         runningZ += 1
-        const newCard: Card = {
+
+        let newEntityId: string
+        if (isInstance(card, s.board.cards)) {
+          // Preserve the entity link — copy becomes another instance.
+          newEntityId = card.entityId
+        } else {
+          // Unique entity — mint a fresh independent copy.
+          newEntityId = nanoid()
+          const srcEntity = s.board.entities.find(e => e.id === card.entityId)
+          newEntities.push({
+            id:         newEntityId,
+            type:       card.type,
+            title:      srcEntity?.title   ?? card.title,
+            noteRaw:    srcEntity?.noteRaw ?? card.noteRaw,
+            attributes: { ...(srcEntity?.attributes ?? {}) },
+          })
+        }
+
+        return {
           ...card,
           id:       nanoid(),
           entityId: newEntityId,
           position: { x: card.position.x + dx, y: card.position.y + dy },
           zIndex:   runningZ,
         }
-        newCards.push(newCard)
-        newEntities.push(newEntity)
-      }
+      })
 
       const containedBdIds = getContainedBackdropIds(source, s.board.backdrops)
       const newSubBackdrops: Backdrop[] = containedBdIds.map(bdId => {
