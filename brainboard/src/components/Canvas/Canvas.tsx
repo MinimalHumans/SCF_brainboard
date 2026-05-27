@@ -94,8 +94,8 @@ export function Canvas() {
   const { cards, backdrops } = board
 
   const createCard      = useBoardStore(s => s.createCard)
-  const duplicateCard   = useBoardStore(s => s.duplicateCard)
-  const createInstance  = useBoardStore(s => s.createInstance)
+  const duplicateCards  = useBoardStore(s => s.duplicateCards)
+  const createInstances = useBoardStore(s => s.createInstances)
   const deleteCards     = useBoardStore(s => s.deleteCards)
   const createBackdrop  = useBoardStore(s => s.createBackdrop)
   const undo            = useBoardStore(s => s.undo)
@@ -350,13 +350,21 @@ export function Canvas() {
       if (sel.selectedIds.size === 0) return
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault()
-        ;[...sel.selectedIds].forEach(id => duplicateCard(id))
+        // One duplicate command → one history snapshot (handled inside
+        // duplicateCards), and the new cards become the selection so the
+        // user can immediately drag the duplicated cluster. Sources are
+        // dropped from the selection because selectMany replaces the set.
+        const dups = duplicateCards([...sel.selectedIds])
+        if (dups.length > 0) selectMany(dups.map(c => c.id))
         return
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
         e.preventDefault()
-        const first = cards.find(c => sel.selectedIds.has(c.id) && c.entityId !== null)
-        if (first) createInstance(first.id, { x: first.position.x + 32, y: first.position.y + 32 })
+        // Same shape as Ctrl+D: instance the whole selection in one command
+        // (one history snapshot inside createInstances), then make the new
+        // instances the selection so the cluster can be dragged at once.
+        const news = createInstances([...sel.selectedIds])
+        if (news.length > 0) selectMany(news.map(c => c.id))
         return
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -368,14 +376,7 @@ export function Canvas() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, selectMany, clearSelection, duplicateCard, deleteCards, undo, redo, frameAll, createInstance])
-
-  // ── Instance creation ─────────────────────────────────────────────────────
-  const handleCreateInstance = useCallback((cardId: string) => {
-    const card = useBoardStore.getState().board.cards.find(c => c.id === cardId)
-    if (!card) return
-    createInstance(cardId, { x: card.position.x + 32, y: card.position.y + 32 })
-  }, [createInstance])
+  }, [cards, selectMany, clearSelection, duplicateCards, deleteCards, undo, redo, frameAll, createInstances])
 
   // ── World pointer events ──────────────────────────────────────────────────
   const onWorldPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -635,7 +636,6 @@ export function Canvas() {
               card={card}
               allCards={cards}
               getViewerZoom={getViewerZoom}
-              onCreateInstance={handleCreateInstance}
               worldRef={worldRef}
             />
           ))}

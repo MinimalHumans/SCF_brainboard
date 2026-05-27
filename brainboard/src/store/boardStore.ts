@@ -104,7 +104,9 @@ interface BoardStore {
   setViewport:                  (viewport: Viewport) => void
   createCard:                   (position: Position, type?: EntityType) => Card
   duplicateCard:                (id: string) => Card | null
+  duplicateCards:               (ids: string[]) => Card[]
   createInstance:               (id: string, position: Position) => Card | null
+  createInstances:              (ids: string[]) => Card[]
   deleteCard:                   (id: string) => void
   deleteCards:                  (ids: string[]) => void
   updateCardPosition:           (id: string, position: Position) => void
@@ -163,16 +165,86 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     return card
   },
 
+  /*
+   * duplicateCard — single-card convenience wrapper.
+   *
+   * Delegates to duplicateCards so there is exactly one code path for
+   * duplication. For a single id the entity-grouping in duplicateCards
+   * collapses to "one source entity → one new entity", which is byte-for-byte
+   * the old single-duplicate behaviour (new independent entity, +24/+24
+   * offset, cleared instanceNote, one history snapshot).
+   */
   duplicateCard: (id) => {
+    return get().duplicateCards([id])[0] ?? null
+  },
+
+  /*
+   * duplicateCards — batched duplication, ONE undo step for the whole command.
+   *
+   * History: snapshot() is called exactly once here (not once per card), so a
+   * single Ctrl+Z reverts the entire duplicate command no matter how many
+   * cards were duplicated.
+   *
+   * Entity handling: sources are grouped by entityId, and one new entity is
+   * created per unique source entity. Consequence — if the selection contains
+   * multiple instances of the same entity, their duplicates remain instances
+   * of one another (they share a single new entity). A lone card collapses to
+   * the same result as the old duplicateCard (its own fresh entity).
+   *
+   * Ordering: sources are taken in board array order (not selection order),
+   * matching how the rest of the store iterates cards. Positions are offset
+   * +24/+24 so the duplicated cluster preserves its relative layout. zIndex is
+   * assigned incrementally above the current max so the new cards stack on top.
+   *
+   * Returns the new Card[] so callers can select them (deselecting sources).
+   */
+  duplicateCards: (ids) => {
+    const idSet = new Set(ids)
+    const board = get().board
+    const sources = board.cards.filter(c => idSet.has(c.id))
+    if (sources.length === 0) return []
+
     snapshot()
-    const source = get().board.cards.find(c => c.id === id)
-    if (!source) return null
-    const entityId = nanoid()
-    const srcEntity = get().board.entities.find(e => e.id === source.entityId)
-    const entity: Entity = { id: entityId, type: source.type, title: source.title, noteRaw: source.noteRaw, attributes: { ...(srcEntity?.attributes ?? {}) } }
-    const card: Card = { ...source, id: nanoid(), entityId, position: { x: source.position.x + 24, y: source.position.y + 24 }, zIndex: maxCardZ(get().board.cards) + 1, instanceNote: '' }
-    set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card], entities: [...s.board.entities, entity] }) }))
-    return card
+
+    // One new entity per unique source entityId.
+    const entityIdMap = new Map<string, string>()
+    const newEntities: Entity[] = []
+    for (const card of sources) {
+      if (entityIdMap.has(card.entityId)) continue
+      const newEntityId = nanoid()
+      entityIdMap.set(card.entityId, newEntityId)
+      const srcEntity = board.entities.find(e => e.id === card.entityId)
+      newEntities.push({
+        id:         newEntityId,
+        type:       card.type,
+        title:      srcEntity?.title   ?? card.title,
+        noteRaw:    srcEntity?.noteRaw ?? card.noteRaw,
+        attributes: { ...(srcEntity?.attributes ?? {}) },
+      })
+    }
+
+    let runningZ = maxCardZ(board.cards)
+    const newCards: Card[] = sources.map(card => {
+      runningZ += 1
+      return {
+        ...card,
+        id:           nanoid(),
+        entityId:     entityIdMap.get(card.entityId)!,
+        position:     { x: card.position.x + 24, y: card.position.y + 24 },
+        zIndex:       runningZ,
+        instanceNote: '',
+      }
+    })
+
+    set(s => ({
+      board: touch({
+        ...s.board,
+        cards:    [...s.board.cards, ...newCards],
+        entities: [...s.board.entities, ...newEntities],
+      }),
+    }))
+
+    return newCards
   },
 
   createInstance: (id, position) => {
@@ -182,6 +254,48 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     const card: Card = { ...source, id: nanoid(), position, zIndex: maxCardZ(get().board.cards) + 1, instanceNote: '', isFlipped: false }
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card] }) }))
     return card
+  },
+
+  /*
+   * createInstances — batched instance creation, ONE undo step per command.
+   *
+   * Mirrors duplicateCards, but an *instance* shares the source card's entity
+   * rather than getting a fresh one: the spread `...card` carries entityId
+   * through unchanged, so every new card points at the same Entity as its
+   * source. No new entities are created.
+   *
+   * Consequence — selecting several instances of the same entity and running
+   * this just adds more instances of that one entity. Each new card gets its
+   * own id, a cleared instanceNote, isFlipped reset, a +32/+32 offset (the
+   * established single-instance offset), and an incrementing zIndex above the
+   * current max.
+   *
+   * Sources are taken in board array order (not selection order). Returns the
+   * new Card[] so callers can select them, dropping the sources.
+   */
+  createInstances: (ids) => {
+    const idSet = new Set(ids)
+    const board = get().board
+    const sources = board.cards.filter(c => idSet.has(c.id))
+    if (sources.length === 0) return []
+
+    snapshot()
+
+    let runningZ = maxCardZ(board.cards)
+    const newCards: Card[] = sources.map(card => {
+      runningZ += 1
+      return {
+        ...card,
+        id:           nanoid(),
+        position:     { x: card.position.x + 32, y: card.position.y + 32 },
+        zIndex:       runningZ,
+        instanceNote: '',
+        isFlipped:    false,
+      }
+    })
+
+    set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, ...newCards] }) }))
+    return newCards
   },
 
   deleteCard: (id) => {

@@ -30,11 +30,10 @@ interface CardProps {
   card:             Card
   allCards:         Card[]
   getViewerZoom:    () => number
-  onCreateInstance: (cardId: string) => void
   worldRef:         React.RefObject<HTMLDivElement>
 }
 
-export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance, worldRef }: CardProps) {
+export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [ctxMenu, setCtxMenu]     = useState<{ x: number; y: number } | null>(null)
 
@@ -45,7 +44,8 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const updateCardContent     = useBoardStore(s => s.updateCardContent)
   const updateEntityAttribute = useBoardStore(s => s.updateEntityAttribute)
   const publishCard           = useBoardStore(s => s.publishCard)
-  const duplicateCard         = useBoardStore(s => s.duplicateCard)
+  const duplicateCards        = useBoardStore(s => s.duplicateCards)
+  const createInstances       = useBoardStore(s => s.createInstances)
   const deleteCard            = useBoardStore(s => s.deleteCard)
 
   const entity = useBoardStore(s =>
@@ -56,6 +56,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
   const selectedIds  = useSelectionStore(s => s.selectedIds)
   const clearSelection = useSelectionStore(s => s.clearSelection)
   const select       = useSelectionStore(s => s.select)
+  const selectMany   = useSelectionStore(s => s.selectMany)
 
   const closeSignal = useEditorSignalStore(s => s.closeSignal)
   useEffect(() => { if (closeSignal > 0) setIsEditing(false) }, [closeSignal])
@@ -130,8 +131,31 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
     const multi = selectedIds.size > 1 && selectedIds.has(card.id)
     return [
       { label: 'Edit', shortcut: 'Double-click', onClick: () => setIsEditing(true), disabled: multi },
-      { label: 'Duplicate', shortcut: 'Ctrl D', onClick: () => duplicateCard(card.id), divider: true },
-      { label: 'Create Instance', shortcut: 'Ctrl I', onClick: () => onCreateInstance(card.id) },
+      {
+        label: 'Duplicate', shortcut: 'Ctrl D', divider: true,
+        onClick: () => {
+          // Same path as the Ctrl+D keyboard shortcut: duplicate the whole
+          // selection when this card is part of a multi-selection, otherwise
+          // just this card. duplicateCards takes a single history snapshot for
+          // the whole command, and selectMany makes the new cards the
+          // selection (dropping the sources) so they can be dragged at once.
+          const sourceIds = multi ? [...selectedIds] : [card.id]
+          const dups = duplicateCards(sourceIds)
+          if (dups.length > 0) selectMany(dups.map(c => c.id))
+        },
+      },
+      {
+        label: 'Create Instance', shortcut: 'Ctrl I',
+        onClick: () => {
+          // Same path as the Ctrl+I shortcut: instance the whole selection
+          // when this card is part of a multi-selection, otherwise just this
+          // card. One history snapshot for the command; the new instances
+          // become the selection so they can be dragged together.
+          const sourceIds = multi ? [...selectedIds] : [card.id]
+          const news = createInstances(sourceIds)
+          if (news.length > 0) selectMany(news.map(c => c.id))
+        },
+      },
       {
         label: 'Delete', shortcut: 'Del', divider: true, danger: true,
         onClick: () => {
@@ -140,7 +164,7 @@ export function CardComponent({ card, allCards, getViewerZoom, onCreateInstance,
         },
       },
     ]
-  }, [card.id, selectedIds, duplicateCard, deleteCard, onCreateInstance, clearSelection])
+  }, [card.id, selectedIds, duplicateCards, createInstances, selectMany, deleteCard, clearSelection])
 
   const setTitle        = useCallback((v: string) => updateCardContent(card.id, { title: v }),        [card.id, updateCardContent])
   const setNoteRaw      = useCallback((v: string) => updateCardContent(card.id, { noteRaw: v }),      [card.id, updateCardContent])
