@@ -1,7 +1,34 @@
 .canvasShell {
   flex:     1;
   position: relative;
+
+  /*
+   * overflow: clip (not hidden) — this is the load-bearing line for the
+   * "stuck shift" touch bug.
+   *
+   * Edit panels are portaled into the .world div, which lives inside this
+   * shell. When a text input in a panel receives focus, the browser runs its
+   * native "scroll the focused element into view" pass. `overflow: hidden`
+   * clips overflow but STILL makes the element a scroll container — so the
+   * browser is allowed to set scrollLeft/scrollTop on it to reveal an
+   * off-screen panel. Pan/zoom here is a CSS transform on .world, not real
+   * scrolling, so the app's viewport math never accounts for that offset:
+   * frame-all and pinch-zoom then land in the wrong place ("stuck") until a
+   * reload resets scroll to 0.
+   *
+   * `overflow: clip` clips identically but is NOT a scroll container, so it
+   * can never hold a scroll offset — the bug becomes unrepresentable rather
+   * than something to detect and undo. body and #root get the same treatment
+   * (globals.css) because scrollIntoView walks every scroll-container
+   * ancestor; this shell is the only one with overflowing content today, but
+   * clipping all three forecloses keyboard-resize edge cases.
+   *
+   * Two-declaration progressive enhancement: browsers without `clip` support
+   * ignore that line and keep `hidden` (still clips; just stays a scroll
+   * container) — they never fall through to the `visible` default.
+   */
   overflow: hidden;
+  overflow: clip;
 
   /*
    * Suppress browser-native touch behaviour at the canvas boundary.

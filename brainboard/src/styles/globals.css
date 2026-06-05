@@ -36,7 +36,23 @@ body {
   line-height: var(--leading-normal);
   color: var(--color-text-primary);
   background-color: var(--color-surface-base);
-  overflow: hidden; /* Canvas handles its own scroll */
+
+  /*
+   * overflow: clip (not hidden). `hidden` clips overflow but still makes the
+   * element a SCROLL CONTAINER — the browser is allowed to set its scroll
+   * offset programmatically during focus-into-view. `clip` clips identically
+   * but is NOT a scroll container, so it can never hold a stray offset.
+   *
+   * scrollIntoView walks every scroll-container ancestor, so body and #root
+   * are clipped alongside .canvasShell to fully close the door (see
+   * Canvas.module.css for the full rationale).
+   *
+   * Two-declaration progressive enhancement: browsers that don't understand
+   * `clip` ignore that line and keep `hidden` (still clips, just remains a
+   * scroll container) — they never fall through to the `visible` default.
+   */
+  overflow: hidden;
+  overflow: clip;
 }
 
 /*
@@ -53,7 +69,11 @@ body {
   height: 100dvh;
   display: flex;
   flex-direction: column;
+
+  /* See body above — clip, not hidden, so it never becomes a scroll
+     container the browser can offset during focus-into-view. */
   overflow: hidden;
+  overflow: clip;
 }
 
 

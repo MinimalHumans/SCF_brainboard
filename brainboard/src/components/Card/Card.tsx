@@ -11,6 +11,7 @@ import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { Card } from '@/types/board'
 import { ENTITY_TYPES, SWATCH_KEYS, isInstance } from '@/types/board'
 import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
+import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
 import styles from './Card.module.css'
 
 marked.use({ breaks: true, gfm: true })
@@ -292,7 +293,7 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
               onFocus={() => snapshotBoard()}
               onChange={e => setTitle(e.target.value)}
               placeholder={`New ${card.type}`}
-              autoFocus
+              autoFocus={!IS_TOUCH_PRIMARY}
             />
           </div>
 
