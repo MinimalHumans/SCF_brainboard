@@ -99,6 +99,13 @@
   background-color: var(--color-surface-hover);
 }
 
+/* Compact layout: the board name shares the narrow bar with the logo, Frame,
+   ⋯ and Help, so it truncates harder. Declared after .boardName so the
+   tighter max-width wins when both classes are applied. */
+.boardNameNarrow {
+  max-width: 120px;
+}
+
 /* ==========================================================================
    Zoom HUD
    ========================================================================== */
@@ -211,6 +218,35 @@
                    border-color     var(--duration-fast) var(--easing-out);
 }
 .themeToggle:hover {
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+  border-color:     var(--color-border-strong);
+}
+
+/* ==========================================================================
+   Overflow (⋯) button — compact-layout menu trigger
+   ==========================================================================
+ * Mirrors .frameBtn / .themeToggle (28×28 bordered icon button) so the
+ * narrow toolbar's icon buttons read as a matched set. Separate class for the
+ * same local-consistency reason noted on .frameBtn above. */
+
+.overflowBtn {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           28px;
+  height:          28px;
+  border-radius:   var(--radius-sm);
+  color:           var(--color-text-muted);
+  background:      transparent;
+  border:          1px solid var(--color-border);
+  cursor:          pointer;
+  flex-shrink:     0;
+  transition:      color            var(--duration-fast) var(--easing-out),
+                   background-color var(--duration-fast) var(--easing-out),
+                   border-color     var(--duration-fast) var(--easing-out);
+}
+.overflowBtn:hover {
   color:            var(--color-text-primary);
   background-color: var(--color-surface-hover);
   border-color:     var(--color-border-strong);

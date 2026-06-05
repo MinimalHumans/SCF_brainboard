@@ -36,11 +36,18 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
   const [pos, setPos] = useState({ top: 52, left: 0 })
 
   // Anchor below the button. useLayoutEffect so there's no visible flash.
+  // Clamp the left edge so the 320px popover never runs off a narrow (phone)
+  // viewport — the board name can sit mid-bar, so an un-clamped left would
+  // push the right edge off-screen. Paired with max-width in the CSS for the
+  // smallest screens where even the clamped 320px would overflow.
   useLayoutEffect(() => {
     const btn = anchorRef.current
     if (!btn) return
     const rect = btn.getBoundingClientRect()
-    setPos({ top: rect.bottom + 4, left: rect.left })
+    const PAD = 8
+    const W   = 320
+    const left = Math.max(PAD, Math.min(rect.left, window.innerWidth - W - PAD))
+    setPos({ top: rect.bottom + 4, left })
   }, [anchorRef])
 
   // Close on outside pointer-down or Escape.

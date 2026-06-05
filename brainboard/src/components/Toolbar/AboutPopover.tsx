@@ -15,7 +15,15 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     const btn = anchorRef.current
     if (!btn) return
     const rect = btn.getBoundingClientRect()
-    setPos({ top: rect.bottom + 4, left: rect.left })
+    // Clamp the left edge so the 300px popover never runs off a narrow (phone)
+    // viewport — on the compact layout this anchors to the logo at the far
+    // left, but the clamp keeps it safe regardless of anchor position. Paired
+    // with max-width in the CSS for the smallest screens, where even the
+    // clamped 300px would overflow.
+    const PAD = 8
+    const W   = 300
+    const left = Math.max(PAD, Math.min(rect.left, window.innerWidth - W - PAD))
+    setPos({ top: rect.bottom + 4, left })
   }, [anchorRef])
 
   useEffect(() => {
@@ -45,7 +53,7 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     >
       <div className={styles.brand}>
         <span className={`${styles.wordmark} text-display`}>Scriptyard</span>
-        <span className={styles.byline}>Created by Minimal Humans - v0.2.3</span>
+        <span className={styles.byline}>Created by Minimal Humans - v0.2.4</span>
       </div>
 
       <div className={styles.divider} />

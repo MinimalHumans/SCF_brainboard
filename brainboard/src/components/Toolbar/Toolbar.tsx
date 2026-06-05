@@ -3,10 +3,29 @@ import { useBoardStore }      from '@/store/boardStore'
 import { useViewerStore }     from '@/store/viewerStore'
 import { useHistoryStore }    from '@/store/historyStore'
 import { useThemeStore }      from '@/store/themeStore'
+import { useMediaQuery }      from '@/hooks/useMediaQuery'
 import { AboutPopover }       from './AboutPopover'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
 import { ExportPopover }      from './ExportPopover'
+import { ContextMenu }        from '@/components/ContextMenu/ContextMenu'
+import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import styles                 from './Toolbar.module.css'
+
+/*
+ * At or below this width the toolbar collapses to its compact layout:
+ *   - the wordmark drops to icon-only (still opens About),
+ *   - the board name truncates harder (still opens Project Info),
+ *   - the zoom HUD is dropped entirely (pinch-zoom + Frame All replace it),
+ *   - undo/redo, the board actions (New Board / Import / Export / Templates /
+ *     Outline), and the Day/Night toggle all move into the ⋯ overflow menu,
+ *   - the center keeps only Frame All; the right keeps ⋯ and Help.
+ *
+ * 720px keeps tablets (768px+) on the full layout and collapses phones. It's a
+ * JS media query rather than pure CSS so the popover/menu anchoring logic has
+ * a single unambiguous source of truth, and it reacts live to resize — a
+ * desktop window dragged below 720px collapses and restores automatically.
+ */
+const NARROW_QUERY = '(max-width: 720px)'
 
 interface ToolbarProps {
   hasSelection?: boolean
@@ -31,6 +50,8 @@ export function Toolbar({
   onHelp,
   onNewBoard,
 }: ToolbarProps) {
+  const isNarrow = useMediaQuery(NARROW_QUERY)
+
   const boardName    = useBoardStore(s => s.board.name)
   const zoom         = useBoardStore(s => s.board.viewport.zoom)
   const requestZoom  = useViewerStore(s => s.requestZoom)
@@ -45,11 +66,62 @@ export function Toolbar({
   const boardNameBtnRef               = useRef<HTMLButtonElement>(null)
   const exportBtnRef                  = useRef<HTMLButtonElement>(null)
   const wordmarkBtnRef                = useRef<HTMLButtonElement>(null)
+  const overflowBtnRef                = useRef<HTMLButtonElement>(null)
   const [showInfoPopover,   setShowInfoPopover]   = useState(false)
   const [showExportPopover, setShowExportPopover] = useState(false)
   const [showAboutPopover,  setShowAboutPopover]  = useState(false)
+  const [overflowMenu,      setOverflowMenu]      = useState<{ x: number; y: number } | null>(null)
 
   const zoomPct = Math.round(zoom * 100)
+
+  // Open the overflow menu anchored below the ⋯ button. ContextMenu clamps
+  // itself to the viewport (it's the same component used for right-click
+  // anywhere), so anchoring at the button's left edge is fine even though the
+  // button sits near the right edge of a phone screen.
+  const openOverflow = () => {
+    const r = overflowBtnRef.current?.getBoundingClientRect()
+    setOverflowMenu(r ? { x: r.left, y: r.bottom + 4 } : { x: 0, y: 48 })
+  }
+
+  /*
+   * Items for the compact overflow menu — exactly the controls hidden from the
+   * narrow toolbar. Each tap closes the menu (ContextMenu fires onClick then
+   * onClose), so repeated undo means reopening the menu; acceptable on a phone.
+   * "Export…" opens the existing ExportPopover, which is re-anchored to the ⋯
+   * button on narrow (see anchorRef on <ExportPopover> below) so its format
+   * list still positions correctly.
+   */
+  const overflowItems: ContextMenuItem[] = [
+    { label: 'Undo', onClick: () => undo(), disabled: !canUndo },
+    { label: 'Redo', onClick: () => redo(), disabled: !canRedo },
+    { label: 'New Board', divider: true, onClick: () => onNewBoard?.() },
+    { label: 'Import',     onClick: () => onImport?.() },
+    { label: 'Export…',    onClick: () => setShowExportPopover(true) },
+    { label: 'Templates',  onClick: () => onTemplates?.() },
+    { label: 'Outline',    onClick: () => onOutline?.() },
+    {
+      label:   theme === 'dark' ? 'Light mode' : 'Dark mode',
+      divider: true,
+      onClick: () => toggleTheme(),
+    },
+  ]
+
+  // Frame All — present in both layouts (the one center control kept on narrow).
+  const frameButton = (
+    <button
+      className={styles.frameBtn}
+      onClick={requestFrame}
+      title="Frame all (F)"
+      aria-label="Frame all"
+    >
+      <FrameIcon />
+    </button>
+  )
+
+  // Help — present in both layouts.
+  const helpButton = (
+    <button className={styles.helpBtn} onClick={onHelp} aria-label="Help">?</button>
+  )
 
   return (
     <header className={styles.toolbar}>
@@ -61,7 +133,7 @@ export function Toolbar({
           title="About Scriptyard"
         >
           <ScriptyardIcon />
-          <span>Scriptyard</span>
+          {!isNarrow && <span>Scriptyard</span>}
         </button>
 
         {showAboutPopover && (
@@ -75,7 +147,7 @@ export function Toolbar({
         {/* Board name — click opens project info popover */}
         <button
           ref={boardNameBtnRef}
-          className={styles.boardName}
+          className={isNarrow ? `${styles.boardName} ${styles.boardNameNarrow}` : styles.boardName}
           onClick={() => setShowInfoPopover(v => !v)}
           title="Project settings"
         >
@@ -91,61 +163,89 @@ export function Toolbar({
       </div>
 
       <div className={styles.center}>
-        <div className={styles.undoRedo}>
-          <button className={styles.undoRedoBtn} onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">↩</button>
-          <button className={styles.undoRedoBtn} onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">↪</button>
-        </div>
-        <div className={styles.zoomHud}>
-          <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'out' })} title="Zoom out">−</button>
-          <button className={styles.zoomPct} onClick={() => requestZoom({ type: 'reset' })} title="Reset zoom">{zoomPct}%</button>
-          <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'in' })} title="Zoom in">+</button>
-        </div>
-        {/* Frame all — fits everything in view (same as pressing F) */}
-        <button
-          className={styles.frameBtn}
-          onClick={requestFrame}
-          title="Frame all (F)"
-          aria-label="Frame all"
-        >
-          <FrameIcon />
-        </button>
-        {/* Day / Night toggle */}
-        <button
-          className={styles.themeToggle}
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
+        {isNarrow ? (
+          frameButton
+        ) : (
+          <>
+            <div className={styles.undoRedo}>
+              <button className={styles.undoRedoBtn} onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">↩</button>
+              <button className={styles.undoRedoBtn} onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)" aria-label="Redo">↪</button>
+            </div>
+            <div className={styles.zoomHud}>
+              <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'out' })} title="Zoom out">−</button>
+              <button className={styles.zoomPct} onClick={() => requestZoom({ type: 'reset' })} title="Reset zoom">{zoomPct}%</button>
+              <button className={styles.zoomBtn} onClick={() => requestZoom({ type: 'in' })} title="Zoom in">+</button>
+            </div>
+            {frameButton}
+            {/* Day / Night toggle */}
+            <button
+              className={styles.themeToggle}
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </>
+        )}
       </div>
 
       <div className={styles.right}>
-        <button className={styles.action} onClick={onNewBoard} title="New blank board">New Board</button>
-        <button className={styles.action} onClick={onImport}>Import</button>
+        {isNarrow ? (
+          <>
+            <button
+              ref={overflowBtnRef}
+              className={styles.overflowBtn}
+              onClick={openOverflow}
+              title="More"
+              aria-label="More actions"
+              aria-haspopup="menu"
+            >
+              <OverflowIcon />
+            </button>
+            {helpButton}
+          </>
+        ) : (
+          <>
+            <button className={styles.action} onClick={onNewBoard} title="New blank board">New Board</button>
+            <button className={styles.action} onClick={onImport}>Import</button>
 
-        {/* Export — opens a popover with JSON / Fountain / FDX options */}
-        <button
-          ref={exportBtnRef}
-          className={styles.action}
-          onClick={() => setShowExportPopover(v => !v)}
-          title="Export board"
-        >
-          Export
-        </button>
+            {/* Export — opens a popover with JSON / Fountain / FDX options */}
+            <button
+              ref={exportBtnRef}
+              className={styles.action}
+              onClick={() => setShowExportPopover(v => !v)}
+              title="Export board"
+            >
+              Export
+            </button>
 
+            <button className={styles.action} onClick={onTemplates}>Templates</button>
+            <button className={styles.action} onClick={onOutline}>Outline</button>
+            {helpButton}
+          </>
+        )}
+
+        {/* On narrow the Export trigger lives inside the overflow menu, so the
+            popover anchors to the ⋯ button instead of the (absent) Export
+            button. ExportPopover already clamps its left edge to the viewport. */}
         {showExportPopover && (
           <ExportPopover
-            anchorRef={exportBtnRef}
+            anchorRef={isNarrow ? overflowBtnRef : exportBtnRef}
             onClose={() => setShowExportPopover(false)}
             onExportJson={onExport}
           />
         )}
-
-        <button className={styles.action} onClick={onTemplates}>Templates</button>
-        <button className={styles.action} onClick={onOutline}>Outline</button>
-        <button className={styles.helpBtn} onClick={onHelp} aria-label="Help">?</button>
       </div>
+
+      {overflowMenu && (
+        <ContextMenu
+          x={overflowMenu.x}
+          y={overflowMenu.y}
+          items={overflowItems}
+          onClose={() => setOverflowMenu(null)}
+        />
+      )}
     </header>
   )
 }
@@ -224,6 +324,21 @@ function MoonIcon() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path d="M12.5 8.5A6 6 0 0 1 5.5 1.5a5.5 5.5 0 1 0 7 7z"
         stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
+/*
+ * OverflowIcon — three horizontal dots, the conventional "more / overflow"
+ * affordance (deliberately not a hamburger, which connotes primary nav).
+ * Uses currentColor so it follows the .overflowBtn text colour on hover.
+ */
+function OverflowIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="3.5"  cy="8" r="1.4" fill="currentColor"/>
+      <circle cx="8"    cy="8" r="1.4" fill="currentColor"/>
+      <circle cx="12.5" cy="8" r="1.4" fill="currentColor"/>
     </svg>
   )
 }
