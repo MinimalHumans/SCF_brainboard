@@ -135,6 +135,33 @@ input, textarea {
   resize: none;
 }
 
+/*
+ * iOS focus auto-zoom suppression (global, touch only).
+ *
+ * Mobile Safari zooms the VISUAL viewport in whenever a focused form control
+ * computes to a font-size below 16px — it's "enlarging" small text. That zoom
+ * pans the fixed toolbar out of view, and the app's own pinch-zoom (a CSS
+ * transform on .world) can't undo a visual-viewport zoom, so it gets stuck
+ * until you manually pinch the page back out. Observed symptom: focus a field
+ * → page zooms in a little → top bar gone → only a manual zoom-out restores it.
+ *
+ * Pinning every form control to >=16px removes the trigger entirely. 16px is
+ * the documented threshold (>=16px = no zoom).
+ *
+ * !important is deliberate: this must win over the component-scoped 13px field
+ * rules (.editPanel .input, .input, backdrop/project-info panels, etc.) no
+ * matter which editor surface renders the field — we don't want the fix to
+ * depend on a particular panel or specificity ordering. Scoped to
+ * (pointer: coarse) so desktop density is unaffected.
+ */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Visible focus ring for keyboard navigation.
    Components that need custom focus treatment (e.g. cards) override this. */
 :focus-visible {
