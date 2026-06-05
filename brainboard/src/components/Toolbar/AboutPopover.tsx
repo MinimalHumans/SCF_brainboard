@@ -53,7 +53,7 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     >
       <div className={styles.brand}>
         <span className={`${styles.wordmark} text-display`}>Scriptyard</span>
-        <span className={styles.byline}>Created by Minimal Humans - v0.2.4</span>
+        <span className={styles.byline}>Created by Minimal Humans - v0.2.5</span>
       </div>
 
       <div className={styles.divider} />
