@@ -216,6 +216,140 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
     cardStatus === 'Draft' ? 'draft' :
     undefined
 
+  /*
+   * panelBody — the editor's contents, shared by both presentations:
+   *
+   *   Desktop  → portaled into worldRef, absolutely positioned beside the
+   *              card in WORLD space (moves with pan/zoom). Works fine with a
+   *              mouse; focusing a field never moves the viewport.
+   *
+   *   Touch    → portaled into document.body as a fixed, SCREEN-space bottom
+   *              sheet. The inputs live on-screen, above the keyboard, so iOS
+   *              never has to shift the document/visual viewport to reveal a
+   *              focused field. This is what fixes the "offset + lost toolbar"
+   *              bug: the old world-space panel sat in a transformed,
+   *              effectively off-screen layer, so focusing an input forced the
+   *              browser to pan the whole viewport (taking the toolbar with
+   *              it). Clipping scroll containers can't fix that — the input
+   *              genuinely needs revealing — so we put it where it's already
+   *              visible instead.
+   *
+   * Extracting it once means there's no duplicated field markup to keep in
+   * sync between the two presentations.
+   */
+  const panelBody = (
+    <>
+      <div className={styles.panelHeader}>
+        <span className={styles.panelTitle}>{displayTitle || card.type}</span>
+        <button className={styles.panelClose}
+          onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(false) }}
+          title="Close">×</button>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Type</label>
+        <select className={styles.select} value={card.type} onChange={e => setType(e.target.value)}>
+          {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Name</label>
+        <input
+          className={styles.input}
+          value={displayTitle}
+          onFocus={() => snapshotBoard()}
+          onChange={e => setTitle(e.target.value)}
+          placeholder={`New ${card.type}`}
+          autoFocus={!IS_TOUCH_PRIMARY}
+        />
+      </div>
+
+      {attrSchema.length > 0 && (
+        <div className={styles.attrSection}>
+          <div className={styles.attrSectionHeader}>Attributes</div>
+          {attrSchema.map(field => (
+            <div key={field.key} className={styles.field}>
+              <label className={styles.label}>{field.label}</label>
+              {field.type === 'select' ? (
+                <select
+                  className={styles.select}
+                  value={(entity?.attributes[field.key] as string) ?? (field.defaultValue ?? '')}
+                  onChange={e => setAttrSelect(field.key, e.target.value)}
+                >
+                  {field.defaultValue === undefined && (
+                    <option value="">{field.emptyLabel ?? '—'}</option>
+                  )}
+                  {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : field.type === 'textarea' ? (
+                <textarea
+                  className={styles.textarea}
+                  value={(entity?.attributes[field.key] as string) ?? ''}
+                  onFocus={() => snapshotBoard()}
+                  onChange={e => setAttr(field.key, e.target.value)}
+                  placeholder={field.hint}
+                  rows={2}
+                />
+              ) : (
+                <input
+                  className={styles.input}
+                  value={(entity?.attributes[field.key] as string) ?? ''}
+                  onFocus={() => snapshotBoard()}
+                  onChange={e => setAttr(field.key, e.target.value)}
+                  placeholder={field.hint}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={styles.field}>
+        <label className={styles.label}>Note <span className={styles.tag}> · shared</span></label>
+        <textarea
+          className={styles.textarea}
+          value={card.noteRaw}
+          onFocus={() => snapshotBoard()}
+          onChange={e => setNoteRaw(e.target.value)}
+          placeholder="Add a note… (markdown supported)"
+          rows={3}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Placement note <span className={styles.tag}> · this card only</span></label>
+        <textarea
+          className={styles.textarea}
+          value={card.instanceNote}
+          onFocus={() => snapshotBoard()}
+          onChange={e => setInstanceNote(e.target.value)}
+          placeholder="Context for this placement…"
+          rows={2}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Color</label>
+        <div className={styles.swatches}>
+          {SWATCH_KEYS.map(swatch => (
+            <div key={swatch} role="button" tabIndex={0}
+              className={`${styles.swatch} ${card.color === swatch ? styles.swatchActive : ''}`}
+              style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
+              onPointerDown={e => handleSwatchPointerDown(e, swatch)}
+              aria-label={swatch} title={swatch} />
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.publishRow}>
+        <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
+          Publish
+        </button>
+      </div>
+    </>
+  )
+
   return (
     <>
       <div
@@ -265,122 +399,37 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
         </div>
       </div>
 
-      {isEditing && worldRef.current && createPortal(
-        <div className={styles.editPanel}
-          style={{ position: 'absolute', left: panelLeft, top: panelTop, zIndex: card.zIndex + 1000 }}
-          onPointerDown={e => e.stopPropagation()}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>{displayTitle || card.type}</span>
-            <button className={styles.panelClose}
-              onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setIsEditing(false) }}
-              title="Close">×</button>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Type</label>
-            <select className={styles.select} value={card.type} onChange={e => setType(e.target.value)}>
-              {[...ENTITY_TYPES].sort().map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Name</label>
-            <input
-              className={styles.input}
-              value={displayTitle}
-              onFocus={() => snapshotBoard()}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={`New ${card.type}`}
-              autoFocus={!IS_TOUCH_PRIMARY}
-            />
-          </div>
-
-          {attrSchema.length > 0 && (
-            <div className={styles.attrSection}>
-              <div className={styles.attrSectionHeader}>Attributes</div>
-              {attrSchema.map(field => (
-                <div key={field.key} className={styles.field}>
-                  <label className={styles.label}>{field.label}</label>
-                  {field.type === 'select' ? (
-                    <select
-                      className={styles.select}
-                      value={(entity?.attributes[field.key] as string) ?? (field.defaultValue ?? '')}
-                      onChange={e => setAttrSelect(field.key, e.target.value)}
-                    >
-                      {field.defaultValue === undefined && (
-                        <option value="">{field.emptyLabel ?? '—'}</option>
-                      )}
-                      {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  ) : field.type === 'textarea' ? (
-                    <textarea
-                      className={styles.textarea}
-                      value={(entity?.attributes[field.key] as string) ?? ''}
-                      onFocus={() => snapshotBoard()}
-                      onChange={e => setAttr(field.key, e.target.value)}
-                      placeholder={field.hint}
-                      rows={2}
-                    />
-                  ) : (
-                    <input
-                      className={styles.input}
-                      value={(entity?.attributes[field.key] as string) ?? ''}
-                      onFocus={() => snapshotBoard()}
-                      onChange={e => setAttr(field.key, e.target.value)}
-                      placeholder={field.hint}
-                    />
-                  )}
+      {isEditing && (
+        IS_TOUCH_PRIMARY
+          /* Touch: fixed screen-space bottom sheet, portaled to body. */
+          ? createPortal(
+              <div
+                className={styles.sheetScrim}
+                onPointerDown={() => setIsEditing(false)}
+              >
+                <div
+                  className={styles.sheet}
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
+                  role="dialog"
+                  aria-label="Edit card"
+                >
+                  {panelBody}
                 </div>
-              ))}
-            </div>
-          )}
-
-          <div className={styles.field}>
-            <label className={styles.label}>Note <span className={styles.tag}> · shared</span></label>
-            <textarea
-              className={styles.textarea}
-              value={card.noteRaw}
-              onFocus={() => snapshotBoard()}
-              onChange={e => setNoteRaw(e.target.value)}
-              placeholder="Add a note… (markdown supported)"
-              rows={3}
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Placement note <span className={styles.tag}> · this card only</span></label>
-            <textarea
-              className={styles.textarea}
-              value={card.instanceNote}
-              onFocus={() => snapshotBoard()}
-              onChange={e => setInstanceNote(e.target.value)}
-              placeholder="Context for this placement…"
-              rows={2}
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Color</label>
-            <div className={styles.swatches}>
-              {SWATCH_KEYS.map(swatch => (
-                <div key={swatch} role="button" tabIndex={0}
-                  className={`${styles.swatch} ${card.color === swatch ? styles.swatchActive : ''}`}
-                  style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
-                  onPointerDown={e => handleSwatchPointerDown(e, swatch)}
-                  aria-label={swatch} title={swatch} />
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.publishRow}>
-            <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>
-              Publish
-            </button>
-          </div>
-        </div>,
-        worldRef.current
+              </div>,
+              document.body
+            )
+          /* Desktop: world-space side panel, portaled into the world. */
+          : worldRef.current && createPortal(
+              <div className={styles.editPanel}
+                style={{ position: 'absolute', left: panelLeft, top: panelTop, zIndex: card.zIndex + 1000 }}
+                onPointerDown={e => e.stopPropagation()}
+                onClick={e => e.stopPropagation()}
+              >
+                {panelBody}
+              </div>,
+              worldRef.current
+            )
       )}
 
       {ctxMenu && (
