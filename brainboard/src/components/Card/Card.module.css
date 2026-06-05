@@ -428,6 +428,34 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/*
+ * iOS auto-zoom suppression.
+ *
+ * Safari zooms the visual viewport IN whenever a focused form control has a
+ * computed font-size below 16px — it's "helpfully" enlarging small text. That
+ * zoom is what was pushing the toolbar out of frame ("zooms in a little, top
+ * bar lost"). It is NOT the autofocus and NOT a scroll: it's purely the font
+ * threshold. Our fields render at --text-sm (13px), so every focus triggered
+ * it; manually zooming back out is the only thing that restored the bar,
+ * which is exactly the behaviour observed.
+ *
+ * Pinning the sheet's controls to 16px (--text-md) removes the trigger
+ * entirely, so focusing a field never zooms and the toolbar stays put. 16px
+ * is the documented threshold — >=16px = no zoom.
+ *
+ * Scoped to .sheet (specificity 0-2-0, beats the standalone 0-1-0 rules) so
+ * desktop density is unaffected; the sheet only renders on touch regardless.
+ *
+ * We deliberately do NOT reach for maximum-scale=1 / user-scalable=no on the
+ * viewport meta: newer iOS ignores it, and it disables pinch-zoom
+ * accessibility for the whole document.
+ */
+.sheet .input,
+.sheet .textarea,
+.sheet .select {
+  font-size: var(--text-md);   /* 16px — at/above the iOS auto-zoom threshold */
+}
+
 /* ==========================================================================
    Touch hit targets (Phase 6)
    ==========================================================================
