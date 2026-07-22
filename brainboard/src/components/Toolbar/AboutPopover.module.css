@@ -12,6 +12,14 @@
   flex-direction:   column;
   gap:              var(--space-3);
   animation:        popoverIn var(--duration-fast) var(--easing-standard);
+
+  /* With the licence list expanded the popover can grow well past its
+     collapsed height. max-height is set inline from the anchor position (see
+     AboutPopover.tsx); scrolling lives here rather than inside the licence
+     list so there is only ever one scroll region. */
+  overflow-y:          auto;
+  overscroll-behavior: contain;
+  scrollbar-width:     thin;
 }
 
 @keyframes popoverIn {
@@ -119,4 +127,150 @@
   color:        var(--color-text-muted);
   line-height:  var(--leading-normal);
   opacity:      0.8;
+}
+
+/* ── Open source attribution ──────────────────────────────────────────────── */
+
+/* Shared row style for both the top-level "Open source licenses" toggle and
+   the per-licence text toggles nested inside it. */
+.disclosure {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--space-2);
+  width:           100%;
+  padding:         0;
+  background:      none;
+  border:          none;
+  cursor:          pointer;
+  text-align:      left;
+  color:           var(--color-text-secondary);
+  transition:      color var(--duration-fast) var(--easing-out);
+}
+
+.disclosure:hover { color: var(--color-text-primary); }
+
+.disclosure:focus-visible {
+  outline:        2px solid var(--color-border-focus);
+  outline-offset: 2px;
+  border-radius:  var(--radius-xs);
+}
+
+.disclosureLabel {
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+/* CSS-only chevron — avoids pulling the icon sprite into this component for a
+   single 6px glyph. */
+.chevron {
+  width:        6px;
+  height:       6px;
+  flex:         0 0 auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;
+  transform:    rotate(45deg) translate(-2px, -2px);
+  transition:   transform var(--duration-fast) var(--easing-out);
+}
+
+.chevronOpen { transform: rotate(225deg) translate(-2px, -2px); }
+
+.licenses {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-2);
+}
+
+.licenseIntro {
+  font-family:  var(--font-ui);
+  font-size:    var(--text-2xs);
+  line-height:  var(--leading-normal);
+  color:        var(--color-text-muted);
+}
+
+.groupLabel {
+  font-family:    var(--font-ui);
+  font-size:      var(--text-2xs);
+  font-weight:    var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color:          var(--color-text-muted);
+  margin-top:     var(--space-1);
+}
+
+.packageList {
+  display:         flex;
+  flex-direction:  column;
+  gap:             var(--space-2);
+  margin:          0;
+  padding:         0;
+  list-style:      none;
+}
+
+.package {
+  display:        flex;
+  flex-direction: column;
+  gap:            1px;
+}
+
+.packageHead {
+  display:     flex;
+  align-items: baseline;
+  gap:         var(--space-1);
+  flex-wrap:   wrap;
+}
+
+/* Package names are long and hyphen-heavy (@fontsource-variable/fraunces);
+   break anywhere rather than forcing the 300px popover to scroll sideways. */
+.packageName {
+  font-family:     var(--font-ui);
+  font-size:       var(--text-2xs);
+  font-weight:     var(--weight-medium);
+  color:           var(--color-accent);
+  text-decoration: none;
+  overflow-wrap:   anywhere;
+}
+
+.packageName:hover {
+  color:           var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.packageMeta {
+  font-family: var(--font-mono);
+  font-size:   var(--text-2xs);
+  color:       var(--color-text-disabled);
+  white-space: nowrap;
+}
+
+.copyright {
+  font-family:   var(--font-ui);
+  font-size:     var(--text-2xs);
+  line-height:   var(--leading-snug);
+  color:         var(--color-text-muted);
+  white-space:   pre-line;   /* packages with several holders (marked) */
+  overflow-wrap: anywhere;
+}
+
+.licenseText {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-1);
+}
+
+/* Full licence body. pre-wrap preserves the OFL's paragraph structure without
+   introducing a horizontal scrollbar. */
+.legal {
+  margin:           0;
+  padding:          var(--space-2);
+  background-color: var(--color-surface-inset);
+  border:           1px solid var(--color-border);
+  border-radius:    var(--radius-sm);
+  font-family:      var(--font-mono);
+  font-size:        var(--text-2xs);
+  line-height:      var(--leading-normal);
+  color:            var(--color-text-secondary);
+  white-space:      pre-wrap;
+  overflow-wrap:    anywhere;
 }

@@ -1,6 +1,13 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './AboutPopover.module.css'
+import {
+  THIRD_PARTY,
+  LICENSE_TEXTS,
+  LICENSE_NAMES,
+  type LicenseId,
+  type ThirdPartyPackage,
+} from '../../config/licenses'
 
 interface AboutPopoverProps {
   anchorRef: React.RefObject<HTMLButtonElement>
@@ -10,6 +17,8 @@ interface AboutPopoverProps {
 export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ top: 52, left: 0 })
+  const [showLicenses, setShowLicenses] = useState(false)
+  const [openText,     setOpenText]     = useState<LicenseId | null>(null)
 
   useLayoutEffect(() => {
     const btn = anchorRef.current
@@ -47,7 +56,14 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     <div
       ref={popoverRef}
       className={styles.popover}
-      style={{ top: pos.top, left: pos.left }}
+      style={{
+        top:       pos.top,
+        left:      pos.left,
+        // The popover is fixed-positioned from the anchor's bottom edge, so
+        // its available height is whatever is left below that. Without this
+        // the expanded licence list runs off the bottom of a phone viewport.
+        maxHeight: `calc(100dvh - ${pos.top + 8}px)`,
+      }}
       onPointerDown={e => e.stopPropagation()}
       onClick={e => e.stopPropagation()}
     >
@@ -103,8 +119,96 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
       <p className={styles.note}>
         Share your thoughts, report bugs, or request features in the Discord channel.
       </p>
+
+      <div className={styles.divider} />
+
+      {/* ── Open source attribution ──────────────────────────────────────────
+          MIT and the SIL OFL both require the copyright notice *and* the
+          licence text to be distributed with the work, so the full texts live
+          here rather than just a list of names. Collapsed by default to keep
+          the popover at its usual size. */}
+      <button
+        type="button"
+        className={styles.disclosure}
+        aria-expanded={showLicenses}
+        onClick={() => setShowLicenses(v => !v)}
+      >
+        <span className={styles.disclosureLabel}>Open source licenses</span>
+        <span
+          className={`${styles.chevron} ${showLicenses ? styles.chevronOpen : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {showLicenses && (
+        <div className={styles.licenses}>
+          <p className={styles.licenseIntro}>
+            Scriptyard is built on the work of others. These packages ship in
+            the app and are used under their respective licenses.
+          </p>
+
+          <p className={styles.groupLabel}>Direct dependencies</p>
+          <ul className={styles.packageList}>
+            {DIRECT.map(pkg => <PackageRow key={pkg.name} pkg={pkg} />)}
+          </ul>
+
+          <p className={styles.groupLabel}>Bundled transitive dependencies</p>
+          <ul className={styles.packageList}>
+            {TRANSITIVE.map(pkg => <PackageRow key={pkg.name} pkg={pkg} />)}
+          </ul>
+
+          <p className={styles.groupLabel}>License texts</p>
+          {USED_LICENSES.map(id => (
+            <div key={id} className={styles.licenseText}>
+              <button
+                type="button"
+                className={styles.disclosure}
+                aria-expanded={openText === id}
+                onClick={() => setOpenText(cur => (cur === id ? null : id))}
+              >
+                <span className={styles.disclosureLabel}>{LICENSE_NAMES[id]}</span>
+                <span
+                  className={`${styles.chevron} ${openText === id ? styles.chevronOpen : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
+              {openText === id && <pre className={styles.legal}>{LICENSE_TEXTS[id]}</pre>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>,
     document.body,
+  )
+}
+
+/* Split once at module scope — THIRD_PARTY is a static generated constant, so
+   there is nothing to recompute per render. */
+const DIRECT        = THIRD_PARTY.filter(p => p.direct)
+const TRANSITIVE    = THIRD_PARTY.filter(p => !p.direct)
+const USED_LICENSES = [...new Set(THIRD_PARTY.map(p => p.license))]
+
+/* One attribution row: package name (linked to its source), resolved version,
+   licence identifier, and the verbatim copyright notice the licence requires
+   us to reproduce. */
+function PackageRow({ pkg }: { pkg: ThirdPartyPackage }) {
+  return (
+    <li className={styles.package}>
+      <div className={styles.packageHead}>
+        <a
+          className={styles.packageName}
+          href={pkg.url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {pkg.name}
+        </a>
+        <span className={styles.packageMeta}>
+          {pkg.version} · {pkg.license}
+        </span>
+      </div>
+      <p className={styles.copyright}>{pkg.copyright}</p>
+    </li>
   )
 }
 
