@@ -364,7 +364,11 @@ export function buildFountain(board: Board): string {
 
   // ── Recursive structural traversal ────────────────────────────────────────
 
-  function emitBackdrop(bd: Backdrop) {
+  /**
+   * @param beatDepth How many Beat backdrops enclose this one. Drives the
+   *                  Fountain section level so nested Beats read as sub-beats.
+   */
+  function emitBackdrop(bd: Backdrop, beatDepth = 0) {
     switch (bd.type) {
 
       case 'Act': {
@@ -394,7 +398,7 @@ export function buildFountain(board: Board): string {
 
         // Recurse into child backdrops (Sequences, Scenes, Beats)
         for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
-          emitBackdrop(child)
+          emitBackdrop(child, beatDepth)
         }
 
         // Scene entity cards directly inside this Act (unusual but possible)
@@ -427,7 +431,7 @@ export function buildFountain(board: Board): string {
         if (directShots.length > 0) out.push('')
 
         for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
-          emitBackdrop(child)
+          emitBackdrop(child, beatDepth)
         }
 
         for (const c of directCards.filter(c => c.type === 'Scene')) {
@@ -437,22 +441,77 @@ export function buildFountain(board: Board): string {
       }
 
       case 'Beat': {
-        // Structural Beat (not nested inside a Scene backdrop)
-        out.push(`### ${bd.title}`)
+        /*
+         * Structural Beat (not nested inside a Scene backdrop).
+         *
+         * This case previously recursed into child *backdrops* only and never
+         * called cardsInBackdrop, so every card sitting inside a Beat backdrop
+         * was silently dropped from both screenplay exports — Beat cards, but
+         * also Characters, Props, Shots and Scene cards. The Outline export
+         * uses a generic renderer that always walks cards, which is why the
+         * same board exported correctly there and came out empty here.
+         *
+         * Beat nesting depth drives the section level so that a Beat inside a
+         * Beat reads as a sub-beat rather than flattening to a sibling: every
+         * Beat backdrop used to emit `###` regardless of how deep it sat.
+         * Fountain has no section-depth ceiling, but past `######` navigators
+         * stop indenting, so the level is clamped.
+         */
+        const level = Math.min(3 + beatDepth, 6)
+        out.push(`${'#'.repeat(level)} ${bd.title}`)
         if (bd.note?.trim()) out.push(`= ${bd.note.trim()}`)
         out.push('')
 
+        const beatAttrs: string[] = []
         const desc = attr(bd.attributes, 'description')
-        if (desc) {
-          out.push('[[')
-          out.push('Beat context')
-          out.push(`Description: ${desc}`)
-          out.push(']]')
+        if (desc) beatAttrs.push(`Description: ${desc}`)
+
+        const directCards = cardsInBackdrop(bd.id, cards, cardParent)
+
+        /*
+         * Beat cards are pulled out and emitted as their own sub-beat sections
+         * below, rather than folded into the context block the way they are at
+         * Act and Sequence level. A Beat card inside a Beat backdrop is
+         * structure — it is the thing the writer wants to see in the
+         * navigator — whereas at Act level it is supporting material.
+         */
+        const subBeatCards = rowSort(directCards.filter(c => c.type === 'Beat'))
+        const contextCards = directCards.filter(c => c.type !== 'Beat' && c.type !== 'Scene')
+
+        const directShots = emitStructuralContext('Beat context', beatAttrs, contextCards)
+
+        for (const c of directShots) out.push(formatShot(c))
+        if (directShots.length > 0) out.push('')
+
+        // Sub-beat cards, one section level deeper than this Beat.
+        const subLevel = Math.min(level + 1, 6)
+        for (const c of subBeatCards) {
+          const e     = eMap.get(c.entityId)
+          const title = e?.title ?? c.title
+          out.push(`${'#'.repeat(subLevel)} ${title}`)
+
+          const note = (e?.noteRaw ?? c.noteRaw)?.trim()
+          if (note) out.push(`= ${note}`)
           out.push('')
+
+          const sub = attr(strAttrs(e?.attributes ?? {}), 'description')
+          if (sub) {
+            out.push('[[')
+            out.push('Beat context')
+            out.push(`Description: ${sub}`)
+            out.push(']]')
+            out.push('')
+          }
         }
 
+        // Child backdrops inherit the incremented depth.
         for (const child of backdropsInBackdrop(bd.id, backdrops, bdParent)) {
-          emitBackdrop(child)
+          emitBackdrop(child, beatDepth + 1)
+        }
+
+        // Scene cards sitting directly inside a Beat backdrop.
+        for (const c of rowSort(directCards.filter(c => c.type === 'Scene'))) {
+          emitSceneCard(c)
         }
         break
       }

@@ -81,7 +81,13 @@
    ========================================================================== */
 .card {
   position: absolute; left: 0; top: 0;
-  width: 320px; will-change: transform;
+  width: 320px;
+  /*
+   * No `will-change: transform` here — it is applied for the duration of a
+   * drag and removed afterwards (see utils/dragPromotion.ts). A permanent
+   * promotion locks this card's raster scale to the zoom level it was created
+   * at, which made cards built while zoomed out render blurry once zoomed in.
+   */
   display: flex; flex-direction: column;
   border-radius: var(--radius-md); overflow: hidden;
   box-shadow: var(--shadow-card); user-select: none; cursor: grab;
@@ -352,15 +358,32 @@
 
 /* Swatches — 24 dots */
 .swatches { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+/* Now a real <button> (see SwatchPicker.tsx) — reset the UA box. */
 .swatch {
   width: 18px; height: 18px; border-radius: var(--radius-full);
   background-color: var(--dot, var(--color-border)); border: 2.5px solid transparent;
-  cursor: pointer; flex-shrink: 0; outline: none;
+  cursor: pointer; flex-shrink: 0;
+  padding: 0; margin: 0; appearance: none; -webkit-appearance: none;
   transition: transform var(--duration-fast) var(--easing-spring),
               border-color var(--duration-fast) var(--easing-out);
 }
 .swatch:hover  { transform: scale(1.18); }
 .swatchActive  { border-color: var(--color-text-primary); transform: scale(1.12); }
+
+/*
+ * The old rule set `outline: none` unconditionally, which removed the focus
+ * indicator (WCAG 2.4.7). Only the mouse-click outline needs suppressing, so
+ * :focus-visible keeps the keyboard ring while :focus alone stays quiet.
+ *
+ * The ring is offset outward rather than drawn on the border, because the
+ * border is what marks the *selected* swatch — overlapping them would make
+ * "focused" and "selected" indistinguishable when arrowing through.
+ */
+.swatch:focus         { outline: none; }
+.swatch:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
 
 .publishRow { padding-top: var(--space-2); border-top: 1px solid var(--color-border); }
 .publishBtn {

@@ -5,7 +5,12 @@ import { useEditorSignalStore } from '@/store/editorSignalStore'
 import { useLongPress } from '@/hooks/useLongPress'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
-import { SWATCH_KEYS, BACKDROP_TYPES, getContainedCardIds, getContainedBackdropIds } from '@/types/board'
+import { BACKDROP_TYPES, getContainedCardIds, getContainedBackdropIds } from '@/types/board'
+import { SwatchPicker } from '@/components/common/SwatchPicker'
+import {
+  promoteForDrag, releaseDragPromotion,
+  promoteAllForDrag, releaseAllDragPromotions,
+} from '@/utils/dragPromotion'
 import { BACKDROP_SCHEMAS } from '@/config/backdropSchemas'
 import type { Backdrop } from '@/types/board'
 import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
@@ -165,6 +170,14 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
       const dx = (me.clientX - startX) / zoom
       const dy = (me.clientY - startY) / zoom
       if (!dragging && Math.hypot(dx, dy) < 4) return
+
+      // Promote once, on the frame the drag crosses the threshold.
+      // See utils/dragPromotion.ts for why this is not permanent CSS.
+      if (!dragging) {
+        promoteForDrag(backdropEl)
+        promoteAllForDrag('data-card-id',     cardStartPos.keys())
+        promoteAllForDrag('data-backdrop-id', bdStartPos.keys())
+      }
       dragging = true
       if (backdropEl) backdropEl.style.transform = `translate(${startBX + dx}px, ${startBY + dy}px)`
       for (const [id, start] of cardStartPos) {
@@ -180,6 +193,10 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
     const onUp = (ue: PointerEvent) => {
       headerEl.removeEventListener('pointermove', onMove)
       headerEl.removeEventListener('pointerup',   onUp)
+      // Released on every exit path, including the below-threshold one.
+      releaseDragPromotion(backdropEl)
+      releaseAllDragPromotions('data-card-id',     cardStartPos.keys())
+      releaseAllDragPromotions('data-backdrop-id', bdStartPos.keys())
       if (!dragging) return
       const dx = (ue.clientX - startX) / zoom
       const dy = (ue.clientY - startY) / zoom
@@ -404,22 +421,20 @@ export function BackdropComponent({ backdrop, getViewerZoom, worldRef }: Backdro
             />
           </div>
 
-          <div className={styles.field}>
-            <label className={styles.label}>Color</label>
-            <div className={styles.swatches}>
-              {SWATCH_KEYS.map(swatch => (
-                <div key={swatch} role="button"
-                  className={`${styles.swatch} ${liveBackdrop.color === swatch ? styles.swatchActive : ''}`}
-                  style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
-                  onPointerDown={e => {
-                    e.stopPropagation(); e.preventDefault()
-                    snapshotBoard()
-                    updateBackdropContent(liveBackdrop.id, { color: swatch as any })
-                  }}
-                  title={swatch} />
-              ))}
-            </div>
-          </div>
+          <SwatchPicker
+            value={liveBackdrop.color}
+            onSelect={swatch => {
+              snapshotBoard()
+              updateBackdropContent(liveBackdrop.id, { color: swatch })
+            }}
+            classNames={{
+              field:  styles.field,
+              label:  styles.label,
+              row:    styles.swatches,
+              swatch: styles.swatch,
+              active: styles.swatchActive,
+            }}
+          />
         </div>,
         worldRef.current
       )}

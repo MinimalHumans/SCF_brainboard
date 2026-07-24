@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useBoardStore } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import type { Card } from '@/types/board'
+import { promoteAllForDrag, releaseAllDragPromotions } from '@/utils/dragPromotion'
 
 /*
  * useCardDrag
@@ -114,6 +115,14 @@ export function useCardDrag(
         const dx = (me.clientX - startX) / zoom
         const dy = (me.clientY - startY) / zoom
         if (!dragging && Math.hypot(dx, dy) < 4) return
+
+        /*
+         * Promote on the frame the drag actually starts, not on pointerdown —
+         * a click that never passes the 4px threshold should not touch the
+         * compositor at all. Guarded by `dragging` so it runs once, not on
+         * every move event.
+         */
+        if (!dragging) promoteAllForDrag('data-card-id', startPos.keys())
         dragging = true
 
         for (const [id, start] of startPos) {
@@ -125,6 +134,9 @@ export function useCardDrag(
       const onUp = (ue: PointerEvent) => {
         document.removeEventListener('pointermove', onMove)
         document.removeEventListener('pointerup',   onUp)
+        // Release before the early return: a drag that started and then
+        // finished below threshold still promoted, and must still be released.
+        releaseAllDragPromotions('data-card-id', startPos.keys())
         if (!dragging) return
 
         const dx = (ue.clientX - startX) / zoom

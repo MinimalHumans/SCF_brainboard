@@ -71,7 +71,8 @@
   position:         absolute;
   left:             0;
   top:              0;
-  will-change:      transform;
+  /* See Card.module.css / utils/dragPromotion.ts — promotion is per-drag,
+     not permanent, so raster scale tracks the current zoom. */
   display:          flex;
   flex-direction:   column;
 
@@ -387,6 +388,7 @@
 
 /* Swatches — 24 dots, small but tappable */
 .swatches { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+/* Now a real <button> (see SwatchPicker.tsx) — reset the UA box. */
 .swatch {
   width:            16px;
   height:           16px;
@@ -394,11 +396,22 @@
   background-color: var(--dot, var(--color-border));
   border:           2px solid transparent;
   cursor:           pointer;
+  padding:          0;
+  margin:           0;
+  appearance:       none;
+  -webkit-appearance: none;
   transition:       transform var(--duration-fast) var(--easing-spring),
                     border-color var(--duration-fast) var(--easing-out);
 }
 .swatch:hover  { transform: scale(1.22); }
 .swatchActive  { border-color: var(--color-text-primary); transform: scale(1.12); }
+
+/* Keyboard focus ring — see the matching note in Card.module.css. */
+.swatch:focus         { outline: none; }
+.swatch:focus-visible {
+  outline:        2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
 
 /* ==========================================================================
    Resize handles

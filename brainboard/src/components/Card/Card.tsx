@@ -9,7 +9,8 @@ import { useLongPress } from '@/hooks/useLongPress'
 import { ContextMenu } from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { Card } from '@/types/board'
-import { ENTITY_TYPES, SWATCH_KEYS, isInstance } from '@/types/board'
+import { ENTITY_TYPES, isInstance, type SwatchKey } from '@/types/board'
+import { SwatchPicker } from '@/components/common/SwatchPicker'
 import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
 import styles from './Card.module.css'
@@ -185,10 +186,10 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
     if (entity) updateEntityAttribute(entity.id, key, value)
   }, [entity, updateEntityAttribute])
 
-  const handleSwatchPointerDown = useCallback((e: React.PointerEvent, swatch: string) => {
-    e.stopPropagation(); e.preventDefault()
+  /* SwatchPicker owns the pointer/keyboard plumbing; this just applies it. */
+  const handleSwatchSelect = useCallback((swatch: SwatchKey) => {
     snapshotBoard()
-    updateCardContent(card.id, { color: swatch as any })
+    updateCardContent(card.id, { color: swatch })
   }, [card.id, updateCardContent])
 
   const handlePublishPointerDown = useCallback((e: React.PointerEvent) => {
@@ -329,18 +330,17 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
         />
       </div>
 
-      <div className={styles.field}>
-        <label className={styles.label}>Color</label>
-        <div className={styles.swatches}>
-          {SWATCH_KEYS.map(swatch => (
-            <div key={swatch} role="button" tabIndex={0}
-              className={`${styles.swatch} ${card.color === swatch ? styles.swatchActive : ''}`}
-              style={{ '--dot': `var(--swatch-${swatch})` } as React.CSSProperties}
-              onPointerDown={e => handleSwatchPointerDown(e, swatch)}
-              aria-label={swatch} title={swatch} />
-          ))}
-        </div>
-      </div>
+      <SwatchPicker
+        value={card.color}
+        onSelect={handleSwatchSelect}
+        classNames={{
+          field:  styles.field,
+          label:  styles.label,
+          row:    styles.swatches,
+          swatch: styles.swatch,
+          active: styles.swatchActive,
+        }}
+      />
 
       <div className={styles.publishRow}>
         <button className={styles.publishBtn} onPointerDown={handlePublishPointerDown}>

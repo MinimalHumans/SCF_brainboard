@@ -19,6 +19,23 @@
   --_raw-muted-1:    #5a5a66;
   --_raw-muted-2:    #7a7a8a;
   --_raw-muted-3:    #a0a0b4;
+
+  /*
+   * Accessible text tints (WCAG 1.4.3).
+   *
+   * muted-1 (#5a5a66) and ink-6 (#3d3d44) were carrying body text at 2.30:1
+   * and 1.45:1 against the lightest dark surface — below the 4.5:1 normal-text
+   * threshold and below even the 3:1 large-text floor. These are the same hues
+   * lifted in luminance until they clear it; the originals are kept above
+   * because they are still fine for borders, dividers and dot fills, which
+   * carry no text.
+   *
+   *   #8c8c9e -> 4.74:1 on #232327 (worst-case dark surface)
+   *   #757585 -> 3.46:1, used only where WCAG's disabled-control exemption
+   *              applies, or for large/non-essential text
+   */
+  --_raw-muted-1a:   #8c8c9e;
+  --_raw-ink-6a:     #757585;
   --_raw-off-white:  #eeeef4;
   --_raw-white:      #f6f6fa;
 
@@ -26,6 +43,16 @@
   --_raw-accent-400:  #818cf8;
   --_raw-accent-500:  #6366f1;
   --_raw-accent-600:  #4f52d4;
+
+  /*
+   * accent-500 as *text* is 4.29:1 on the page background and 3.51:1 on
+   * overlays — under 4.5:1 either way. accent-450 is the text-safe step
+   * (5.66:1 / 4.63:1). Fills, borders and focus rings still use accent-500,
+   * where the 3:1 non-text threshold applies and is met.
+   */
+  --_raw-accent-450:  #7c7ff5;
+  /* Light-theme equivalent: accent-600 was 2.67:1 on the light toolbar. */
+  --_raw-accent-700:  #3f42b8;
 
   /* === ORIGINAL 8 MUTED SWATCHES === */
   --_raw-amber:         #c98a12;
@@ -97,9 +124,15 @@
 
   --color-text-primary:    var(--_raw-off-white);
   --color-text-secondary:  var(--_raw-muted-3);
-  --color-text-muted:      var(--_raw-muted-1);
-  --color-text-disabled:   var(--_raw-ink-6);
+  --color-text-muted:      var(--_raw-muted-1a);
+  --color-text-disabled:   var(--_raw-ink-6a);
   --color-text-on-accent:  var(--_raw-white);
+
+  /*
+   * Link/emphasis text colour. Distinct from --color-accent so that fills and
+   * borders can keep the saturated brand step while text meets 4.5:1.
+   */
+  --color-text-accent:     var(--_raw-accent-450);
 
   --color-border:          rgba(255, 255, 255, 0.07);
   --color-border-strong:   rgba(255, 255, 255, 0.13);
@@ -145,18 +178,45 @@
    ========================================================================== */
 
 [data-theme="light"] {
-  --color-surface-base:    #94B0CA;
+  /*
+   * Lightened from #94B0CA (HSL 209deg 34% 69%) to 78% lightness, same hue and
+   * saturation.
+   *
+   * The old value was the binding constraint on the entire light-theme text
+   * ramp: it is a mid-tone, and mid-tones leave far less luminance headroom
+   * above them than near-black leaves below. Nothing lighter than ~#3e3e52
+   * could reach 4.5:1 on it, which forced `muted` and `secondary` to within
+   * 1.07x of each other and flattened the hierarchy to the point where the two
+   * were indistinguishable.
+   *
+   * At 78% the ceiling rises to ~#4e4e60 and the ramp separates again. Not
+   * pushed further: by ~82% this matches --color-surface-canvas in luminance
+   * exactly (contrast 1.00), leaving the toolbar and the canvas behind it
+   * distinguishable by hue alone — which fails for anyone with a blue-yellow
+   * colour vision deficiency. 78% keeps 1.11 and stays recognisably the same
+   * blue.
+   */
+  --color-surface-base:    #B4C8DA;
   --color-surface-canvas:  #D6CECB;
   --color-surface-raised:  #D2C6C1;
   --color-surface-overlay: #D2C6C1;
   --color-surface-inset:   #E3DCD9;
   --color-surface-hover:   #e2e2ea;
 
-  --color-text-primary:    #18181c;
-  --color-text-secondary:  #44445a;
-  --color-text-muted:      #888898;
-  --color-text-disabled:   #b8b8c8;
+  /*
+   * Ratios below are worst-case across all four light surfaces (base, canvas,
+   * inset, raised), not just one. `base` is the tightest for every step.
+   *
+   * If you restyle any light surface, re-check this ramp — the ceiling is set
+   * by whichever surface is lightest, and --color-surface-raised (#D2C6C1) is
+   * within 0.15 of being the binding one.
+   */
+  --color-text-primary:    #18181c;   /* 10.30:1 */
+  --color-text-secondary:  #3f3f52;   /*  5.98:1 */
+  --color-text-muted:      #4e4e60;   /*  4.73:1 */
+  --color-text-disabled:   #5f5f74;   /*  3.62:1 — disabled-control exemption */
   --color-text-on-accent:  #ffffff;
+  --color-text-accent:     var(--_raw-accent-700);  /* 4.55:1 */
 
   --color-border:          rgba(0, 0, 0, 0.09);
   --color-border-strong:   rgba(0, 0, 0, 0.16);
