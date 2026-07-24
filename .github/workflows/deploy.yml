@@ -5,12 +5,18 @@ on:
     tags:
       - 'v*.*.*'
 
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
-    
+      issues: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,5 +55,22 @@ jobs:
       - name: Trigger Deployment Webhook
         if: success()
         run: |
-          curl --fail -X POST \
+          curl --fail \
+            --retry 5 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            -X POST \
             "${{ secrets.DEPLOY_WEBHOOK_URL }}?token=${{ secrets.DEPLOY_SECRET }}"
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Deploy failed for ${context.ref}`,
+              body: `The deploy workflow failed for tag \`${context.ref}\`.\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              assignees: ['krets']
+            })
