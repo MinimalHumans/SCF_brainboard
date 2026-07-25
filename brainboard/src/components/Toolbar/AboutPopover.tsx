@@ -14,6 +14,10 @@ interface AboutPopoverProps {
   onClose:   () => void
 }
 
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'dev'
+const BUILD_SHA = import.meta.env.VITE_BUILD_SHA?.slice(0, 7)
+const VERSION_LABEL = BUILD_SHA ? `${APP_VERSION} (${BUILD_SHA})` : APP_VERSION
+
 export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ top: 52, left: 0 })
@@ -69,7 +73,7 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     >
       <div className={styles.brand}>
         <span className={`${styles.wordmark} text-display`}>Scriptyard</span>
-        <span className={styles.byline}>Created by Minimal Humans - v0.2.7</span>
+        <span className={styles.byline}>Created by Minimal Humans - {VERSION_LABEL}</span>
       </div>
 
       <div className={styles.divider} />
