@@ -39,8 +39,11 @@ if (empty($secret_token) || empty($target_dir)) {
 }
 
 // --- AUTHENTICATION ---
-$headers = getallheaders();
-$received_token = isset($headers['X-Deploy-Token']) ? $headers['X-Deploy-Token'] : (isset($_GET['token']) ? $_GET['token'] : '');
+// Read via $_SERVER, not getallheaders(): a proxy in front of this host lowercases
+// the header on the wire, and getallheaders() array keys are case-sensitive, so
+// $headers['X-Deploy-Token'] silently misses it. $_SERVER always normalizes to
+// HTTP_X_DEPLOY_TOKEN regardless of wire case.
+$received_token = isset($_SERVER['HTTP_X_DEPLOY_TOKEN']) ? $_SERVER['HTTP_X_DEPLOY_TOKEN'] : (isset($_GET['token']) ? $_GET['token'] : '');
 
 if (empty($received_token) || !hash_equals($secret_token, $received_token)) {
     header('HTTP/1.1 401 Unauthorized');
