@@ -5,4 +5,11 @@
 define('DEPLOY_SECRET', 'your_super_secret_hash_here');
 
 // Optional: override default target directory
-// define('DEPLOY_TARGET', '/home/user/public_html/'); 
+// define('DEPLOY_TARGET', '/home/user/public_html/');
+
+// --- Dev environment (hit this script with ?env=dev) ---
+// Uses a fixed release tag instead of /releases/latest so a dev deploy never
+// depends on (or clobbers) whatever the current prod release tag is.
+define('DEPLOY_SECRET_DEV', 'a_different_super_secret_hash_here');
+define('DEPLOY_TARGET_DEV', '/home/user/dev.example.com/');
+// define('DEPLOY_RELEASE_TAG_DEV', 'dev'); // default is 'dev'

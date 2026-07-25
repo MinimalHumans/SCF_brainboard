@@ -4,13 +4,15 @@ on:
   push:
     tags:
       - 'v*.*.*'
-
-concurrency:
-  group: deploy
-  cancel-in-progress: false
+    branches:
+      - main
 
 jobs:
   build:
+    if: startsWith(github.ref, 'refs/tags/v')
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -73,5 +75,77 @@ jobs:
               repo: context.repo.repo,
               title: `Deploy failed for ${context.ref}`,
               body: `The deploy workflow failed for tag \`${context.ref}\`.\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              assignees: ['krets']
+            })
+
+  build-dev:
+    if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: brainboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: brainboard
+        run: npm ci
+
+      - name: Build project
+        working-directory: brainboard
+        run: npm run build
+
+      - name: Zip dist directory
+        run: |
+          cd brainboard/dist
+          zip -r ../../dist.zip .
+          cd ../..
+
+      - name: Create/update dev release
+        id: create_dev_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: 'Dev (latest main)'
+          files: dist.zip
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger dev deployment webhook
+        if: success()
+        run: |
+          curl --fail \
+            --retry 5 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            -X POST \
+            -H "X-Deploy-Token: ${{ secrets.DEV_DEPLOY_SECRET }}" \
+            "${{ secrets.DEPLOY_WEBHOOK_URL }}?env=dev"
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Dev deploy failed for ${context.sha}`,
+              body: `The dev deploy workflow failed for commit \`${context.sha}\` on main.\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               assignees: ['krets']
             })

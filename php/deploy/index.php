@@ -1,7 +1,13 @@
 <?php
 /**
  * Brainboard Deployment Script
- * This script pulls the latest build from GitHub Releases.
+ * Pulls a build from GitHub Releases and extracts it over an existing site.
+ *
+ * Serves two environments from one script + one config.php:
+ *   - prod (default): fetches /releases/latest, uses DEPLOY_SECRET / DEPLOY_TARGET
+ *   - dev (?env=dev): fetches a fixed release tag (DEPLOY_RELEASE_TAG_DEV, default
+ *     "dev") so it never picks up whatever real version tag prod last released,
+ *     uses DEPLOY_SECRET_DEV / DEPLOY_TARGET_DEV
  */
 
 // --- CONFIGURATION ---
@@ -9,26 +15,42 @@ if (file_exists(__DIR__ . '/config.php')) {
     include __DIR__ . '/config.php';
 }
 
-// Fallback or default configuration
-$secret_token = defined('DEPLOY_SECRET') ? DEPLOY_SECRET : 'CHANGE_ME_IN_CONFIG_PHP';
 $repo_owner = 'MinimalHumans';
 $repo_name = 'SCF_brainboard';
 
-// Target directory for extraction
-// If this script is at <root>/php/deploy/index.php, then /../../ is the <root>
-$target_dir = defined('DEPLOY_TARGET') ? DEPLOY_TARGET : __DIR__ . '/../../';
+$env = (isset($_GET['env']) && $_GET['env'] === 'dev') ? 'dev' : 'prod';
+
+if ($env === 'dev') {
+    $secret_token = defined('DEPLOY_SECRET_DEV') ? DEPLOY_SECRET_DEV : null;
+    $target_dir = defined('DEPLOY_TARGET_DEV') ? DEPLOY_TARGET_DEV : null;
+    $release_tag = defined('DEPLOY_RELEASE_TAG_DEV') ? DEPLOY_RELEASE_TAG_DEV : 'dev';
+} else {
+    // Fallback or default configuration
+    $secret_token = defined('DEPLOY_SECRET') ? DEPLOY_SECRET : 'CHANGE_ME_IN_CONFIG_PHP';
+    // Target directory for extraction
+    // If this script is at <root>/php/deploy/index.php, then /../../ is the <root>
+    $target_dir = defined('DEPLOY_TARGET') ? DEPLOY_TARGET : __DIR__ . '/../../';
+    $release_tag = null; // null => use /releases/latest
+}
+
+if (empty($secret_token) || empty($target_dir)) {
+    header('HTTP/1.1 500 Internal Server Error');
+    die("Deploy environment '$env' is not configured");
+}
 
 // --- AUTHENTICATION ---
 $headers = getallheaders();
 $received_token = isset($headers['X-Deploy-Token']) ? $headers['X-Deploy-Token'] : (isset($_GET['token']) ? $_GET['token'] : '');
 
-if (empty($received_token) || $received_token !== $secret_token) {
+if (empty($received_token) || !hash_equals($secret_token, $received_token)) {
     header('HTTP/1.1 401 Unauthorized');
     die('Unauthorized');
 }
 
-// --- FETCH LATEST RELEASE ---
-$api_url = "https://api.github.com/repos/$repo_owner/$repo_name/releases/latest";
+// --- FETCH RELEASE ---
+$api_url = $release_tag !== null
+    ? "https://api.github.com/repos/$repo_owner/$repo_name/releases/tags/$release_tag"
+    : "https://api.github.com/repos/$repo_owner/$repo_name/releases/latest";
 $options = [
     'http' => [
         'method' => 'GET',
@@ -71,7 +93,7 @@ if ($zip->open($tmp_zip) === TRUE) {
     $zip->extractTo($target_dir);
     $zip->close();
     unlink($tmp_zip);
-    echo "Successfully deployed version " . $release['tag_name'];
+    echo "Successfully deployed version " . $release['tag_name'] . " ($env)";
 } else {
     unlink($tmp_zip);
     die('Failed to open zip archive');
