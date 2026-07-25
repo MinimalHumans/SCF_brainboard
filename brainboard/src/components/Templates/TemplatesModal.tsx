@@ -4,6 +4,8 @@ import { nanoid } from 'nanoid'
 import { useBoardStore } from '@/store/boardStore'
 import { useTemplates } from '@/hooks/useTemplates'
 import { toast } from '@/store/toastStore'
+import { echo } from '@/telemetry/echo'
+import { useScreenTime } from '@/telemetry/echo-react'
 import type { Board, Card, Entity, Backdrop } from '@/types/board'
 import styles from './TemplatesModal.module.css'
 
@@ -70,6 +72,7 @@ interface TemplatesModalProps { onClose: () => void }
 type Tab = 'default' | 'user'
 
 export function TemplatesModal({ onClose }: TemplatesModalProps) {
+  useScreenTime('templates_modal')
   const [activeTab,      setActiveTab]      = useState<Tab>('default')
   const [userTemplates,  setUserTemplates]  = useState<UserTemplate[]>(loadUserTemplates)
 
@@ -96,14 +99,16 @@ export function TemplatesModal({ onClose }: TemplatesModalProps) {
     }
     loadBoard(fresh)
     toast.success(`Loaded template "${templateBoard.name}"`)
+    echo.counter('template_load', 1, { mode: 'new', source: activeTab })
     onClose()
-  }, [loadBoard, onClose])
+  }, [loadBoard, onClose, activeTab])
 
   const handleMerge = useCallback((templateBoard: Board) => {
     loadBoard(mergeBoard(board, templateBoard))
     toast.success(`Merged "${templateBoard.name}" into current board`)
+    echo.counter('template_load', 1, { mode: 'merge', source: activeTab })
     onClose()
-  }, [board, loadBoard, onClose])
+  }, [board, loadBoard, onClose, activeTab])
 
   /* ── User template actions ────────────────────────────────────────────── */
 
@@ -120,6 +125,7 @@ export function TemplatesModal({ onClose }: TemplatesModalProps) {
     setUserTemplates(updated)
     saveUserTemplates(updated)
     toast.success(`Saved "${name.trim()}" to My Templates`)
+    echo.counter('template_save', 1)
     setActiveTab('user')
   }, [board, userTemplates])
 

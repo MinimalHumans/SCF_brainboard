@@ -60,6 +60,9 @@ Draw backdrops by right-clicking the canvas, or use the Tab menu. Moving a backd
 ### Templates
 Save any board as a reusable template, or load one of the built-in templates. Templates can be loaded as a new board or merged into the current one.
 
+### Telemetry
+Production builds send anonymous usage telemetry (feature counters, durations, and error reports) to a self-hosted [Echo](https://echo.minimalhumans.com) instance so we can see what's used and what breaks. Your work never leaves your browser: boards live in `localStorage`, and no board content — names, titles, notes, attributes — is ever transmitted. Sessions are identified by a random ID generated fresh on every page load and never persisted, so sessions cannot be linked to each other or to you. Dev builds send nothing.
+
 ---
 
 ## Getting started
@@ -150,6 +153,11 @@ src/
 ├── styles/
 │   ├── globals.css           # Reset, typography utilities, canvas grid
 │   └── tokens.css            # Design tokens — colors, spacing, type scale
+├── telemetry/
+│   ├── echo-client.ts        # Echo telemetry client (TS port, framework-agnostic)
+│   ├── echo-react.tsx        # EchoProvider + useScreenTime/useViewCount hooks
+│   ├── echo.ts               # App-wide client instance + anonymity conventions
+│   └── TelemetryBoot.tsx     # page_load timing and visible-tab heartbeat
 ├── templates/                # JSON board files loaded as built-in templates
 ├── types/
 │   └── board.ts              # All core types: Card, Entity, Backdrop, Board, etc.

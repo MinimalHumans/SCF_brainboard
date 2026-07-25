@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { echo } from '@/telemetry/echo'
 
 type Theme = 'dark' | 'light'
 
@@ -24,5 +25,6 @@ export const useThemeStore = create<ThemeStore>((set, get) => ({
     applyTheme(next)
     localStorage.setItem('brainboard_theme', next)
     set({ theme: next })
+    echo.counter('theme_toggle', 1, { to: next })
   },
 }))

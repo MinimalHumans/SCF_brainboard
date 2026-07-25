@@ -10,6 +10,7 @@ import { useBoardStore }  from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { usePersistence } from '@/hooks/usePersistence'
 import { toast }          from '@/store/toastStore'
+import { echo }           from '@/telemetry/echo'
 import { nanoid }         from 'nanoid'
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
       cards: [], entities: [], backdrops: [],
     })
     toast.success('New board created.')
+    echo.counter('board_new', 1)
   }
 
   return (

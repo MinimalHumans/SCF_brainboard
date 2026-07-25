@@ -10,9 +10,16 @@ import '@/styles/globals.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App'
+import { echo } from '@/telemetry/echo'
+import { EchoProvider, EchoErrorReporter } from '@/telemetry/echo-react'
+import { TelemetryBoot } from '@/telemetry/TelemetryBoot'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <EchoProvider client={echo}>
+      <EchoErrorReporter />
+      <TelemetryBoot />
+      <App />
+    </EchoProvider>
   </React.StrictMode>
 )

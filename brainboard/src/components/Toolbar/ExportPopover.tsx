@@ -4,6 +4,7 @@ import { useBoardStore } from '@/store/boardStore'
 import { buildFountain } from '@/utils/buildFountain'
 import { buildFDX }      from '@/utils/buildFDX'
 import { toast }         from '@/store/toastStore'
+import { echo, sizeBucket } from '@/telemetry/echo'
 import styles            from './ExportPopover.module.css'
 
 interface ExportPopoverProps {
@@ -88,9 +89,11 @@ export function ExportPopover({ anchorRef, onClose, onExportJson }: ExportPopove
           const text = buildFountain(board)
           download(text, `${safeName}.fountain`, 'text/plain;charset=utf-8')
           toast.success(`Exported "${board.name}.fountain"`)
+          echo.counter('export', 1, { format: 'fountain', cards: sizeBucket(board.cards.length) })
         } catch (err) {
           console.error('Fountain export failed', err)
           toast.error('Fountain export failed — check the console for details.')
+          echo.log('export_error', err, { severity: 'error', format: 'fountain' })
         }
         onClose()
       },
@@ -104,9 +107,11 @@ export function ExportPopover({ anchorRef, onClose, onExportJson }: ExportPopove
           const text = buildFDX(board)
           download(text, `${safeName}.fdx`, 'application/xml;charset=utf-8')
           toast.success(`Exported "${board.name}.fdx"`)
+          echo.counter('export', 1, { format: 'fdx', cards: sizeBucket(board.cards.length) })
         } catch (err) {
           console.error('FDX export failed', err)
           toast.error('FDX export failed — check the console for details.')
+          echo.log('export_error', err, { severity: 'error', format: 'fdx' })
         }
         onClose()
       },

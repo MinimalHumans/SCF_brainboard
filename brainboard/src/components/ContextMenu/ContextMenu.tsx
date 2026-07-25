@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useViewCount } from '@/telemetry/echo-react'
 import styles from './ContextMenu.module.css'
 
 export interface ContextMenuItem {
@@ -27,6 +28,7 @@ interface ContextMenuProps {
  * viewport.
  */
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
+  useViewCount('menu_open', { menu: 'context' })
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Close on outside click or Escape

@@ -11,6 +11,9 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+// Release tag injected at build time — see `define` in vite.config.ts.
+declare const __APP_VERSION__: string
+
 declare module '@fontsource-variable/inter' {
   const content: any;
   export default content;

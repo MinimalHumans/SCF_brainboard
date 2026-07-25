@@ -9,6 +9,7 @@ import {
   BACKDROP_Z_LAYERS, CARD_Z_BASE,
 } from '@/types/board'
 import { useHistoryStore } from '@/store/historyStore'
+import { echo } from '@/telemetry/echo'
 
 export const WORLD_SIZE    = 8000
 export const WORLD_CENTER  = WORLD_SIZE / 2
@@ -162,6 +163,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       noteRaw: '', instanceNote: '', isFlipped: false, title: 'New Card',
     }
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card], entities: [...s.board.entities, entity] }) }))
+    echo.counter('card_create', 1, { card_type: card.type })
     return card
   },
 
@@ -244,6 +246,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       }),
     }))
 
+    echo.counter('card_duplicate', newCards.length)
     return newCards
   },
 
@@ -253,6 +256,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     if (!source) return null
     const card: Card = { ...source, id: nanoid(), position, zIndex: maxCardZ(get().board.cards) + 1, instanceNote: '', isFlipped: false }
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, card] }) }))
+    echo.counter('instance_create', 1, { card_type: card.type })
     return card
   },
 
@@ -295,6 +299,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     })
 
     set(s => ({ board: touch({ ...s.board, cards: [...s.board.cards, ...newCards] }) }))
+    echo.counter('instance_create', newCards.length)
     return newCards
   },
 
@@ -310,10 +315,12 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         : s.board.entities
       return { board: touch({ ...s.board, cards, entities }) }
     })
+    echo.counter('card_delete', 1)
   },
 
   deleteCards: (ids) => {
     snapshot()
+    echo.counter('card_delete', ids.length)
     const idSet = new Set(ids)
     set(s => {
       const cards = s.board.cards.filter(c => !idSet.has(c.id))
@@ -382,6 +389,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       attributes: {},
     }
     set(s => ({ board: touch({ ...s.board, backdrops: [...s.board.backdrops, backdrop] }) }))
+    echo.counter('backdrop_create', 1, { backdrop_type: type, source: fromMenu ? 'menu' : 'draw' })
     return backdrop
   },
 
@@ -532,6 +540,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   deleteBackdrop: (id) => {
     snapshot()
     set(s => ({ board: touch({ ...s.board, backdrops: s.board.backdrops.filter(b => b.id !== id) }) }))
+    echo.counter('backdrop_delete', 1)
   },
 
   moveBackdropWithCards: (id, backdropPos, cardUpdates, backdropUpdates) => {
@@ -572,11 +581,17 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   undo: () => {
     const prev = useHistoryStore.getState().undo(get().board)
-    if (prev) set({ board: prev })
+    if (prev) {
+      set({ board: prev })
+      echo.counter('history', 1, { action: 'undo' })
+    }
   },
 
   redo: () => {
     const next = useHistoryStore.getState().redo(get().board)
-    if (next) set({ board: next })
+    if (next) {
+      set({ board: next })
+      echo.counter('history', 1, { action: 'redo' })
+    }
   },
 }))

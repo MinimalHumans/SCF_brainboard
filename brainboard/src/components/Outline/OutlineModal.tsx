@@ -4,6 +4,8 @@ import { marked }          from 'marked'
 import { useBoardStore }   from '@/store/boardStore'
 import { buildOutline }    from '@/utils/buildOutline'
 import { toast }           from '@/store/toastStore'
+import { echo }            from '@/telemetry/echo'
+import { useScreenTime }   from '@/telemetry/echo-react'
 import styles              from './OutlineModal.module.css'
 
 interface OutlineModalProps {
@@ -11,6 +13,7 @@ interface OutlineModalProps {
 }
 
 export function OutlineModal({ onClose }: OutlineModalProps) {
+  useScreenTime('outline_modal')
   const [mode, setMode] = useState<'rendered' | 'raw'>('rendered')
 
   // Live subscription — recomputes whenever board mutates while modal is open
@@ -29,6 +32,7 @@ export function OutlineModal({ onClose }: OutlineModalProps) {
     try {
       await navigator.clipboard.writeText(markdown)
       toast.success('Outline copied to clipboard')
+      echo.counter('export', 1, { format: 'outline_copy' })
     } catch {
       toast.error('Failed to copy to clipboard')
     }
@@ -44,6 +48,7 @@ export function OutlineModal({ onClose }: OutlineModalProps) {
     a.click()
     URL.revokeObjectURL(url)
     toast.success(`Exported ${safeName}-outline.md`)
+    echo.counter('export', 1, { format: 'outline_md' })
   }
 
   return createPortal(

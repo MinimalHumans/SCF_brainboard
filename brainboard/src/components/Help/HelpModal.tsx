@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useScreenTime } from '@/telemetry/echo-react'
 import styles from './HelpModal.module.css'
 
 interface HelpModalProps {
@@ -19,6 +20,7 @@ const SECTIONS: { id: Section; label: string }[] = [
 ]
 
 export function HelpModal({ onClose }: HelpModalProps) {
+  useScreenTime('help_modal')
   const [activeSection, setActiveSection] = useState<Section>('about')
 
   useEffect(() => {

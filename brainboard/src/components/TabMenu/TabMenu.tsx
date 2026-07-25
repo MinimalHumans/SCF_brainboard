@@ -4,6 +4,7 @@ import { useBoardStore, CARD_W, CARD_H, BACKDROP_MIN_W, BACKDROP_MIN_H } from '@
 import { ENTITY_TYPES } from '@/types/board'
 import { BACKDROP_TYPES } from '@/types/board'
 import type { EntityType, BackdropType } from '@/types/board'
+import { useViewCount } from '@/telemetry/echo-react'
 import styles from './TabMenu.module.css'
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,7 @@ interface TabMenuProps {
 }
 
 export function TabMenu({ worldX, worldY, screenX, screenY, onClose, getViewerZoom }: TabMenuProps) {
+  useViewCount('menu_open', { menu: 'tab' })
   const [query, setQuery]         = useState('')
   const [activeIdx, setActiveIdx] = useState(0)
   const inputRef                  = useRef<HTMLInputElement>(null)
