@@ -150,3 +150,107 @@ jobs:
             -X POST \
             -H "X-Deploy-Token: ${{ secrets.DEV_DEPLOY_SECRET }}" \
             "${{ secrets.DEPLOY_WEBHOOK_URL }}?env=dev"
+
+  # Builds the Windows/macOS desktop app and attaches the installers to the
+  # same GitHub Release the `build` job creates for this tag. Runs only for
+  # real version tags (not on every main push) since a full Tauri build on
+  # both platforms takes far longer than the website build.
+  #
+  # Unsigned builds: neither installer is code-signed, so Windows SmartScreen
+  # and macOS Gatekeeper will warn on first launch. Signing needs a paid
+  # certificate/Apple Developer account and isn't set up here.
+  #
+  # macOS builds only the native arch of the `macos-latest` runner
+  # (Apple Silicon). Intel Mac support would need a
+  # `--target universal-apple-darwin` build with both Rust targets installed.
+  build-desktop:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: brainboard/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: brainboard/src-tauri
+
+      - name: Sync app version to tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: brainboard
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const p = 'src-tauri/tauri.conf.json';
+            const c = JSON.parse(fs.readFileSync(p, 'utf8'));
+            c.version = process.argv[1];
+            fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
+          " "${GITHUB_REF_NAME#v}"
+
+      - name: Install dependencies
+        working-directory: brainboard
+        run: npm ci
+
+      - name: Install cargo-license
+        run: cargo install cargo-license --locked
+
+      - name: Build desktop app
+        working-directory: brainboard
+        env:
+          VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_BUILD_SHA: ${{ github.sha }}
+        run: npm run desktop:build
+
+      - name: Upload Windows installers
+        if: matrix.os == 'windows-latest' && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            brainboard/src-tauri/target/release/bundle/msi/*.msi
+            brainboard/src-tauri/target/release/bundle/nsis/*-setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS installer
+        if: matrix.os == 'macos-latest' && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            brainboard/src-tauri/target/release/bundle/dmg/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on failure
+        if: failure() && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Desktop build failed for ${context.ref} (${{ matrix.os }})`,
+              body: `The desktop build job failed for tag \`${context.ref}\` on \`${{ matrix.os }}\`.\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              assignees: ['krets']
+            })

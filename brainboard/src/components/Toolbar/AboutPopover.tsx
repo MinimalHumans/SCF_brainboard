@@ -8,6 +8,25 @@ import {
   type LicenseId,
   type ThirdPartyPackage,
 } from '../../config/licenses'
+import { isDesktopApp } from '../../utils/platform'
+
+interface DesktopPackage {
+  name:    string
+  version: string
+  license: string
+  authors: string
+  url:     string
+}
+
+/* Splits an SPDX expression like "Apache-2.0 OR MIT" or "(Apache-2.0 OR MIT)
+   AND Unicode-3.0" into its individual license tokens, for matching against
+   DESKTOP_LICENSE_TEXTS. */
+function licenseTokens(expr: string): string[] {
+  return expr
+    .replace(/[()]/g, '')
+    .split(/\s+(?:OR|AND)\s+/i)
+    .map(t => t.replace(/\s+WITH\s+.+$/i, '').trim())
+}
 
 interface AboutPopoverProps {
   anchorRef: React.RefObject<HTMLButtonElement>
@@ -23,6 +42,25 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
   const [pos, setPos] = useState({ top: 52, left: 0 })
   const [showLicenses, setShowLicenses] = useState(false)
   const [openText,     setOpenText]     = useState<LicenseId | null>(null)
+
+  // Desktop-only attribution data — fetched lazily (never on the website) the
+  // first time the licenses disclosure is opened inside the packaged app.
+  const [desktopPackages, setDesktopPackages] = useState<DesktopPackage[] | null>(null)
+  const [desktopTexts,    setDesktopTexts]    = useState<{
+    DESKTOP_LICENSE_TEXTS: Record<string, string>
+    DESKTOP_LICENSE_NAMES: Record<string, string>
+  } | null>(null)
+  const [showDesktopPackages, setShowDesktopPackages] = useState(false)
+  const [openDesktopText,     setOpenDesktopText]     = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!showLicenses || !isDesktopApp() || desktopPackages) return
+    fetch('/licenses-desktop.json')
+      .then(r => r.json())
+      .then(setDesktopPackages)
+      .catch(() => setDesktopPackages([]))
+    import('../../config/licensesDesktop').then(setDesktopTexts)
+  }, [showLicenses, desktopPackages])
 
   useLayoutEffect(() => {
     const btn = anchorRef.current
@@ -179,6 +217,80 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
               {openText === id && <pre className={styles.legal}>{LICENSE_TEXTS[id]}</pre>}
             </div>
           ))}
+
+          {isDesktopApp() && desktopPackages && desktopPackages.length > 0 && desktopTexts && (
+            <>
+              <p className={styles.groupLabel}>Desktop app (Tauri / Rust)</p>
+              <p className={styles.licenseIntro}>
+                The desktop app additionally bundles the Tauri runtime and its
+                Rust dependencies, used under their respective licenses.
+              </p>
+
+              <button
+                type="button"
+                className={styles.disclosure}
+                aria-expanded={showDesktopPackages}
+                onClick={() => setShowDesktopPackages(v => !v)}
+              >
+                <span className={styles.disclosureLabel}>
+                  Rust dependencies ({desktopPackages.length})
+                </span>
+                <span
+                  className={`${styles.chevron} ${showDesktopPackages ? styles.chevronOpen : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {showDesktopPackages && (
+                <ul className={styles.packageList}>
+                  {desktopPackages.map(pkg => (
+                    <li key={pkg.name} className={styles.package}>
+                      <div className={styles.packageHead}>
+                        <a
+                          className={styles.packageName}
+                          href={pkg.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {pkg.name}
+                        </a>
+                        <span className={styles.packageMeta}>
+                          {pkg.version} · {pkg.license}
+                        </span>
+                      </div>
+                      {pkg.authors && <p className={styles.copyright}>{pkg.authors}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <p className={styles.groupLabel}>Desktop license texts</p>
+              {[...new Set(desktopPackages.flatMap(p => licenseTokens(p.license)))]
+                .filter(id => desktopTexts.DESKTOP_LICENSE_TEXTS[id])
+                .sort()
+                .map(id => (
+                  <div key={id} className={styles.licenseText}>
+                    <button
+                      type="button"
+                      className={styles.disclosure}
+                      aria-expanded={openDesktopText === id}
+                      onClick={() => setOpenDesktopText(cur => (cur === id ? null : id))}
+                    >
+                      <span className={styles.disclosureLabel}>
+                        {desktopTexts.DESKTOP_LICENSE_NAMES[id] ?? id}
+                      </span>
+                      <span
+                        className={`${styles.chevron} ${openDesktopText === id ? styles.chevronOpen : ''}`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {openDesktopText === id && (
+                      <pre className={styles.legal}>{desktopTexts.DESKTOP_LICENSE_TEXTS[id]}</pre>
+                    )}
+                  </div>
+                ))}
+            </>
+          )}
         </div>
       )}
     </div>,

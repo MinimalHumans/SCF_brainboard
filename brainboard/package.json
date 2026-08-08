@@ -8,10 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "licenses": "node scripts/gen-licenses.mjs",
+    "licenses:desktop": "node scripts/gen-licenses-desktop.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:build": "npm run licenses:desktop && tauri build"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.2.9",

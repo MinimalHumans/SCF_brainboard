@@ -99,6 +99,10 @@ npm run desktop:build   # produce installers in src-tauri/target/release/bundle/
 
 Building requires the [Rust toolchain](https://www.rust-lang.org/tools/install) in addition to Node. `desktop:build` produces an MSI and NSIS installer on Windows, and a `.app`/`.dmg` on macOS (run on a Mac to build the macOS bundle — Tauri doesn't cross-compile GUI targets).
 
+The About popover shows an extra "Desktop app (Tauri / Rust)" attribution section, visible only when running inside the packaged app. Its data comes from `public/licenses-desktop.json`, regenerated automatically by `desktop:build` (or manually via `npm run licenses:desktop`, which requires [`cargo-license`](https://github.com/onur/cargo-license): `cargo install cargo-license`). The license *texts* it links to live in `src/config/licensesDesktop.ts` — hand-maintained, since Cargo doesn't ship full license text the way npm packages do; add to it if `licenses:desktop` warns about an unrecognized SPDX identifier.
+
+App icons live in `src-tauri/icons/`, generated from the toolbar's inline brand mark (`ScriptyardIcon` in `src/components/Toolbar/Toolbar.tsx`) via `npx tauri icon <path-to-1024px-source.png>`. Regenerate them the same way if the brand mark changes.
+
 ---
 
 ## Dependencies
