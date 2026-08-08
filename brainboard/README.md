@@ -88,6 +88,17 @@ npm run build
 
 Output goes to `dist/`. Serve it with any static file host.
 
+### Desktop app (Windows / macOS)
+
+Brainboard ships as an offline desktop app via [Tauri](https://tauri.app/) — no backend calls are made at runtime (boards autosave to local storage), so the packaged app works fully offline.
+
+```bash
+npm run desktop:dev     # launch in a native window with hot reload
+npm run desktop:build   # produce installers in src-tauri/target/release/bundle/
+```
+
+Building requires the [Rust toolchain](https://www.rust-lang.org/tools/install) in addition to Node. `desktop:build` produces an MSI and NSIS installer on Windows, and a `.app`/`.dmg` on macOS (run on a Mac to build the macOS bundle — Tauri doesn't cross-compile GUI targets).
+
 ---
 
 ## Dependencies
