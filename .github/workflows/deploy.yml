@@ -194,6 +194,11 @@ jobs:
         with:
           workspaces: brainboard/src-tauri
 
+      - name: Set short SHA
+        id: vars
+        shell: bash
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Sync app version to tag
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: brainboard
@@ -220,6 +225,30 @@ jobs:
           VITE_APP_VERSION: ${{ github.ref_name }}
           VITE_BUILD_SHA: ${{ github.sha }}
         run: npm run desktop:build
+
+      # Always uploaded as a run artifact (private to this Actions run, 14-day
+      # retention, no public Release created) — this is what makes a branch
+      # workflow_dispatch actually testable: the installer's *version* field
+      # can't carry the commit SHA (WiX/MSI requires a purely numeric
+      # major.minor.build), but the artifact name can, so a test build off a
+      # branch is still traceable to the exact commit that produced it.
+      - name: Upload Windows build artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: scriptyard-windows-${{ steps.vars.outputs.short_sha }}
+          path: |
+            brainboard/src-tauri/target/release/bundle/msi/*.msi
+            brainboard/src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 14
+
+      - name: Upload macOS build artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: scriptyard-macos-${{ steps.vars.outputs.short_sha }}
+          path: brainboard/src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 14
 
       - name: Upload Windows installers
         if: matrix.os == 'windows-latest' && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
