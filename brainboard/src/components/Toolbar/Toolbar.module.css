@@ -307,6 +307,30 @@
 }
 .action:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* Sync button — the .action button that opens the Sync modal. Carries a
+   small status dot so the connection/sync state reads at a glance, without
+   opening the modal. */
+.syncBtn {
+  display:     inline-flex;
+  align-items: center;
+  gap:         var(--space-2);
+}
+
+.syncBadge {
+  width:         8px;
+  height:        8px;
+  flex-shrink:   0;
+  border-radius: 50%;
+  background:    var(--color-text-disabled);
+  transition:    background-color var(--duration-fast) var(--easing-out);
+}
+.syncBadge.synced  { background: var(--color-status-success); }
+.syncBadge.syncing { background: var(--color-accent); }
+.syncBadge.idle    { background: var(--color-text-disabled); }
+.syncBadge.conflict,
+.syncBadge.error,
+.syncBadge.deleted-remote { background: var(--color-status-error); }
+
 .publishGroup {
   display:     flex;
   align-items: center;

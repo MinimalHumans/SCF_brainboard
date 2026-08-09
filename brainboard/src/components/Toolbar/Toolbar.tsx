@@ -7,10 +7,11 @@ import { useMediaQuery }      from '@/hooks/useMediaQuery'
 import { AboutPopover }       from './AboutPopover'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
 import { ExportPopover }      from './ExportPopover'
-import { DrivePopover }       from './DrivePopover'
+import { SyncSettingsModal }  from '@/components/Sync/SyncSettingsModal'
 import { ContextMenu }        from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { ProviderSyncState } from '@/lib/sync/types'
+import { SYNC_STATUS_LABEL }  from '@/lib/sync/statusLabels'
 import styles                 from './Toolbar.module.css'
 
 /*
@@ -77,12 +78,17 @@ export function Toolbar({
   const exportBtnRef                  = useRef<HTMLButtonElement>(null)
   const wordmarkBtnRef                = useRef<HTMLButtonElement>(null)
   const overflowBtnRef                = useRef<HTMLButtonElement>(null)
-  const driveBtnRef                   = useRef<HTMLButtonElement>(null)
   const [showInfoPopover,   setShowInfoPopover]   = useState(false)
   const [showExportPopover, setShowExportPopover] = useState(false)
   const [showAboutPopover,  setShowAboutPopover]  = useState(false)
-  const [showDrivePopover,  setShowDrivePopover]  = useState(false)
+  const [showSyncModal,     setShowSyncModal]     = useState(false)
   const [overflowMenu,      setOverflowMenu]      = useState<{ x: number; y: number } | null>(null)
+
+  // Sync badge — dark grey (idle) when not connected, otherwise mirrors the
+  // provider's live status so the connection state is visible without
+  // opening the Sync modal.
+  const syncBadgeStatus = driveState?.linked ? driveState.lastStatus : 'idle'
+  const syncBadgeTitle  = driveState?.linked ? SYNC_STATUS_LABEL[driveState.lastStatus] : 'Not connected'
 
   const zoomPct = Math.round(zoom * 100)
 
@@ -111,7 +117,7 @@ export function Toolbar({
     { label: 'Export…',    onClick: () => setShowExportPopover(true) },
     { label: 'Templates',  onClick: () => onTemplates?.() },
     { label: 'Outline',    onClick: () => onOutline?.() },
-    { label: driveState?.linked ? 'Drive…' : 'Connect Drive', onClick: () => setShowDrivePopover(true) },
+    { label: 'Sync…', onClick: () => setShowSyncModal(true) },
     {
       label:   theme === 'dark' ? 'Light mode' : 'Dark mode',
       divider: true,
@@ -236,12 +242,16 @@ export function Toolbar({
             <button className={styles.action} onClick={onTemplates}>Templates</button>
             <button className={styles.action} onClick={onOutline}>Outline</button>
             <button
-              ref={driveBtnRef}
-              className={styles.action}
-              onClick={() => setShowDrivePopover(v => !v)}
-              title="Google Drive sync"
+              className={`${styles.action} ${styles.syncBtn}`}
+              onClick={() => setShowSyncModal(true)}
+              title="Sync"
             >
-              {driveState?.linked ? 'Drive' : 'Connect Drive'}
+              Sync
+              <span
+                className={`${styles.syncBadge} ${styles[syncBadgeStatus]}`}
+                title={syncBadgeTitle}
+                aria-hidden="true"
+              />
             </button>
             {helpButton}
           </>
@@ -258,17 +268,17 @@ export function Toolbar({
           />
         )}
 
-        {showDrivePopover && driveState && (
-          <DrivePopover
-            anchorRef={isNarrow ? overflowBtnRef : driveBtnRef}
-            driveState={driveState}
-            onLink={() => { onDriveLink?.(); setShowDrivePopover(false) }}
-            onUnlink={() => { onDriveUnlink?.(); setShowDrivePopover(false) }}
-            onCheckNow={async () => { await onDriveCheckNow?.() }}
-            onClose={() => setShowDrivePopover(false)}
-          />
-        )}
       </div>
+
+      {showSyncModal && driveState && (
+        <SyncSettingsModal
+          driveState={driveState}
+          onLink={() => onDriveLink?.()}
+          onUnlink={() => onDriveUnlink?.()}
+          onCheckNow={async () => { await onDriveCheckNow?.() }}
+          onClose={() => setShowSyncModal(false)}
+        />
+      )}
 
       {overflowMenu && (
         <ContextMenu
