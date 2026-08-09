@@ -7,8 +7,10 @@ import { useMediaQuery }      from '@/hooks/useMediaQuery'
 import { AboutPopover }       from './AboutPopover'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
 import { ExportPopover }      from './ExportPopover'
+import { DrivePopover }       from './DrivePopover'
 import { ContextMenu }        from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
+import type { ProviderSyncState } from '@/lib/sync/types'
 import styles                 from './Toolbar.module.css'
 
 /*
@@ -37,6 +39,10 @@ interface ToolbarProps {
   onOutline?:   () => void
   onHelp?:      () => void
   onNewBoard?:  () => void
+  driveState?:  ProviderSyncState
+  onDriveLink?:     () => void
+  onDriveUnlink?:   () => void
+  onDriveCheckNow?: () => Promise<void>
 }
 
 export function Toolbar({
@@ -49,6 +55,10 @@ export function Toolbar({
   onOutline,
   onHelp,
   onNewBoard,
+  driveState,
+  onDriveLink,
+  onDriveUnlink,
+  onDriveCheckNow,
 }: ToolbarProps) {
   const isNarrow = useMediaQuery(NARROW_QUERY)
 
@@ -67,9 +77,11 @@ export function Toolbar({
   const exportBtnRef                  = useRef<HTMLButtonElement>(null)
   const wordmarkBtnRef                = useRef<HTMLButtonElement>(null)
   const overflowBtnRef                = useRef<HTMLButtonElement>(null)
+  const driveBtnRef                   = useRef<HTMLButtonElement>(null)
   const [showInfoPopover,   setShowInfoPopover]   = useState(false)
   const [showExportPopover, setShowExportPopover] = useState(false)
   const [showAboutPopover,  setShowAboutPopover]  = useState(false)
+  const [showDrivePopover,  setShowDrivePopover]  = useState(false)
   const [overflowMenu,      setOverflowMenu]      = useState<{ x: number; y: number } | null>(null)
 
   const zoomPct = Math.round(zoom * 100)
@@ -99,6 +111,7 @@ export function Toolbar({
     { label: 'Export…',    onClick: () => setShowExportPopover(true) },
     { label: 'Templates',  onClick: () => onTemplates?.() },
     { label: 'Outline',    onClick: () => onOutline?.() },
+    { label: driveState?.linked ? 'Drive…' : 'Connect Drive', onClick: () => setShowDrivePopover(true) },
     {
       label:   theme === 'dark' ? 'Light mode' : 'Dark mode',
       divider: true,
@@ -222,6 +235,14 @@ export function Toolbar({
 
             <button className={styles.action} onClick={onTemplates}>Templates</button>
             <button className={styles.action} onClick={onOutline}>Outline</button>
+            <button
+              ref={driveBtnRef}
+              className={styles.action}
+              onClick={() => setShowDrivePopover(v => !v)}
+              title="Google Drive sync"
+            >
+              {driveState?.linked ? 'Drive' : 'Connect Drive'}
+            </button>
             {helpButton}
           </>
         )}
@@ -234,6 +255,17 @@ export function Toolbar({
             anchorRef={isNarrow ? overflowBtnRef : exportBtnRef}
             onClose={() => setShowExportPopover(false)}
             onExportJson={onExport}
+          />
+        )}
+
+        {showDrivePopover && driveState && (
+          <DrivePopover
+            anchorRef={isNarrow ? overflowBtnRef : driveBtnRef}
+            driveState={driveState}
+            onLink={() => { onDriveLink?.(); setShowDrivePopover(false) }}
+            onUnlink={() => { onDriveUnlink?.(); setShowDrivePopover(false) }}
+            onCheckNow={async () => { await onDriveCheckNow?.() }}
+            onClose={() => setShowDrivePopover(false)}
           />
         )}
       </div>

@@ -1,9 +1,24 @@
 import React from 'react'
 import { useBoardStore } from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
+import type { ProviderSyncState } from '@/lib/sync/types'
+import { formatRelativeTime } from '@/lib/sync/formatTime'
 import styles from './StatusBar.module.css'
 
-export function StatusBar() {
+interface StatusBarProps {
+  driveState?: ProviderSyncState
+}
+
+const SYNC_LABEL: Record<ProviderSyncState['lastStatus'], string> = {
+  idle:             'Not synced yet',
+  syncing:          'Syncing…',
+  synced:           'Synced',
+  conflict:         'Sync conflict',
+  'deleted-remote': 'Drive backup missing',
+  error:            'Sync error',
+}
+
+export function StatusBar({ driveState }: StatusBarProps) {
   const cards      = useBoardStore(s => s.board.cards)
   const entities   = useBoardStore(s => s.board.entities)
   const backdrops  = useBoardStore(s => s.board.backdrops)
@@ -28,6 +43,16 @@ export function StatusBar() {
         )}
       </div>
       <div className={styles.right}>
+        {driveState?.linked && (
+          <>
+            <span className={styles.syncIndicator}>
+              <span className={`${styles.syncDot} ${styles[driveState.lastStatus]}`} aria-hidden="true" />
+              {SYNC_LABEL[driveState.lastStatus]}
+              {driveState.lastStatus === 'synced' && driveState.lastSyncedAt && ` ${formatRelativeTime(driveState.lastSyncedAt)}`}
+            </span>
+            <span className={styles.sep} />
+          </>
+        )}
         {backdrops.length > 0 && (
           <>
             <Stat label="Backdrops" value={backdrops.length} />

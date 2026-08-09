@@ -6,9 +6,12 @@ import { ToastStack }     from '@/components/Toast/Toast'
 import { TemplatesModal } from '@/components/Templates/TemplatesModal'
 import { HelpModal }      from '@/components/Help/HelpModal'
 import { OutlineModal }   from '@/components/Outline/OutlineModal'
+import { SyncConflictModal } from '@/components/Sync/SyncConflictModal'
+import { SyncDeletionModal } from '@/components/Sync/SyncDeletionModal'
 import { useBoardStore }  from '@/store/boardStore'
 import { useSelectionStore } from '@/store/selectionStore'
 import { usePersistence } from '@/hooks/usePersistence'
+import { useDriveSync }   from '@/hooks/useDriveSync'
 import { toast }          from '@/store/toastStore'
 import { nanoid }         from 'nanoid'
 
@@ -18,7 +21,17 @@ export default function App() {
   const publishCardsFn = useBoardStore(s => s.publishCards)
   const selectedIds    = useSelectionStore(s => s.selectedIds)
 
-  const { exportBoard, importBoard } = usePersistence()
+  const { exportBoard, importBoard, isLoaded } = usePersistence()
+  const {
+    providerState: driveState,
+    conflict:      driveConflict,
+    deletionConflict: driveDeletionConflict,
+    link:    driveLink,
+    unlink:  driveUnlink,
+    resolveConflict: resolveDriveConflict,
+    resolveDeletion: resolveDriveDeletion,
+    checkNow: driveCheckNow,
+  } = useDriveSync(isLoaded)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showHelp,      setShowHelp]      = useState(false)
   const [showOutline,   setShowOutline]   = useState(false)
@@ -57,13 +70,19 @@ export default function App() {
         onOutline={() => setShowOutline(true)}
         onHelp={() => setShowHelp(true)}
         onNewBoard={handleNewBoard}
+        driveState={driveState}
+        onDriveLink={driveLink}
+        onDriveUnlink={driveUnlink}
+        onDriveCheckNow={driveCheckNow}
       />
       <Canvas />
-      <StatusBar />
+      <StatusBar driveState={driveState} />
       <ToastStack />
       {showTemplates && <TemplatesModal onClose={() => setShowTemplates(false)} />}
       {showHelp      && <HelpModal      onClose={() => setShowHelp(false)} />}
       {showOutline   && <OutlineModal   onClose={() => setShowOutline(false)} />}
+      {driveConflict         && <SyncConflictModal conflict={driveConflict} onResolve={resolveDriveConflict} />}
+      {driveDeletionConflict && <SyncDeletionModal deletion={driveDeletionConflict} onResolve={resolveDriveDeletion} />}
     </>
   )
 }

@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string
   /** Full commit SHA the build was made from. Unset locally. */
   readonly VITE_BUILD_SHA?: string
+  /** Google OAuth client ID used for the Drive appdata sync token flow. */
+  readonly VITE_GOOGLE_CLIENT_ID?: string
 }
 
 interface ImportMeta {
