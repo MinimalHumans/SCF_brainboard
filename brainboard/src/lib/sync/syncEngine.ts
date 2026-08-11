@@ -57,6 +57,10 @@ export type ReconcileResult =
   | { kind: 'noop' }
   | { kind: 'pushed'; newState: ProviderSyncState }
   | { kind: 'pulled'; board: Board; newState: ProviderSyncState }
+  // Both sides *looked* changed (stale/missing baseline — e.g. first link
+  // found an already-matching remote file) but the content turned out to be
+  // byte-identical. Nothing to ask the user; just adopt the new baseline.
+  | { kind: 'reconciled'; newState: ProviderSyncState }
   | { kind: 'conflict'; summary: ConflictSummary }
   | { kind: 'deletion-conflict'; summary: DeletionSummary }
   | { kind: 'error'; message: string }
@@ -153,7 +157,13 @@ export async function reconcile(
     }
   }
 
-  // Both sides changed since the baseline — genuine conflict, ask the user.
+  // Both sides *look* changed since the baseline — but that's also exactly
+  // what a null/stale baseline produces (every comparison above reads as
+  // "changed" against a baseline of null), most commonly right after
+  // linking a board whose Drive file already matches it byte-for-byte.
+  // Fetch and hash the remote content before assuming this is a real
+  // conflict — if it's actually identical, there's nothing to ask the user
+  // and no reason to keep re-flagging it on every future check.
   try {
     const remote = await provider.fetchRemote(state.remoteFileId)
     if (!remote) {
@@ -164,6 +174,21 @@ export async function reconcile(
     }
     const remoteBoard = parseBoard(remote.content)
     if (!remoteBoard) return { kind: 'error', message: 'Remote board content is invalid' }
+    const remoteHash = await hashContent(syncableContent(remoteBoard))
+    if (remoteHash === localHash) {
+      return {
+        kind: 'reconciled',
+        newState: {
+          ...state,
+          baselineHash: localHash,
+          baselineRemoteModifiedTime: remote.modifiedTime,
+          baselineVersion: remoteBoard.syncMeta?.version ?? null,
+          lastSyncedAt: new Date().toISOString(),
+          lastStatus: 'synced',
+          lastError: null,
+        },
+      }
+    }
     return {
       kind: 'conflict',
       summary: {

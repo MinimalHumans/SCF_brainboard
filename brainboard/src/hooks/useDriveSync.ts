@@ -72,6 +72,9 @@ export function useDriveSync(boardLoaded: boolean) {
   const providerState = rawProviderState ?? makeInitialProviderState()
   const conflict = useSyncStore(s => (activeBoardId ? s.conflicts[activeBoardId] : undefined) ?? null)
   const deletionConflict = useSyncStore(s => (activeBoardId ? s.deletionConflicts[activeBoardId] : undefined) ?? null)
+  // Total boards currently flagged, active or not — lets the conflict modal
+  // offer "apply to all N" instead of forcing one-at-a-time resolution.
+  const conflictCount = useSyncStore(s => Object.keys(s.conflicts).length)
 
   const inFlightRef  = useRef(false)
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -112,6 +115,12 @@ export function useDriveSync(boardLoaded: boolean) {
       case 'pushed':
         setProviderState(boardId, PROVIDER_ID, result.newState)
         if (result.newState.remoteFileId) await upsertManifestForBoard(boardId, b, result.newState.remoteFileId)
+        break
+      case 'reconciled':
+        // Looked like a conflict, turned out to be identical content —
+        // adopt the new baseline silently, no board content changes and no
+        // prompt needed.
+        setProviderState(boardId, PROVIDER_ID, result.newState)
         break
       case 'pulled':
         setProviderState(boardId, PROVIDER_ID, result.newState)
@@ -405,37 +414,61 @@ export function useDriveSync(boardLoaded: boolean) {
     syncAllBoards()
   }, [syncHydrated, boardLoaded, syncAllBoards])
 
-  /* ── Conflict / deletion resolution (active board only — the only board
-   *    a modal is ever shown for) ─────────────────────────────────────── */
+  /* ── Conflict / deletion resolution ───────────────────────────────────
+   * A conflict modal is only ever *shown* for the active board, but the
+   * store can hold one per board (any board syncAllBoards touched while
+   * you were looking at something else). resolveOneConflict works against
+   * any boardId — active boards go through the live editor store, others
+   * read/write their OPFS file directly, mirroring syncNowForBoard. */
 
-  const resolveConflict = useCallback(async (action: 'overwrite-local' | 'keep-local-copy' | 'cancel') => {
-    if (!activeBoardId) return
-    const state = getProviderState(activeBoardId, PROVIDER_ID)
-    const summary = useSyncStore.getState().conflicts[activeBoardId]
+  const resolveOneConflict = useCallback(async (boardId: string, action: 'overwrite-local' | 'keep-local-copy' | 'cancel') => {
+    const state = getProviderState(boardId, PROVIDER_ID)
+    const summary = useSyncStore.getState().conflicts[boardId]
     if (!summary) return
+    const isActive = boardId === activeBoardId
     try {
       if (action === 'overwrite-local') {
-        const { board: remoteBoard, newState } = await resolveConflictOverwriteLocal(
-          summary.remote.content,
-          useBoardStore.getState().board,
-          state,
-        )
-        loadBoard(remoteBoard)
-        setProviderState(activeBoardId, PROVIDER_ID, newState)
+        const localRaw = isActive ? JSON.stringify(useBoardStore.getState().board) : await readBoardFileById(boardId)
+        if (!localRaw) throw new Error('Board file is missing locally')
+        const localBoard = JSON.parse(localRaw) as Board
+        const { board: remoteBoard, newState } = await resolveConflictOverwriteLocal(summary.remote.content, localBoard, state)
+        if (isActive) {
+          loadBoard(remoteBoard)
+        } else {
+          await writeBoardFileById(boardId, JSON.stringify(remoteBoard))
+          useLibraryStore.getState().upsertSummary(summaryOf(remoteBoard))
+        }
+        setProviderState(boardId, PROVIDER_ID, newState)
       } else if (action === 'keep-local-copy') {
-        const newState = await resolveConflictKeepLocalAsCopy(googleDriveProvider, useBoardStore.getState().board, state)
-        setProviderState(activeBoardId, PROVIDER_ID, newState)
-        if (newState.remoteFileId) await upsertManifestForBoard(activeBoardId, useBoardStore.getState().board, newState.remoteFileId)
+        const localRaw = isActive ? JSON.stringify(useBoardStore.getState().board) : await readBoardFileById(boardId)
+        if (!localRaw) throw new Error('Board file is missing locally')
+        const localBoard = JSON.parse(localRaw) as Board
+        const newState = await resolveConflictKeepLocalAsCopy(googleDriveProvider, localBoard, state)
+        setProviderState(boardId, PROVIDER_ID, newState)
+        if (newState.remoteFileId) await upsertManifestForBoard(boardId, localBoard, newState.remoteFileId)
       } else {
-        setProviderState(activeBoardId, PROVIDER_ID, resolveConflictCancel(state))
+        setProviderState(boardId, PROVIDER_ID, resolveConflictCancel(state))
       }
     } catch (err) {
       console.error('Conflict resolution failed', err)
       toast.error("Couldn't resolve the sync conflict — try again.")
     } finally {
-      setConflict(activeBoardId, null)
+      setConflict(boardId, null)
     }
   }, [activeBoardId, loadBoard, setConflict, setProviderState, upsertManifestForBoard])
+
+  const resolveConflict = useCallback(async (
+    action: 'overwrite-local' | 'keep-local-copy' | 'cancel', applyToAll = false,
+  ) => {
+    if (applyToAll) {
+      const ids = Object.keys(useSyncStore.getState().conflicts)
+      for (const id of ids) await resolveOneConflict(id, action)
+      if (action !== 'cancel' && ids.length > 1) toast.success(`Resolved ${ids.length} conflicts.`)
+      return
+    }
+    if (!activeBoardId) return
+    await resolveOneConflict(activeBoardId, action)
+  }, [activeBoardId, resolveOneConflict])
 
   const resolveDeletion = useCallback(async (action: 'delete-local' | 'ignore' | 'reupload') => {
     if (!activeBoardId) return
@@ -465,6 +498,7 @@ export function useDriveSync(boardLoaded: boolean) {
     disconnectAccount,
     providerState,
     conflict,
+    conflictCount,
     deletionConflict,
     linkBoard,
     unlinkBoard,

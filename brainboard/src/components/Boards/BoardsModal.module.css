@@ -18,13 +18,20 @@
 .modal {
   display:          flex;
   flex-direction:   column;
-  width:            100%;
-  max-width:        560px;
-  max-height:       82vh;
+  width:            560px;
+  min-width:        380px;
+  max-width:        min(90vw, 900px);
+  height:           620px;
+  min-height:       340px;
+  max-height:       88vh;
   background-color: var(--color-surface-overlay);
   border:           1px solid var(--color-border-strong);
   border-radius:    var(--radius-xl);
   box-shadow:       var(--shadow-lg);
+  /* Lets a user with lots of boards and screen space size the dialog up —
+     resize needs overflow != visible on this element, which it already had
+     for the fixed layout below. */
+  resize:           both;
   overflow:         hidden;
   animation:        slideIn var(--duration-normal) var(--easing-standard);
 }
@@ -66,23 +73,29 @@
 }
 .closeBtn:hover { color: var(--color-text-primary); }
 
+/* Only .listScroll (below) scrolls — New/Import above and the cloud-sync
+   row below always stay visible regardless of how many boards there are. */
 .body {
   display:        flex;
   flex-direction: column;
+  flex:           1 1 auto;
   gap:            var(--space-4);
   padding:        var(--space-5) var(--space-6);
-  overflow-y:     auto;
   min-height:     0;
+}
+
+.listScroll {
+  flex:       1 1 auto;
+  min-height: 80px;
+  overflow-y: auto;
+  margin:     0 calc(var(--space-6) * -1);
+  padding:    2px var(--space-6);
 }
 
 /* ── Cloud sync — a single quiet button, not a full-width card and not set
    apart by a divider. Local (OPFS) boards are the primary interface; a
    cloud provider is an optional, secondary layer on top. Room for more
    provider buttons to sit alongside Google Drive later. ─────────────────── */
-
-.cloudSyncRow {
-  display: flex;
-}
 
 .cloudSyncRow {
   display:         flex;

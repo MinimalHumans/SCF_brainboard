@@ -58,7 +58,7 @@ export default function App() {
       {showHelp      && <HelpModal      onClose={() => setShowHelp(false)} />}
       {showOutline   && <OutlineModal   onClose={() => setShowOutline(false)} />}
       {showBoards    && <BoardsModal    onClose={() => setShowBoards(false)} library={library} drive={drive} />}
-      {drive.conflict         && <SyncConflictModal conflict={drive.conflict} onResolve={drive.resolveConflict} />}
+      {drive.conflict         && <SyncConflictModal conflict={drive.conflict} conflictCount={drive.conflictCount} onResolve={drive.resolveConflict} />}
       {drive.deletionConflict && <SyncDeletionModal deletion={drive.deletionConflict} onResolve={drive.resolveDeletion} />}
     </>
   )

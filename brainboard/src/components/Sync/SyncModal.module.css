@@ -90,6 +90,22 @@
   color:       var(--color-text-muted);
 }
 
+.applyAllRow {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-2);
+}
+
+.applyAllLabel {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-2);
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  color:       var(--color-text-secondary);
+  cursor:      pointer;
+}
+
 .actions {
   display:        flex;
   flex-direction: column;

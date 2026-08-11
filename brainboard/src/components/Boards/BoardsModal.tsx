@@ -112,6 +112,9 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
             <button type="button" className={styles.importBtn} onClick={library.importBoard}>Import…</button>
           </div>
 
+          {/* Only this list scrolls — New/Import above and the cloud-sync
+              line below stay put no matter how many boards there are. */}
+          <div className={styles.listScroll}>
           <ul className={styles.boardList}>
             {sorted.map(b => {
               const driveState: ProviderSyncState = syncBoards[b.boardId]?.[PROVIDER_ID] ?? getProviderState(b.boardId, PROVIDER_ID)
@@ -180,6 +183,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
               )
             })}
           </ul>
+          </div>
 
           {!library.canManageMultipleBoards && (
             <p className={styles.note}>
