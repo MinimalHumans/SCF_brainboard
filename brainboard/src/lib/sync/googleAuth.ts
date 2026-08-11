@@ -22,6 +22,13 @@ declare global {
             client_id: string
             scope: string
             callback: (resp: TokenResponse) => void
+            // Routes the silent (prompt:'') reacquire through the browser's
+            // native FedCM API instead of GIS's third-party-cookie-dependent
+            // popup. Without this, browsers that block 3P cookies (default in
+            // current Chrome/Safari) can't complete the silent refresh
+            // invisibly and fall back to a popup that still needs a click on
+            // the account — even though no fresh consent is actually needed.
+            use_fedcm_for_prompt?: boolean
           }): TokenClient
           revoke(token: string, done?: () => void): void
         }
@@ -92,6 +99,7 @@ export async function requestAccessToken(opts: { prompt: 'consent' | '' }): Prom
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: clientId,
       scope: SCOPE,
+      use_fedcm_for_prompt: true,
       callback: (resp) => {
         if (resp.error || !resp.access_token) {
           reject(new Error(resp.error || 'No access token returned'))
