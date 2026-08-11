@@ -1,25 +1,26 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useMemo } from 'react'
 import { useBoardStore }      from '@/store/boardStore'
 import { useViewerStore }     from '@/store/viewerStore'
 import { useHistoryStore }    from '@/store/historyStore'
 import { useThemeStore }      from '@/store/themeStore'
+import { useLibraryStore }    from '@/store/libraryStore'
+import { useSyncStore }       from '@/store/syncStore'
 import { useMediaQuery }      from '@/hooks/useMediaQuery'
 import { AboutPopover }       from './AboutPopover'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
 import { ExportPopover }      from './ExportPopover'
-import { SyncSettingsModal }  from '@/components/Sync/SyncSettingsModal'
 import { ContextMenu }        from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
-import type { ProviderSyncState } from '@/lib/sync/types'
-import { SYNC_STATUS_LABEL }  from '@/lib/sync/statusLabels'
 import styles                 from './Toolbar.module.css'
+
+const PROVIDER_ID = 'google-drive'
 
 /*
  * At or below this width the toolbar collapses to its compact layout:
  *   - the wordmark drops to icon-only (still opens About),
  *   - the board name truncates harder (still opens Project Info),
  *   - the zoom HUD is dropped entirely (pinch-zoom + Frame All replace it),
- *   - undo/redo, the board actions (New Board / Import / Export / Templates /
+ *   - undo/redo, the board actions (Boards / Import / Export / Templates /
  *     Outline), and the Day/Night toggle all move into the ⋯ overflow menu,
  *   - the center keeps only Frame All; the right keeps ⋯ and Help.
  *
@@ -39,11 +40,7 @@ interface ToolbarProps {
   onTemplates?: () => void
   onOutline?:   () => void
   onHelp?:      () => void
-  onNewBoard?:  () => void
-  driveState?:  ProviderSyncState
-  onDriveLink?:     () => void
-  onDriveUnlink?:   () => void
-  onDriveCheckNow?: () => Promise<void>
+  onOpenBoards: () => void
 }
 
 export function Toolbar({
@@ -55,11 +52,7 @@ export function Toolbar({
   onTemplates,
   onOutline,
   onHelp,
-  onNewBoard,
-  driveState,
-  onDriveLink,
-  onDriveUnlink,
-  onDriveCheckNow,
+  onOpenBoards,
 }: ToolbarProps) {
   const isNarrow = useMediaQuery(NARROW_QUERY)
 
@@ -81,14 +74,40 @@ export function Toolbar({
   const [showInfoPopover,   setShowInfoPopover]   = useState(false)
   const [showExportPopover, setShowExportPopover] = useState(false)
   const [showAboutPopover,  setShowAboutPopover]  = useState(false)
-  const [showSyncModal,     setShowSyncModal]     = useState(false)
   const [overflowMenu,      setOverflowMenu]      = useState<{ x: number; y: number } | null>(null)
 
-  // Sync badge — dark grey (idle) when not connected, otherwise mirrors the
-  // provider's live status so the connection state is visible without
-  // opening the Sync modal.
-  const syncBadgeStatus = driveState?.linked ? driveState.lastStatus : 'idle'
-  const syncBadgeTitle  = driveState?.linked ? SYNC_STATUS_LABEL[driveState.lastStatus] : 'Not connected'
+  // Aggregate Drive status across every board, not just the active one —
+  // this is the one ambient signal outside the Boards modal, so it needs to
+  // catch a conflict on a board you haven't opened yet. No badge at all
+  // when the account isn't connected (nothing to report); worst status
+  // wins: a conflict/error anywhere outranks "still syncing", which
+  // outranks "all synced".
+  const accountLinked  = useSyncStore(s => s.accounts[PROVIDER_ID] === true)
+  const syncBoardsState = useSyncStore(s => s.boards)
+  const libraryBoards   = useLibraryStore(s => s.boards)
+  const boardsBadge = useMemo((): 'issue' | 'syncing' | 'synced' | null => {
+    if (!accountLinked) return null
+    let hasIssue = false, hasSyncing = false, hasSynced = false
+    for (const b of libraryBoards) {
+      const state = syncBoardsState[b.boardId]?.[PROVIDER_ID]
+      if (!state?.linked) continue
+      if (state.lastStatus === 'conflict' || state.lastStatus === 'deleted-remote' || state.lastStatus === 'error') hasIssue = true
+      else if (state.lastStatus === 'syncing') hasSyncing = true
+      else if (state.lastStatus === 'synced') hasSynced = true
+    }
+    if (hasIssue) return 'issue'
+    if (hasSyncing) return 'syncing'
+    if (hasSynced) return 'synced'
+    return null
+  }, [accountLinked, libraryBoards, syncBoardsState])
+
+  const boardsBadgeTitle = boardsBadge === 'issue'
+    ? 'One or more boards need attention — open Boards to review'
+    : boardsBadge === 'syncing'
+      ? 'Syncing…'
+      : boardsBadge === 'synced'
+        ? 'All boards synced'
+        : undefined
 
   const zoomPct = Math.round(zoom * 100)
 
@@ -110,14 +129,13 @@ export function Toolbar({
    * list still positions correctly.
    */
   const overflowItems: ContextMenuItem[] = [
-    { label: 'Undo', onClick: () => undo(), disabled: !canUndo },
+    { label: 'Boards…', onClick: () => onOpenBoards() },
+    { label: 'Undo', divider: true, onClick: () => undo(), disabled: !canUndo },
     { label: 'Redo', onClick: () => redo(), disabled: !canRedo },
-    { label: 'New Board', divider: true, onClick: () => onNewBoard?.() },
-    { label: 'Import',     onClick: () => onImport?.() },
+    { label: 'Import',     divider: true, onClick: () => onImport?.() },
     { label: 'Export…',    onClick: () => setShowExportPopover(true) },
     { label: 'Templates',  onClick: () => onTemplates?.() },
     { label: 'Outline',    onClick: () => onOutline?.() },
-    { label: 'Sync…', onClick: () => setShowSyncModal(true) },
     {
       label:   theme === 'dark' ? 'Light mode' : 'Dark mode',
       divider: true,
@@ -226,7 +244,20 @@ export function Toolbar({
           </>
         ) : (
           <>
-            <button className={styles.action} onClick={onNewBoard} title="New blank board">New Board</button>
+            <button
+              className={`${styles.action} ${styles.syncBtn}`}
+              onClick={onOpenBoards}
+              title="Boards — manage and sync your boards"
+            >
+              Boards
+              {boardsBadge && (
+                <span
+                  className={`${styles.syncBadge} ${styles[boardsBadge]}`}
+                  title={boardsBadgeTitle}
+                  aria-hidden="true"
+                />
+              )}
+            </button>
             <button className={styles.action} onClick={onImport}>Import</button>
 
             {/* Export — opens a popover with JSON / Fountain / FDX options */}
@@ -241,18 +272,6 @@ export function Toolbar({
 
             <button className={styles.action} onClick={onTemplates}>Templates</button>
             <button className={styles.action} onClick={onOutline}>Outline</button>
-            <button
-              className={`${styles.action} ${styles.syncBtn}`}
-              onClick={() => setShowSyncModal(true)}
-              title="Sync"
-            >
-              Sync
-              <span
-                className={`${styles.syncBadge} ${styles[syncBadgeStatus]}`}
-                title={syncBadgeTitle}
-                aria-hidden="true"
-              />
-            </button>
             {helpButton}
           </>
         )}
@@ -269,16 +288,6 @@ export function Toolbar({
         )}
 
       </div>
-
-      {showSyncModal && driveState && (
-        <SyncSettingsModal
-          driveState={driveState}
-          onLink={() => onDriveLink?.()}
-          onUnlink={() => onDriveUnlink?.()}
-          onCheckNow={async () => { await onDriveCheckNow?.() }}
-          onClose={() => setShowSyncModal(false)}
-        />
-      )}
 
       {overflowMenu && (
         <ContextMenu

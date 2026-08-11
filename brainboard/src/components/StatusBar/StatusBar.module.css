@@ -62,27 +62,3 @@
   height:           12px;
   background-color: var(--color-border-strong);
 }
-
-.syncIndicator {
-  display:     flex;
-  align-items: center;
-  gap:         5px;
-  font-family: var(--font-ui);
-  font-size:   var(--text-xs);
-  color:       var(--color-text-muted);
-  opacity:     0.7;
-}
-
-.syncDot {
-  width:         6px;
-  height:        6px;
-  flex-shrink:   0;
-  border-radius: 50%;
-  background:    var(--color-text-disabled);
-}
-.syncDot.synced  { background: var(--color-status-success); }
-.syncDot.syncing { background: var(--color-accent); }
-.syncDot.idle    { background: var(--color-text-disabled); }
-.syncDot.conflict,
-.syncDot.error,
-.syncDot.deleted-remote { background: var(--color-status-error); }

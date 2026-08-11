@@ -95,6 +95,21 @@ export interface ProjectInfo {
   copyright?: string   // e.g. "© 2026 Jane Doe"
 }
 
+/*
+ * SyncMeta — local revision bookkeeping embedded in the board content itself,
+ * so it travels with the file wherever it goes (Drive, export, import).
+ * Purely informational: it never drives reconcile()'s push/pull/conflict
+ * decision (that's still hash-based), it just gives conflict/deletion UI
+ * something concrete to show ("v14 from Chrome on Windows" vs "v9 from
+ * Safari on iPhone") instead of bare timestamps.
+ */
+export interface SyncMeta {
+  version:     number  // monotonic local revision counter, bumped on every save
+  clientId:    string  // stable per-browser-profile id
+  clientLabel: string  // human label, e.g. "Chrome on Windows"
+  updatedAt:   string  // ISO, mirrors board.updatedAt as of this version
+}
+
 export interface Board {
   schemaVersion: 1
   boardId:       string
@@ -106,6 +121,7 @@ export interface Board {
   entities:      Entity[]
   backdrops:     Backdrop[]
   projectInfo?:  ProjectInfo
+  syncMeta?:     SyncMeta
 }
 
 export function isInstance(card: Card, allCards: Card[]): boolean {

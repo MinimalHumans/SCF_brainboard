@@ -74,7 +74,14 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               item.danger    ? styles.danger    : '',
               item.disabled  ? styles.disabled  : '',
             ].join(' ').trim()}
-            onClick={() => {
+            onClick={e => {
+              // Stops here even though this menu is portaled to
+              // document.body — React bubbles synthetic events through the
+              // *component* tree, not the DOM tree, so without this a
+              // click-to-close overlay anywhere above this menu in the React
+              // tree (not just anywhere in the DOM) would also close on
+              // every item click.
+              e.stopPropagation()
               if (!item.disabled) {
                 item.onClick()
                 onClose()

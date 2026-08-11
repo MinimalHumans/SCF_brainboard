@@ -1,6 +1,9 @@
 const FILES_URL  = 'https://www.googleapis.com/drive/v3/files'
-const UPLOAD_URL  = 'https://www.googleapis.com/upload/drive/v3/files'
-const FILE_NAME   = 'board.json'
+const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
+// Legacy default name from the single-board era — still used as the
+// find-or-create name for boards migrated from that era, since Drive files
+// are addressed by id, not name, once linked (see driveManifest.ts).
+export const LEGACY_BOARD_FILE_NAME = 'board.json'
 
 function authHeaders(token: string): HeadersInit {
   return { Authorization: `Bearer ${token}` }
@@ -13,12 +16,19 @@ async function assertOk(res: Response, action: string): Promise<Response> {
   return res
 }
 
-export async function findAppDataFile(token: string): Promise<{ fileId: string; modifiedTime: string } | null> {
-  const url = `${FILES_URL}?spaces=appDataFolder&fields=files(id,modifiedTime)&q=${encodeURIComponent(`name='${FILE_NAME}'`)}`
+export async function findFileByName(token: string, name: string): Promise<{ fileId: string; modifiedTime: string } | null> {
+  const url = `${FILES_URL}?spaces=appDataFolder&fields=files(id,modifiedTime)&q=${encodeURIComponent(`name='${name}'`)}`
   const res = await assertOk(await fetch(url, { headers: authHeaders(token) }), 'list')
   const data = await res.json() as { files: { id: string; modifiedTime: string }[] }
   const file = data.files[0]
   return file ? { fileId: file.id, modifiedTime: file.modifiedTime } : null
+}
+
+export async function listAppDataFiles(token: string): Promise<{ id: string; name: string; modifiedTime: string }[]> {
+  const url = `${FILES_URL}?spaces=appDataFolder&pageSize=1000&fields=files(id,name,modifiedTime)`
+  const res = await assertOk(await fetch(url, { headers: authHeaders(token) }), 'list')
+  const data = await res.json() as { files: { id: string; name: string; modifiedTime: string }[] }
+  return data.files
 }
 
 export async function downloadFile(token: string, fileId: string): Promise<string | null> {
@@ -36,7 +46,7 @@ export async function getFileModifiedTime(token: string, fileId: string): Promis
   return data.modifiedTime
 }
 
-export async function createFile(token: string, content: string, name = FILE_NAME): Promise<{ fileId: string; modifiedTime: string }> {
+export async function createFile(token: string, content: string, name: string): Promise<{ fileId: string; modifiedTime: string }> {
   const metadata = { name, parents: ['appDataFolder'] }
   const boundary = `-------scriptyard-${crypto.randomUUID()}`
   const body =
@@ -63,4 +73,10 @@ export async function updateFile(token: string, fileId: string, content: string)
   }), 'update')
   const data = await res.json() as { modifiedTime: string }
   return { modifiedTime: data.modifiedTime }
+}
+
+export async function deleteFile(token: string, fileId: string): Promise<void> {
+  const res = await fetch(`${FILES_URL}/${fileId}`, { method: 'DELETE', headers: authHeaders(token) })
+  if (res.status === 404) return
+  await assertOk(res, 'delete')
 }

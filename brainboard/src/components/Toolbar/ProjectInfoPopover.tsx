@@ -50,17 +50,29 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
     setPos({ top: rect.bottom + 4, left })
   }, [anchorRef])
 
+  // Commits whatever field is currently focused (if any) before the popover
+  // unmounts. Both close paths below fire before a natural blur would ever
+  // reach the input — closing first would silently discard an in-progress
+  // edit, since onBlur (where fields actually save) never gets to run once
+  // the input is torn down.
+  const commitFocusedField = () => {
+    const active = document.activeElement
+    if (popoverRef.current?.contains(active)) (active as HTMLElement).blur()
+  }
+
   // Close on outside pointer-down or Escape.
   // capture: true on Escape so we win over Canvas's Escape handler.
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        commitFocusedField()
         onClose()
       }
     }
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
+        commitFocusedField()
         onClose()
       }
     }
@@ -90,7 +102,7 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
           defaultValue={board.name}
           onFocus={() => snapshotBoard()}
           onBlur={e => { const t = e.target.value.trim(); if (t) setBoardName(t) }}
-          onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }}
+          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
           placeholder="Board name"
           maxLength={80}
           autoFocus={!IS_TOUCH_PRIMARY}

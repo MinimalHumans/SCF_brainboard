@@ -19,13 +19,20 @@ export function SyncDeletionModal({ deletion, onResolve }: SyncDeletionModalProp
   return createPortal(
     <div className={styles.overlay} onClick={() => onResolve('ignore')}>
       <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-label="Drive backup missing">
-        <div className={styles.title}>Drive backup missing</div>
+        <div className={styles.title}>Drive backup missing — "{deletion.boardName}"</div>
         <p className={styles.body}>
           {deletion.lastSyncedAt
             ? `This board's Drive backup (last synced ${formatDateTime(deletion.lastSyncedAt)}) is no longer in your Drive. It may have been removed from another device or manually deleted.`
             : "This board's Drive backup is no longer in your Drive. It may have been removed from another device or manually deleted."}
           {deletion.localDirty && ' Your local board has changes since that last sync.'}
         </p>
+        {(deletion.localVersion !== null || deletion.localClientLabel) && (
+          <p className={styles.body}>
+            This device's copy: {deletion.localVersion !== null && `v${deletion.localVersion}`}
+            {deletion.localVersion !== null && deletion.localClientLabel && ' · '}
+            {deletion.localClientLabel}
+          </p>
+        )}
 
         <div className={styles.actions}>
           <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onResolve('reupload')}>

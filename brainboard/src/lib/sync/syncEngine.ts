@@ -32,6 +32,27 @@ function withLocalViewport(remoteBoard: Board, localBoard: Board): Board {
   return { ...remoteBoard, viewport: localBoard.viewport }
 }
 
+function sideOf(board: Board): { name: string; updatedAt: string; version: number | null; clientLabel: string | null } {
+  return {
+    name:        board.name,
+    updatedAt:   board.updatedAt,
+    version:     board.syncMeta?.version ?? null,
+    clientLabel: board.syncMeta?.clientLabel ?? null,
+  }
+}
+
+function deletionSummaryOf(provider: string, localBoard: Board, state: ProviderSyncState, localDirty: boolean): DeletionSummary {
+  return {
+    provider,
+    boardId: localBoard.boardId,
+    boardName: localBoard.name,
+    localVersion: localBoard.syncMeta?.version ?? null,
+    localClientLabel: localBoard.syncMeta?.clientLabel ?? null,
+    lastSyncedAt: state.lastSyncedAt,
+    localDirty,
+  }
+}
+
 export type ReconcileResult =
   | { kind: 'noop' }
   | { kind: 'pushed'; newState: ProviderSyncState }
@@ -45,6 +66,10 @@ export type ReconcileResult =
  * baseline (hash + remote modifiedTime as of the last successful sync).
  * Requires state.remoteFileId to already be set; the initial find-or-create
  * on first link is handled by the caller before this is ever invoked.
+ *
+ * version/clientLabel in the resulting summaries are informational only —
+ * surfaced by the conflict/deletion UI, never used by the diff below (which
+ * stays purely hash- and modifiedTime-based, same as before multi-board).
  */
 export async function reconcile(
   provider: SyncProvider,
@@ -67,11 +92,7 @@ export async function reconcile(
   if (remoteModifiedTime === null) {
     return {
       kind: 'deletion-conflict',
-      summary: {
-        provider: provider.id,
-        lastSyncedAt: state.lastSyncedAt,
-        localDirty: localHash !== state.baselineHash,
-      },
+      summary: deletionSummaryOf(provider.id, localBoard, state, localHash !== state.baselineHash),
     }
   }
 
@@ -91,6 +112,7 @@ export async function reconcile(
           ...state,
           baselineHash: localHash,
           baselineRemoteModifiedTime: modifiedTime,
+          baselineVersion: localBoard.syncMeta?.version ?? null,
           lastSyncedAt: new Date().toISOString(),
           lastStatus: 'synced',
           lastError: null,
@@ -107,7 +129,7 @@ export async function reconcile(
       if (!remote) {
         return {
           kind: 'deletion-conflict',
-          summary: { provider: provider.id, lastSyncedAt: state.lastSyncedAt, localDirty: false },
+          summary: deletionSummaryOf(provider.id, localBoard, state, false),
         }
       }
       const remoteBoard = parseBoard(remote.content)
@@ -120,6 +142,7 @@ export async function reconcile(
           ...state,
           baselineHash: remoteHash,
           baselineRemoteModifiedTime: remote.modifiedTime,
+          baselineVersion: remoteBoard.syncMeta?.version ?? null,
           lastSyncedAt: new Date().toISOString(),
           lastStatus: 'synced',
           lastError: null,
@@ -136,7 +159,7 @@ export async function reconcile(
     if (!remote) {
       return {
         kind: 'deletion-conflict',
-        summary: { provider: provider.id, lastSyncedAt: state.lastSyncedAt, localDirty: true },
+        summary: deletionSummaryOf(provider.id, localBoard, state, true),
       }
     }
     const remoteBoard = parseBoard(remote.content)
@@ -145,8 +168,9 @@ export async function reconcile(
       kind: 'conflict',
       summary: {
         provider: provider.id,
-        local:  { name: localBoard.name, updatedAt: localBoard.updatedAt },
-        remote: { name: remoteBoard.name, updatedAt: remoteBoard.updatedAt, content: remote.content },
+        boardId:  localBoard.boardId,
+        local:    sideOf(localBoard),
+        remote:   { ...sideOf(remoteBoard), content: remote.content },
       },
     }
   } catch (err) {
@@ -164,6 +188,7 @@ export function resolveConflictOverwriteLocal(remoteContent: string, localBoard:
     newState: {
       ...state,
       baselineHash: remoteHash,
+      baselineVersion: remoteBoard.syncMeta?.version ?? null,
       lastSyncedAt: new Date().toISOString(),
       lastStatus: 'synced' as const,
       lastError: null,
@@ -171,13 +196,20 @@ export function resolveConflictOverwriteLocal(remoteContent: string, localBoard:
   }))
 }
 
+/*
+ * resolveConflictKeepLocalAsCopy — local content wins, but rather than
+ * clobbering a remote file that diverged for a reason, push it to a fresh
+ * Drive file and rebind this (same) board's remoteFileId to it. The old
+ * remote file is left in place, orphaned but recoverable. Caller is
+ * responsible for updating the Drive manifest with the new fileId.
+ */
 export async function resolveConflictKeepLocalAsCopy(
   provider: SyncProvider,
   localBoard: Board,
   state: ProviderSyncState,
 ): Promise<ProviderSyncState> {
   const localContent = JSON.stringify(localBoard)
-  const copyName = `board-copy-${Date.now()}.json`
+  const copyName = `${localBoard.boardId}-copy-${Date.now()}.json`
   const { fileId, modifiedTime } = await provider.createRemote(localContent, copyName)
   const localHash = await hashContent(syncableContent(localBoard))
   return {
@@ -185,6 +217,7 @@ export async function resolveConflictKeepLocalAsCopy(
     remoteFileId: fileId,
     baselineHash: localHash,
     baselineRemoteModifiedTime: modifiedTime,
+    baselineVersion: localBoard.syncMeta?.version ?? null,
     lastSyncedAt: new Date().toISOString(),
     lastStatus: 'synced',
     lastError: null,
@@ -203,18 +236,20 @@ export function resolveDeletionIgnore(state: ProviderSyncState): ProviderSyncSta
     remoteFileId: null,
     baselineHash: null,
     baselineRemoteModifiedTime: null,
+    baselineVersion: null,
     lastStatus: 'idle',
     lastError: null,
   }
 }
 
+// Caller is responsible for updating the Drive manifest with the new fileId.
 export async function resolveDeletionReupload(
   provider: SyncProvider,
   localBoard: Board,
   state: ProviderSyncState,
 ): Promise<ProviderSyncState> {
   const localContent = JSON.stringify(localBoard)
-  const reuploadName = `board-restored-${Date.now()}.json`
+  const reuploadName = `${localBoard.boardId}-restored-${Date.now()}.json`
   const { fileId, modifiedTime } = await provider.createRemote(localContent, reuploadName)
   const localHash = await hashContent(syncableContent(localBoard))
   return {
@@ -222,6 +257,7 @@ export async function resolveDeletionReupload(
     remoteFileId: fileId,
     baselineHash: localHash,
     baselineRemoteModifiedTime: modifiedTime,
+    baselineVersion: localBoard.syncMeta?.version ?? null,
     lastSyncedAt: new Date().toISOString(),
     lastStatus: 'synced',
     lastError: null,

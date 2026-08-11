@@ -15,11 +15,13 @@ export interface SyncProvider {
   link():             Promise<void>
   unlink():           Promise<void>
   fetchRemote(fileId: string):        Promise<RemoteFile | null>
-  // name lets callers avoid colliding with the canonical 'board.json' name
-  // when spinning off a conflict copy or a re-upload after a remote deletion.
-  createRemote(content: string, name?: string): Promise<{ fileId: string; modifiedTime: string }>
+  // name is the Drive app-data file name — callers pass a boardId-derived
+  // name so each board gets its own file (or a conflict-copy/re-upload name
+  // when spinning off a variant of an existing board's file).
+  createRemote(content: string, name: string): Promise<{ fileId: string; modifiedTime: string }>
   updateRemote(fileId: string, content: string): Promise<{ modifiedTime: string }>
   getRemoteModifiedTime(fileId: string): Promise<string | null>
+  deleteRemote(fileId: string): Promise<void>
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'conflict' | 'deleted-remote' | 'error'
@@ -29,6 +31,9 @@ export interface ProviderSyncState {
   remoteFileId:                string | null
   baselineHash:                string | null
   baselineRemoteModifiedTime:  string | null
+  // syncMeta.version as of the last successful sync — informational only,
+  // shown in the Boards modal/conflict UI; never used by reconcile()'s diff.
+  baselineVersion:             number | null
   lastSyncedAt:                string | null
   lastStatus:                  SyncStatus
   lastError:                   string | null
@@ -40,20 +45,33 @@ export function makeInitialProviderState(): ProviderSyncState {
     remoteFileId: null,
     baselineHash: null,
     baselineRemoteModifiedTime: null,
+    baselineVersion: null,
     lastSyncedAt: null,
     lastStatus: 'idle',
     lastError: null,
   }
 }
 
+interface SyncSide {
+  name:        string
+  updatedAt:   string
+  version:     number | null
+  clientLabel: string | null
+}
+
 export interface ConflictSummary {
-  provider:  string
-  local:     { name: string; updatedAt: string }
-  remote:    { name: string; updatedAt: string; content: string }
+  provider: string
+  boardId:  string
+  local:    SyncSide
+  remote:   SyncSide & { content: string }
 }
 
 export interface DeletionSummary {
   provider:     string
+  boardId:      string
+  boardName:    string
+  localVersion: number | null
+  localClientLabel: string | null
   lastSyncedAt: string | null
   localDirty:   boolean
 }

@@ -65,11 +65,21 @@ function mergeBoard(current: Board, templateBoard: Board): Board {
 
 /* ── Modal component ────────────────────────────────────────────────────── */
 
-interface TemplatesModalProps { onClose: () => void }
+interface TemplatesModalProps {
+  onClose: () => void
+  // Adopts a fully-formed Board (with its own fresh boardId) as the new
+  // active board — routes through useBoardLibrary so the library index and
+  // activeBoardId stay in sync with what's on screen. Loading a template as
+  // a *new* board must never call useBoardStore.loadBoard directly (that
+  // swaps the editor's content without telling the library anything
+  // changed, leaving the Boards modal's "current" tag pointing at the
+  // board this replaced).
+  onAdoptBoard: (board: Board) => void
+}
 
 type Tab = 'default' | 'user'
 
-export function TemplatesModal({ onClose }: TemplatesModalProps) {
+export function TemplatesModal({ onClose, onAdoptBoard }: TemplatesModalProps) {
   const [activeTab,      setActiveTab]      = useState<Tab>('default')
   const [userTemplates,  setUserTemplates]  = useState<UserTemplate[]>(loadUserTemplates)
 
@@ -94,10 +104,10 @@ export function TemplatesModal({ onClose }: TemplatesModalProps) {
       updatedAt: new Date().toISOString(),
       backdrops: (templateBoard.backdrops ?? []).map(b => ({ note: '', ...b })),
     }
-    loadBoard(fresh)
+    onAdoptBoard(fresh)
     toast.success(`Loaded template "${templateBoard.name}"`)
     onClose()
-  }, [loadBoard, onClose])
+  }, [onAdoptBoard, onClose])
 
   const handleMerge = useCallback((templateBoard: Board) => {
     loadBoard(mergeBoard(board, templateBoard))

@@ -403,7 +403,11 @@
   --z-card-selected:  100;
   --z-card-dragging:  200;
   --z-toolbar:        1000;
-  --z-context-menu:   1100;
   --z-toast:          1200;
   --z-modal:          1300;
+  /* Above --z-modal: ContextMenu can be opened from inside a modal (e.g.
+     the Boards row ⋮ menu), and must always land on top of whatever
+     triggered it — including another modal's full-viewport overlay, which
+     would otherwise intercept clicks on the menu's items. */
+  --z-context-menu:   1400;
 }

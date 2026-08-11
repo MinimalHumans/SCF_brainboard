@@ -1,5 +1,5 @@
 import { clearCachedToken, getValidAccessToken, hasCachedToken, requestAccessToken, revokeToken } from './googleAuth'
-import { createFile, downloadFile, getFileModifiedTime, updateFile } from './googleDriveApi'
+import { createFile, deleteFile, downloadFile, getFileModifiedTime, updateFile } from './googleDriveApi'
 import type { SyncProvider } from './types'
 
 export const googleDriveProvider: SyncProvider = {
@@ -40,5 +40,10 @@ export const googleDriveProvider: SyncProvider = {
   async getRemoteModifiedTime(fileId) {
     const token = await getValidAccessToken()
     return getFileModifiedTime(token, fileId)
+  },
+
+  async deleteRemote(fileId) {
+    const token = await getValidAccessToken()
+    return deleteFile(token, fileId)
   },
 }

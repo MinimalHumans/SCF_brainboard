@@ -19,7 +19,7 @@ export function SyncConflictModal({ conflict, onResolve }: SyncConflictModalProp
   return createPortal(
     <div className={styles.overlay} onClick={() => onResolve('cancel')}>
       <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-label="Drive sync conflict">
-        <div className={styles.title}>Drive sync conflict</div>
+        <div className={styles.title}>Drive sync conflict — "{conflict.local.name}"</div>
         <p className={styles.body}>
           This board changed on this device and in Google Drive since the last
           sync. Choose which version to keep — nothing is deleted either way.
@@ -30,11 +30,25 @@ export function SyncConflictModal({ conflict, onResolve }: SyncConflictModalProp
             <div className={styles.sideLabel}>This device</div>
             <div className={styles.sideName}>{conflict.local.name}</div>
             <div className={styles.sideMeta}>Updated {formatDateTime(conflict.local.updatedAt)}</div>
+            {(conflict.local.version !== null || conflict.local.clientLabel) && (
+              <div className={styles.sideMeta}>
+                {conflict.local.version !== null && `v${conflict.local.version}`}
+                {conflict.local.version !== null && conflict.local.clientLabel && ' · '}
+                {conflict.local.clientLabel}
+              </div>
+            )}
           </div>
           <div className={styles.side}>
             <div className={styles.sideLabel}>Google Drive</div>
             <div className={styles.sideName}>{conflict.remote.name}</div>
             <div className={styles.sideMeta}>Updated {formatDateTime(conflict.remote.updatedAt)}</div>
+            {(conflict.remote.version !== null || conflict.remote.clientLabel) && (
+              <div className={styles.sideMeta}>
+                {conflict.remote.version !== null && `v${conflict.remote.version}`}
+                {conflict.remote.version !== null && conflict.remote.clientLabel && ' · '}
+                {conflict.remote.clientLabel}
+              </div>
+            )}
           </div>
         </div>
 

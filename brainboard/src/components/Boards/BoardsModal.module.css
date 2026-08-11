@@ -1,0 +1,354 @@
+.overlay {
+  position:         fixed;
+  inset:            0;
+  background-color: rgba(0, 0, 0, 0.65);
+  z-index:          var(--z-modal);
+  display:          flex;
+  align-items:      center;
+  justify-content:  center;
+  padding:          var(--space-8);
+  animation:        fadeIn var(--duration-normal) var(--easing-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  display:          flex;
+  flex-direction:   column;
+  width:            100%;
+  max-width:        560px;
+  max-height:       82vh;
+  background-color: var(--color-surface-overlay);
+  border:           1px solid var(--color-border-strong);
+  border-radius:    var(--radius-xl);
+  box-shadow:       var(--shadow-lg);
+  overflow:         hidden;
+  animation:        slideIn var(--duration-normal) var(--easing-standard);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+.header {
+  display:          flex;
+  align-items:      flex-start;
+  justify-content:  space-between;
+  gap:              var(--space-4);
+  padding:          var(--space-5) var(--space-6) var(--space-4);
+  border-bottom:    1px solid var(--color-border);
+  flex-shrink:      0;
+}
+
+.title {
+  font-family:   var(--font-display);
+  font-size:     var(--text-xl);
+  font-weight:   var(--weight-bold);
+  font-variation-settings: 'wght' 700, 'WONK' 0.5, 'opsz' 21;
+  color:         var(--color-text-primary);
+}
+
+.closeBtn {
+  font-size:     22px;
+  line-height:   1;
+  color:         var(--color-text-muted);
+  background:    transparent;
+  border:        none;
+  cursor:        pointer;
+  padding:       2px var(--space-1);
+  border-radius: var(--radius-sm);
+  flex-shrink:   0;
+  transition:    color var(--duration-fast) var(--easing-out);
+}
+.closeBtn:hover { color: var(--color-text-primary); }
+
+.body {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-4);
+  padding:        var(--space-5) var(--space-6);
+  overflow-y:     auto;
+  min-height:     0;
+}
+
+/* ── Cloud sync — a single quiet button, not a full-width card and not set
+   apart by a divider. Local (OPFS) boards are the primary interface; a
+   cloud provider is an optional, secondary layer on top. Room for more
+   provider buttons to sit alongside Google Drive later. ─────────────────── */
+
+.cloudSyncRow {
+  display: flex;
+}
+
+.cloudSyncRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             var(--space-3);
+}
+
+.cloudSyncStatus {
+  display:     inline-flex;
+  align-items: center;
+  gap:         var(--space-2);
+  min-width:   0;
+}
+
+.cloudSyncText {
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  color:       var(--color-text-secondary);
+}
+
+.cloudSyncTextMuted {
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  color:       var(--color-text-muted);
+}
+
+.statusDot {
+  width:         6px;
+  height:        6px;
+  flex-shrink:   0;
+  border-radius: 50%;
+  background:    var(--color-status-success);
+}
+
+.connectGhostBtn,
+.disconnectBtn {
+  height:        26px;
+  padding:       0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family:   var(--font-ui);
+  font-size:     var(--text-2xs);
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    color            var(--duration-fast) var(--easing-out),
+                 background-color var(--duration-fast) var(--easing-out),
+                 border-color     var(--duration-fast) var(--easing-out);
+}
+
+.connectGhostBtn {
+  color:      var(--color-text-muted);
+  background: transparent;
+  border:     1px solid var(--color-border);
+}
+.connectGhostBtn:hover {
+  color:            var(--color-text-secondary);
+  background-color: var(--color-surface-hover);
+  border-color:      var(--color-border-strong);
+}
+
+/* A quiet text-link, not a bordered button — disconnecting is a rarer,
+   deliberate action and shouldn't visually compete with Connect. */
+.disconnectBtn {
+  color:      var(--color-text-muted);
+  background: transparent;
+  border:     none;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+.disconnectBtn:hover {
+  color:                  var(--color-text-secondary);
+  text-decoration-color:  var(--color-text-muted);
+}
+
+/* ── Board list ────────────────────────────────────────────────────────── */
+
+.listHeader {
+  display: flex;
+  gap:     var(--space-2);
+}
+
+.newBtn,
+.importBtn {
+  height:        28px;
+  padding:       0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family:   var(--font-ui);
+  font-size:     var(--text-xs);
+  font-weight:   var(--weight-medium);
+  cursor:        pointer;
+  transition:    color            var(--duration-fast) var(--easing-out),
+                 background-color var(--duration-fast) var(--easing-out),
+                 border-color     var(--duration-fast) var(--easing-out);
+}
+
+.newBtn {
+  color:            var(--color-accent);
+  background-color: var(--color-accent-subtle);
+  border:           1px solid var(--color-accent-muted);
+}
+.newBtn:hover { color: var(--color-accent-hover); }
+
+.importBtn {
+  color:      var(--color-text-secondary);
+  background: transparent;
+  border:     1px solid var(--color-border);
+}
+.importBtn:hover {
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+}
+
+.boardList {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-2);
+  list-style:     none;
+  margin:         0;
+  padding:        0;
+}
+
+.row {
+  display:          flex;
+  align-items:      center;
+  gap:              var(--space-3);
+  padding:          var(--space-3) var(--space-4);
+  background-color: var(--color-surface-raised);
+  border:           1px solid var(--color-border);
+  border-radius:    var(--radius-lg);
+  cursor:           pointer;
+  transition:       background-color var(--duration-fast) var(--easing-out),
+                     border-color     var(--duration-fast) var(--easing-out);
+}
+.row:hover {
+  background-color: var(--color-surface-hover);
+  border-color:      var(--color-border-strong);
+}
+
+/* The loaded/selected board — deliberately overt (tinted fill + accent
+   border + a left stripe) rather than a small text tag, so which board is
+   open reads at a glance. */
+.rowActive {
+  background-color: var(--color-accent-subtle);
+  border-color:      var(--color-accent);
+  box-shadow:        inset 3px 0 0 var(--color-accent);
+}
+.rowActive:hover {
+  background-color: var(--color-accent-muted);
+}
+
+.rowMain {
+  display:        flex;
+  flex-direction: column;
+  gap:            2px;
+  min-width:      0;
+  flex:           1 1 auto;
+}
+
+.rowName {
+  display:        inline-flex;
+  align-items:    center;
+  gap:            var(--space-2);
+  font-family:    var(--font-ui);
+  font-size:      var(--text-sm);
+  font-weight:    var(--weight-semibold);
+  color:          var(--color-text-primary);
+  width:          fit-content;
+  max-width:      100%;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  white-space:    nowrap;
+}
+.rowName:hover { text-decoration: underline; }
+
+.nameInput {
+  font-family:   var(--font-ui);
+  font-size:     var(--text-sm);
+  font-weight:   var(--weight-semibold);
+  color:         var(--color-text-primary);
+  background:    var(--color-surface-inset);
+  border:        1px solid var(--color-accent-muted);
+  border-radius: var(--radius-xs);
+  padding:       2px var(--space-2);
+  width:         100%;
+  max-width:     220px;
+}
+
+.rowMeta {
+  font-family: var(--font-ui);
+  font-size:   var(--text-2xs);
+  color:       var(--color-text-muted);
+}
+
+/* ── Far-right cluster: passive sync indicator + overflow menu ──────────── */
+
+.rowRight {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-2);
+  flex-shrink: 0;
+}
+
+.syncDotSynced {
+  width:         7px;
+  height:        7px;
+  flex-shrink:   0;
+  border-radius: 50%;
+  background:    var(--color-status-success);
+}
+
+.syncIconWarning {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           22px;
+  height:          22px;
+  padding:         0;
+  font-size:       var(--text-sm);
+  line-height:     1;
+  color:           var(--color-status-error);
+  background:      transparent;
+  border:          none;
+  border-radius:   var(--radius-full);
+  cursor:          pointer;
+  transition:      background-color var(--duration-fast) var(--easing-out);
+}
+.syncIconWarning:hover { background-color: var(--color-surface-hover); }
+
+.spinner {
+  width:         12px;
+  height:        12px;
+  flex-shrink:   0;
+  border-radius: 50%;
+  border:        2px solid var(--color-border-strong);
+  border-top-color: var(--color-accent);
+  animation:     boardsSpin 0.7s linear infinite;
+}
+@keyframes boardsSpin {
+  to { transform: rotate(360deg); }
+}
+
+.kebabBtn {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           24px;
+  height:          24px;
+  padding:         0;
+  border-radius:   var(--radius-sm);
+  font-size:       var(--text-base);
+  line-height:     1;
+  color:           var(--color-text-muted);
+  background:      transparent;
+  border:          none;
+  cursor:          pointer;
+  transition:      color            var(--duration-fast) var(--easing-out),
+                    background-color var(--duration-fast) var(--easing-out);
+}
+.kebabBtn:hover {
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+}
+
+.note {
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  line-height: var(--leading-normal);
+  color:       var(--color-text-muted);
+}

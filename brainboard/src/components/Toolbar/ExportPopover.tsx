@@ -9,7 +9,7 @@ import styles            from './ExportPopover.module.css'
 interface ExportPopoverProps {
   anchorRef:     React.RefObject<HTMLButtonElement>
   onClose:       () => void
-  /** Called for the JSON export — delegates to usePersistence.exportBoard. */
+  /** Called for the JSON export — delegates to useBoardLibrary.exportBoard. */
   onExportJson?: () => void
 }
 

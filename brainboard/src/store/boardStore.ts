@@ -9,6 +9,7 @@ import {
   BACKDROP_Z_LAYERS, CARD_Z_BASE,
 } from '@/types/board'
 import { useHistoryStore } from '@/store/historyStore'
+import { getClientId, getClientLabel } from '@/lib/sync/clientIdentity'
 
 export const WORLD_SIZE    = 8000
 export const WORLD_CENTER  = WORLD_SIZE / 2
@@ -17,7 +18,7 @@ export const CARD_H        = 160
 export const BACKDROP_MIN_W = 200
 export const BACKDROP_MIN_H = 120
 
-function makeBoard(): Board {
+export function makeBoard(): Board {
   return {
     schemaVersion: 1, boardId: nanoid(),
     name: 'Untitled Board',
@@ -28,8 +29,21 @@ function makeBoard(): Board {
   }
 }
 
-function touch<T extends { updatedAt: string }>(obj: T): T {
-  return { ...obj, updatedAt: new Date().toISOString() }
+// Only ever called on s.board, so it also bumps syncMeta — the local
+// revision counter + client identity that conflict/deletion UI surfaces.
+// Purely informational bookkeeping; never used by reconcile()'s diff logic.
+function touch(board: Board): Board {
+  const now = new Date().toISOString()
+  return {
+    ...board,
+    updatedAt: now,
+    syncMeta: {
+      version:     (board.syncMeta?.version ?? 0) + 1,
+      clientId:    getClientId(),
+      clientLabel: getClientLabel(),
+      updatedAt:   now,
+    },
+  }
 }
 
 function maxCardZ(cards: { zIndex: number }[]): number {
@@ -560,6 +574,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
    *  2. migrateEntities    — 'Archived' status → 'Cut' (standardized set)
    *  3. migrateBackdropAttrs — same for backdrop attributes
    *  4. projectInfo absent → {}
+   *  5. syncMeta absent → seeded fresh (pre-syncMeta boards)
    */
   loadBoard: (board) => set({
     board: {
@@ -567,6 +582,10 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       projectInfo: board.projectInfo ?? {},
       entities:  migrateEntities(board.entities ?? []),
       backdrops: migrateBackdropAttrs(normalizeBackdrops(board.backdrops ?? [])),
+      syncMeta: board.syncMeta ?? {
+        version: 0, clientId: getClientId(), clientLabel: getClientLabel(),
+        updatedAt: board.updatedAt,
+      },
     },
   }),
 
