@@ -16,6 +16,7 @@
 }
 
 .modal {
+  position:         relative;
   display:          flex;
   flex-direction:   column;
   width:            560px;
@@ -39,6 +40,27 @@
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-10px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+/* ── Drag-and-drop import overlay — shown while a file is dragged over the
+   modal; the drop itself is handled on .modal, this is just the visual. ─── */
+.dropOverlay {
+  position:         absolute;
+  inset:             0;
+  z-index:           1;
+  display:           flex;
+  align-items:       center;
+  justify-content:   center;
+  background-color:  var(--color-accent-subtle);
+  border:            2px dashed var(--color-accent);
+  border-radius:     var(--radius-xl);
+  pointer-events:    none;
+}
+.dropOverlay p {
+  font-family: var(--font-ui);
+  font-size:   var(--text-md);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-accent);
 }
 
 .header {

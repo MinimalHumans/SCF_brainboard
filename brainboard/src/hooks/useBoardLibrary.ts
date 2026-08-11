@@ -374,6 +374,40 @@ export function useBoardLibrary() {
     loadBoard(fresh)
   }, [activeBoardId, requireMultiBoard, removeSummary, loadBoard, setActiveBoardId, upsertSummary])
 
+  // Shared by the file-picker (importBoard) and drag-and-drop import — both
+  // just need to hand off a File, everything past that is identical.
+  const importBoardFile = useCallback((file: File) => {
+    if (!requireMultiBoard()) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as Board
+        if (parsed.schemaVersion !== 1) {
+          toast.error(`Unknown schema version: ${(parsed as { schemaVersion?: unknown }).schemaVersion}`)
+          return
+        }
+        if (!Array.isArray(parsed.cards)) {
+          toast.error('Invalid board file.')
+          return
+        }
+        if (await confirmDiscardIfDraft() === 'cancel') return
+        await flushSave()
+        // Always a fresh boardId/entry — never overwrites an existing
+        // library entry, even if it's an export of a board already here.
+        const imported: Board = { ...parsed, boardId: nanoid() }
+        await writeBoardFileById(imported.boardId, JSON.stringify(imported))
+        upsertSummary(summaryOf(imported))
+        setActiveBoardId(imported.boardId)
+        setIsDraft(false)
+        loadBoard(imported)
+        toast.success(`Imported "${imported.name}"`)
+      } catch {
+        toast.error('Could not parse board file.')
+      }
+    }
+    reader.readAsText(file)
+  }, [requireMultiBoard, flushSave, upsertSummary, setActiveBoardId, setIsDraft, loadBoard])
+
   const importBoard = useCallback(() => {
     if (!requireMultiBoard()) return
     const input    = document.createElement('input')
@@ -381,38 +415,10 @@ export function useBoardLibrary() {
     input.accept   = '.json,.brainboard.json,.scriptyard.json'
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-      const reader = new FileReader()
-      reader.onload = async (ev) => {
-        try {
-          const parsed = JSON.parse(ev.target?.result as string) as Board
-          if (parsed.schemaVersion !== 1) {
-            toast.error(`Unknown schema version: ${(parsed as { schemaVersion?: unknown }).schemaVersion}`)
-            return
-          }
-          if (!Array.isArray(parsed.cards)) {
-            toast.error('Invalid board file.')
-            return
-          }
-          if (await confirmDiscardIfDraft() === 'cancel') return
-          await flushSave()
-          // Always a fresh boardId/entry — never overwrites an existing
-          // library entry, even if it's an export of a board already here.
-          const imported: Board = { ...parsed, boardId: nanoid() }
-          await writeBoardFileById(imported.boardId, JSON.stringify(imported))
-          upsertSummary(summaryOf(imported))
-          setActiveBoardId(imported.boardId)
-          setIsDraft(false)
-          loadBoard(imported)
-          toast.success(`Imported "${imported.name}"`)
-        } catch {
-          toast.error('Could not parse board file.')
-        }
-      }
-      reader.readAsText(file)
+      if (file) importBoardFile(file)
     }
     input.click()
-  }, [requireMultiBoard, flushSave, upsertSummary, setActiveBoardId, setIsDraft, loadBoard])
+  }, [requireMultiBoard, importBoardFile])
 
   // Reads a board's full content regardless of whether it's the active one —
   // used by the Export modal, which needs cards/backdrops/name upfront for
@@ -429,6 +435,7 @@ export function useBoardLibrary() {
     canManageMultipleBoards,
     getBoardData,
     importBoard,
+    importBoardFile,
     switchBoard,
     createBoard,
     adoptBoard,

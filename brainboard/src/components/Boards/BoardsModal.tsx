@@ -113,6 +113,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   const [editingValue, setEditingValue] = useState('')
   const [rowMenu, setRowMenu] = useState<{ boardId: string; x: number; y: number } | null>(null)
   const [exportTarget, setExportTarget] = useState<Board | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   /* ── Templates tab state ────────────────────────────────────────────── */
 
@@ -183,6 +184,35 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
     const data = await library.getBoardData(b.boardId)
     if (!data) { toast.error("Couldn't export — board file is missing or corrupt."); return }
     setExportTarget(data)
+  }
+
+  /* ── File-drop import — drop a board JSON file anywhere on the modal to
+     import it, same as the Import… button. dragCounter tracks nested
+     enter/leave events (every child fires its own dragenter/dragleave as the
+     pointer crosses it) so the overlay doesn't flicker while dragging over
+     rows/cards inside the modal. ─────────────────────────────────────────── */
+  const dragCounter = React.useRef(0)
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (!e.dataTransfer.types.includes('Files')) return
+    dragCounter.current += 1
+    setIsDragOver(true)
+  }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = Math.max(0, dragCounter.current - 1)
+    if (dragCounter.current === 0) setIsDragOver(false)
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) library.importBoardFile(file)
   }
 
   const rowMenuItems = (b: BoardSummary): ContextMenuItem[] => [
@@ -276,9 +306,23 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
 
   return createPortal(
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-label="Boards">
+      <div
+        className={styles.modal}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-label="Boards"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragOver && (
+          <div className={styles.dropOverlay}>
+            <p>Drop board file to import</p>
+          </div>
+        )}
         <div className={styles.header}>
-          <h2 className={styles.title}>{outerTab === 'boards' ? 'Boards' : 'Templates'}</h2>
+          <h2 className={styles.title}>{outerTab === 'boards' ? 'Saved Boards' : 'Templates'}</h2>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -287,7 +331,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
             className={`${styles.tab} ${outerTab === 'boards' ? styles.tabActive : ''}`}
             onClick={() => setOuterTab('boards')}
           >
-            Boards
+            Saved Boards
             <span className={styles.tabBadge}>{boards.length}</span>
           </button>
           <button
