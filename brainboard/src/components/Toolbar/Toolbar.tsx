@@ -8,7 +8,6 @@ import { useSyncStore }       from '@/store/syncStore'
 import { useMediaQuery }      from '@/hooks/useMediaQuery'
 import { AboutPopover }       from './AboutPopover'
 import { ProjectInfoPopover } from './ProjectInfoPopover'
-import { ExportPopover }      from './ExportPopover'
 import { ContextMenu }        from '@/components/ContextMenu/ContextMenu'
 import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import styles                 from './Toolbar.module.css'
@@ -20,8 +19,8 @@ const PROVIDER_ID = 'google-drive'
  *   - the wordmark drops to icon-only (still opens About),
  *   - the board name truncates harder (still opens Project Info),
  *   - the zoom HUD is dropped entirely (pinch-zoom + Frame All replace it),
- *   - undo/redo, the board actions (Boards / Import / Export / Templates /
- *     Outline), and the Day/Night toggle all move into the ⋯ overflow menu,
+ *   - undo/redo, the board actions (Boards / Outline), and the Day/Night
+ *     toggle all move into the ⋯ overflow menu,
  *   - the center keeps only Frame All; the right keeps ⋯ and Help.
  *
  * 720px keeps tablets (768px+) on the full layout and collapses phones. It's a
@@ -35,9 +34,6 @@ interface ToolbarProps {
   hasSelection?: boolean
   onPublishAll?: () => void
   onPublishSelected?: () => void
-  onExport?:    () => void
-  onImport?:    () => void
-  onTemplates?: () => void
   onOutline?:   () => void
   onHelp?:      () => void
   onOpenBoards: () => void
@@ -47,9 +43,6 @@ export function Toolbar({
   hasSelection,
   onPublishAll,
   onPublishSelected,
-  onExport,
-  onImport,
-  onTemplates,
   onOutline,
   onHelp,
   onOpenBoards,
@@ -58,6 +51,13 @@ export function Toolbar({
 
   const boardName    = useBoardStore(s => s.board.name)
   const zoom         = useBoardStore(s => s.board.viewport.zoom)
+  // Draft = a blank New Board / template "New board" that hasn't been saved
+  // yet (see src/lib/boardDraft.ts). hasDraftChanges mirrors the same
+  // touch()-driven syncMeta.version signal boardDraft.ts uses, so the
+  // button's grey/orange state always agrees with whether a save is
+  // actually possible/needed right now.
+  const isDraft         = useLibraryStore(s => s.isDraft)
+  const hasDraftChanges = useBoardStore(s => (s.board.syncMeta?.version ?? 0) > 0)
   const requestZoom  = useViewerStore(s => s.requestZoom)
   const requestFrame = useViewerStore(s => s.requestFrame)
   const undo         = useBoardStore(s => s.undo)
@@ -68,11 +68,9 @@ export function Toolbar({
   const toggleTheme  = useThemeStore(s => s.toggle)
 
   const boardNameBtnRef               = useRef<HTMLButtonElement>(null)
-  const exportBtnRef                  = useRef<HTMLButtonElement>(null)
   const wordmarkBtnRef                = useRef<HTMLButtonElement>(null)
   const overflowBtnRef                = useRef<HTMLButtonElement>(null)
   const [showInfoPopover,   setShowInfoPopover]   = useState(false)
-  const [showExportPopover, setShowExportPopover] = useState(false)
   const [showAboutPopover,  setShowAboutPopover]  = useState(false)
   const [overflowMenu,      setOverflowMenu]      = useState<{ x: number; y: number } | null>(null)
 
@@ -124,18 +122,14 @@ export function Toolbar({
    * Items for the compact overflow menu — exactly the controls hidden from the
    * narrow toolbar. Each tap closes the menu (ContextMenu fires onClick then
    * onClose), so repeated undo means reopening the menu; acceptable on a phone.
-   * "Export…" opens the existing ExportPopover, which is re-anchored to the ⋯
-   * button on narrow (see anchorRef on <ExportPopover> below) so its format
-   * list still positions correctly.
+   * Export lives entirely inside the Boards modal now (its own "Export…"
+   * button, plus a per-row ⋮ menu), so it isn't duplicated here.
    */
   const overflowItems: ContextMenuItem[] = [
     { label: 'Boards…', onClick: () => onOpenBoards() },
     { label: 'Undo', divider: true, onClick: () => undo(), disabled: !canUndo },
     { label: 'Redo', onClick: () => redo(), disabled: !canRedo },
-    { label: 'Import',     divider: true, onClick: () => onImport?.() },
-    { label: 'Export…',    onClick: () => setShowExportPopover(true) },
-    { label: 'Templates',  onClick: () => onTemplates?.() },
-    { label: 'Outline',    onClick: () => onOutline?.() },
+    { label: 'Outline', divider: true, onClick: () => onOutline?.() },
     {
       label:   theme === 'dark' ? 'Light mode' : 'Dark mode',
       divider: true,
@@ -181,12 +175,20 @@ export function Toolbar({
         )}
         <span className={styles.divider} aria-hidden="true" />
 
-        {/* Board name — click opens project info popover */}
+        {/* Board name — click opens project info popover. Grey while this is
+            a fresh, untouched draft (blank New Board / template "New board"
+            nobody has edited yet); orange-bordered once it has changes and
+            still needs a name to be saved (see src/lib/boardDraft.ts). */}
         <button
           ref={boardNameBtnRef}
-          className={isNarrow ? `${styles.boardName} ${styles.boardNameNarrow}` : styles.boardName}
+          className={[
+            styles.boardName,
+            isNarrow ? styles.boardNameNarrow : '',
+            isDraft && !hasDraftChanges ? styles.boardNameDraft     : '',
+            isDraft && hasDraftChanges  ? styles.boardNameNeedsSave : '',
+          ].filter(Boolean).join(' ')}
           onClick={() => setShowInfoPopover(v => !v)}
-          title="Project settings"
+          title={isDraft && hasDraftChanges ? 'Set a name to save this new board' : 'Project settings'}
         >
           {boardName}
         </button>
@@ -258,35 +260,10 @@ export function Toolbar({
                 />
               )}
             </button>
-            <button className={styles.action} onClick={onImport}>Import</button>
-
-            {/* Export — opens a popover with JSON / Fountain / FDX options */}
-            <button
-              ref={exportBtnRef}
-              className={styles.action}
-              onClick={() => setShowExportPopover(v => !v)}
-              title="Export board"
-            >
-              Export
-            </button>
-
-            <button className={styles.action} onClick={onTemplates}>Templates</button>
             <button className={styles.action} onClick={onOutline}>Outline</button>
             {helpButton}
           </>
         )}
-
-        {/* On narrow the Export trigger lives inside the overflow menu, so the
-            popover anchors to the ⋯ button instead of the (absent) Export
-            button. ExportPopover already clamps its left edge to the viewport. */}
-        {showExportPopover && (
-          <ExportPopover
-            anchorRef={isNarrow ? overflowBtnRef : exportBtnRef}
-            onClose={() => setShowExportPopover(false)}
-            onExportJson={onExport}
-          />
-        )}
-
       </div>
 
       {overflowMenu && (

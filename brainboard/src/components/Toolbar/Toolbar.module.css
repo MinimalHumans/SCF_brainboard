@@ -83,7 +83,7 @@
   font-weight:   var(--weight-medium);
   color:         var(--color-text-secondary);
   background:    transparent;
-  border:        none;
+  border:        1px solid transparent;
   cursor:        pointer;
   padding:       2px var(--space-1);
   border-radius: var(--radius-xs);
@@ -92,11 +92,31 @@
   text-overflow: ellipsis;
   max-width:     220px;
   transition:    color            var(--duration-fast) var(--easing-out),
-                 background-color var(--duration-fast) var(--easing-out);
+                 background-color var(--duration-fast) var(--easing-out),
+                 border-color     var(--duration-fast) var(--easing-out);
 }
 .boardName:hover {
   color:            var(--color-text-primary);
   background-color: var(--color-surface-hover);
+}
+
+/* Fresh, untouched draft board (blank New Board / template "New board")
+   nobody has edited yet — nothing to save, so it reads as muted/inactive
+   rather than a normal board name. */
+.boardNameDraft {
+  color:   var(--color-text-muted);
+  opacity: 0.7;
+}
+
+/* Draft has changes but still needs a name to actually be saved — see
+   src/lib/boardDraft.ts. Dismissed automatically once the save succeeds. */
+.boardNameNeedsSave {
+  color:            var(--color-status-warning);
+  border-color:     var(--color-status-warning);
+  background-color: var(--color-status-warning-surface);
+}
+.boardNameNeedsSave:hover {
+  color: var(--color-status-warning);
 }
 
 /* Compact layout: the board name shares the narrow bar with the logo, Frame,

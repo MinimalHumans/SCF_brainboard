@@ -3,6 +3,10 @@ export interface BoardSummary {
   name:      string
   createdAt: string
   updatedAt: string
+  // Optional because summaries written before these fields existed won't
+  // have them on disk — callers should treat a missing value as 0.
+  cardCount?:     number
+  backdropCount?: number
 }
 
 const LEGACY_BOARD_FILE_NAME = 'board.json'

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useBoardStore, snapshotBoard } from '@/store/boardStore'
+import { useLibraryStore } from '@/store/libraryStore'
+import { attemptSaveDraft } from '@/lib/boardDraft'
 import type { ProjectInfo } from '@/types/board'
 import styles from './ProjectInfoPopover.module.css'
 import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
@@ -32,8 +34,17 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
   const board             = useBoardStore(s => s.board)
   const setBoardName      = useBoardStore(s => s.setBoardName)
   const updateProjectInfo = useBoardStore(s => s.updateProjectInfo)
+  const isDraft           = useLibraryStore(s => s.isDraft)
+  const hasDraftChanges   = (board.syncMeta?.version ?? 0) > 0
+  const needsNameToSave   = isDraft && hasDraftChanges
 
   const [pos, setPos] = useState({ top: 52, left: 0 })
+  // Whether the user has actually typed into the name field since it was
+  // focused — a defocus with no edit must be a no-op (in particular, must
+  // NOT count as "accepting" a fresh draft's default name). Retyping the
+  // same text back (e.g. delete a char, undo it) still counts: any onChange
+  // marks it dirty, regardless of what the final value ends up being.
+  const nameDirtyRef = useRef(false)
 
   // Anchor below the button. useLayoutEffect so there's no visible flash.
   // Clamp the left edge so the 320px popover never runs off a narrow (phone)
@@ -98,15 +109,30 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
       <div className={styles.field}>
         <label className={styles.label}>Name</label>
         <input
-          className={styles.input}
+          className={needsNameToSave ? `${styles.input} ${styles.inputNeedsSave}` : styles.input}
           defaultValue={board.name}
-          onFocus={() => snapshotBoard()}
-          onBlur={e => { const t = e.target.value.trim(); if (t) setBoardName(t) }}
+          onFocus={() => { snapshotBoard(); nameDirtyRef.current = false }}
+          onChange={() => { nameDirtyRef.current = true }}
+          onBlur={e => {
+            // Untouched draft default ("Untitled Board", or a template's own
+            // name) doesn't count until the user has actually edited the
+            // field — even editing it back to the same text counts, an
+            // unfocused field that was never touched does not.
+            if (!nameDirtyRef.current) return
+            nameDirtyRef.current = false
+            const t = e.target.value.trim()
+            if (!t) return
+            setBoardName(t)
+            void attemptSaveDraft()
+          }}
           onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
           placeholder="Board name"
           maxLength={80}
           autoFocus={!IS_TOUCH_PRIMARY}
         />
+        {needsNameToSave && (
+          <p className={styles.needsSaveNote}>This board isn&apos;t saved yet — edit the name to save it.</p>
+        )}
       </div>
 
       <div className={styles.divider} />

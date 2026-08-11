@@ -4,6 +4,8 @@ import { useBoardStore, makeBoard } from '@/store/boardStore'
 import { useLibraryStore, getStoredActiveBoardId, type BoardSummary } from '@/store/libraryStore'
 import { getClientId, getClientLabel } from '@/lib/sync/clientIdentity'
 import { toast } from '@/store/toastStore'
+import { summaryOf } from '@/lib/boardSummary'
+import { confirmDiscardIfDraft } from '@/lib/boardDraft'
 import type { Board } from '@/types/board'
 import {
   isOpfsSupported,
@@ -27,25 +29,8 @@ function parseBoard(raw: string): Board | null {
   }
 }
 
-function summaryOf(board: Board): BoardSummary {
-  return { boardId: board.boardId, name: board.name, createdAt: board.createdAt, updatedAt: board.updatedAt }
-}
-
 function mostRecentlyUpdated(summaries: BoardSummary[]): BoardSummary {
   return [...summaries].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
-}
-
-function downloadBoardJson(board: Board): void {
-  const json     = JSON.stringify(board, null, 2)
-  const blob     = new Blob([json], { type: 'application/json' })
-  const url      = URL.createObjectURL(blob)
-  const a        = document.createElement('a')
-  const safeName = board.name.replace(/[^a-z0-9_-]/gi, '_').toLowerCase() || 'board'
-  a.href         = url
-  a.download     = `${safeName}.scriptyard.json`
-  a.click()
-  URL.revokeObjectURL(url)
-  toast.success(`Exported "${board.name}"`)
 }
 
 /*
@@ -71,6 +56,8 @@ export function useBoardLibrary() {
   const removeSummary   = useLibraryStore(s => s.removeSummary)
   const activeBoardId   = useLibraryStore(s => s.activeBoardId)
   const setActiveBoardId = useLibraryStore(s => s.setActiveBoardId)
+  const isDraft         = useLibraryStore(s => s.isDraft)
+  const setIsDraft      = useLibraryStore(s => s.setIsDraft)
 
   const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isLoadedRef = useRef(false)
@@ -102,8 +89,36 @@ export function useBoardLibrary() {
 
   const flushSave = useCallback(async () => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+    // Drafts are never auto-persisted — only an explicit save (name field
+    // blur, or the unsaved-changes modal) writes them. Without this guard,
+    // switching away from a draft the user chose to discard would still
+    // write it to disk right here, defeating "discard".
+    if (useLibraryStore.getState().isDraft) return
     await save(boardRef.current)
   }, [save])
+
+  // One-time self-heal for summaries persisted before cardCount/backdropCount
+  // existed on BoardSummary — every returning user's existing boards have
+  // this gap until each board is individually reopened/edited (autosave
+  // recomputes the summary then). Refreshing them here means the Boards
+  // list shows real counts immediately rather than a stale "0 cards" for
+  // whichever boards nobody happens to revisit. Runs in the background,
+  // after the initial load, so it never delays startup.
+  const backfillMissingStats = useCallback((summaries: BoardSummary[]) => {
+    const stale = summaries.filter(s => s.cardCount === undefined || s.backdropCount === undefined)
+    if (stale.length === 0) return
+    ;(async () => {
+      for (const s of stale) {
+        try {
+          const raw = await readBoardFileById(s.boardId)
+          const parsed = raw ? parseBoard(raw) : null
+          if (parsed) upsertSummary(summaryOf(parsed))
+        } catch (err) {
+          console.error(`Failed to backfill stats for board "${s.boardId}"`, err)
+        }
+      }
+    })()
+  }, [upsertSummary])
 
   /* ── One-time migration into boards/{id}.json + index.json ────────────── */
   const migrateToMultiBoard = useCallback(async () => {
@@ -176,6 +191,7 @@ export function useBoardLibrary() {
         const index = await readBoardIndex()
         if (index && index.length > 0) {
           setBoards(index)
+          backfillMissingStats(index)
           const stored = getStoredActiveBoardId()
           const target = (stored && index.find(b => b.boardId === stored)) ?? mostRecentlyUpdated(index)
           const raw = await readBoardFileById(target.boardId)
@@ -216,13 +232,15 @@ export function useBoardLibrary() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Autosave.
+  // Autosave. Suppressed entirely while the active board is a draft — see
+  // flushSave above for why (the debounce timer would otherwise silently
+  // persist a board the user hasn't earned a name/save for yet).
   useEffect(() => {
-    if (!isLoadedRef.current) return
+    if (!isLoadedRef.current || isDraft) return
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => { save(board) }, AUTOSAVE_DELAY)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [board, save])
+  }, [board, save, isDraft])
 
   /* ── Library actions (no-ops with a toast if OPFS isn't available) ────── */
 
@@ -232,26 +250,37 @@ export function useBoardLibrary() {
     return false
   }, [])
 
-  const switchBoard = useCallback(async (targetId: string) => {
-    if (targetId === activeBoardId || !requireMultiBoard()) return
+  const switchBoard = useCallback(async (targetId: string): Promise<boolean> => {
+    if (targetId === activeBoardId || !requireMultiBoard()) return false
+    if (await confirmDiscardIfDraft() === 'cancel') return false
     await flushSave()
     const raw = await readBoardFileById(targetId)
     const parsed = raw ? parseBoard(raw) : null
-    if (!parsed) { toast.error("Couldn't open that board — its file is missing or corrupt."); return }
+    if (!parsed) { toast.error("Couldn't open that board — its file is missing or corrupt."); return false }
     loadBoard(parsed)
     setActiveBoardId(targetId)
-  }, [activeBoardId, requireMultiBoard, flushSave, loadBoard, setActiveBoardId])
+    setIsDraft(false)
+    return true
+  }, [activeBoardId, requireMultiBoard, flushSave, loadBoard, setActiveBoardId, setIsDraft])
 
-  const createBoard = useCallback(async () => {
-    if (!requireMultiBoard()) return
+  /*
+   * createBoard — starts a blank board as a draft: loaded into the editor
+   * and made active, but not written to disk or added to the Boards list
+   * yet. It only becomes a real file once it has actual changes AND the
+   * user has set/confirmed a name (see src/lib/boardDraft.ts) — an
+   * untouched "Untitled Board" someone opened and immediately abandoned
+   * should never leave a phantom entry behind.
+   */
+  const createBoard = useCallback(async (): Promise<boolean> => {
+    if (!requireMultiBoard()) return false
+    if (await confirmDiscardIfDraft() === 'cancel') return false
     await flushSave()
     const fresh = makeBoard()
-    await writeBoardFileById(fresh.boardId, JSON.stringify(fresh))
-    upsertSummary(summaryOf(fresh))
-    setActiveBoardId(fresh.boardId)
     loadBoard(fresh)
-    toast.success('New board created.')
-  }, [requireMultiBoard, flushSave, upsertSummary, setActiveBoardId, loadBoard])
+    setActiveBoardId(fresh.boardId)
+    setIsDraft(true)
+    return true
+  }, [requireMultiBoard, flushSave, setActiveBoardId, loadBoard, setIsDraft])
 
   /*
    * adoptBoard — used whenever some other flow (templates today) hands us a
@@ -262,15 +291,20 @@ export function useBoardLibrary() {
    * live editor but leaves libraryStore.activeBoardId pointing at the old
    * board, so the Boards modal's "current" tag and this board's autosave
    * target drift out of sync with what's actually on screen.
+   *
+   * Like createBoard, this starts the adopted board as an unsaved draft —
+   * see the comment there. Callers (template "New board") are expected to
+   * have already reset the board's syncMeta so it starts at version 0.
    */
-  const adoptBoard = useCallback(async (board: Board) => {
-    if (!requireMultiBoard()) return
+  const adoptBoard = useCallback(async (board: Board): Promise<boolean> => {
+    if (!requireMultiBoard()) return false
+    if (await confirmDiscardIfDraft() === 'cancel') return false
     await flushSave()
-    await writeBoardFileById(board.boardId, JSON.stringify(board))
-    upsertSummary(summaryOf(board))
-    setActiveBoardId(board.boardId)
     loadBoard(board)
-  }, [requireMultiBoard, flushSave, upsertSummary, setActiveBoardId, loadBoard])
+    setActiveBoardId(board.boardId)
+    setIsDraft(true)
+    return true
+  }, [requireMultiBoard, flushSave, setActiveBoardId, loadBoard, setIsDraft])
 
   const duplicateBoard = useCallback(async (boardId: string) => {
     if (!requireMultiBoard()) return
@@ -360,6 +394,7 @@ export function useBoardLibrary() {
             toast.error('Invalid board file.')
             return
           }
+          if (await confirmDiscardIfDraft() === 'cancel') return
           await flushSave()
           // Always a fresh boardId/entry — never overwrites an existing
           // library entry, even if it's an export of a board already here.
@@ -367,6 +402,7 @@ export function useBoardLibrary() {
           await writeBoardFileById(imported.boardId, JSON.stringify(imported))
           upsertSummary(summaryOf(imported))
           setActiveBoardId(imported.boardId)
+          setIsDraft(false)
           loadBoard(imported)
           toast.success(`Imported "${imported.name}"`)
         } catch {
@@ -376,25 +412,22 @@ export function useBoardLibrary() {
       reader.readAsText(file)
     }
     input.click()
-  }, [requireMultiBoard, flushSave, upsertSummary, setActiveBoardId, loadBoard])
+  }, [requireMultiBoard, flushSave, upsertSummary, setActiveBoardId, setIsDraft, loadBoard])
 
-  const exportBoard = useCallback(() => {
-    downloadBoardJson(board)
-  }, [board])
-
-  const exportBoardById = useCallback(async (boardId: string) => {
-    if (boardId === activeBoardId) { exportBoard(); return }
+  // Reads a board's full content regardless of whether it's the active one —
+  // used by the Export modal, which needs cards/backdrops/name upfront for
+  // whichever board the user picked (not just the one currently loaded into
+  // the editor).
+  const getBoardData = useCallback(async (boardId: string): Promise<Board | null> => {
+    if (boardId === activeBoardId) return boardRef.current
     const raw = await readBoardFileById(boardId)
-    const parsed = raw ? parseBoard(raw) : null
-    if (!parsed) { toast.error("Couldn't export — board file is missing or corrupt."); return }
-    downloadBoardJson(parsed)
-  }, [activeBoardId, exportBoard])
+    return raw ? parseBoard(raw) : null
+  }, [activeBoardId])
 
   return {
     isLoaded,
     canManageMultipleBoards,
-    exportBoard,
-    exportBoardById,
+    getBoardData,
     importBoard,
     switchBoard,
     createBoard,

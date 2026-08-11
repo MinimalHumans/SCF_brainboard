@@ -32,7 +32,12 @@ export function makeBoard(): Board {
 // Only ever called on s.board, so it also bumps syncMeta — the local
 // revision counter + client identity that conflict/deletion UI surfaces.
 // Purely informational bookkeeping; never used by reconcile()'s diff logic.
-function touch(board: Board): Board {
+//
+// Exported so callers outside the store (e.g. the template-merge helper)
+// that build a new board object by hand can still go through the same
+// version bump — that bump is also what src/lib/boardDraft.ts reads as its
+// "has this draft board actually changed" signal.
+export function touch(board: Board): Board {
   const now = new Date().toISOString()
   return {
     ...board,

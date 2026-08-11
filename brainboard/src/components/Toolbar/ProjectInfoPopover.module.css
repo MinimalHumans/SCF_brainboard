@@ -53,6 +53,21 @@
 .input:focus        { border-color: var(--color-accent); outline: none; }
 .input::placeholder { color: var(--color-text-muted); opacity: 0.5; }
 
+/* Draft board with changes but no accepted name yet — mirrors the toolbar's
+   board-name button state (see Toolbar.module.css .boardNameNeedsSave). */
+.inputNeedsSave {
+  border-color:     var(--color-status-warning);
+  background-color: var(--color-status-warning-surface);
+}
+.inputNeedsSave:focus { border-color: var(--color-status-warning); }
+
+.needsSaveNote {
+  font-family: var(--font-ui);
+  font-size:   var(--text-2xs);
+  color:       var(--color-status-warning);
+  margin-top:  2px;
+}
+
 .textarea {
   display:          block;
   width:            100%;

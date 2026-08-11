@@ -13,6 +13,19 @@ function persistActiveBoardId(id: string): void {
   localStorage.setItem(ACTIVE_BOARD_KEY, id)
 }
 
+// Shown when an unsaved draft board (see `isDraft`) would be discarded by
+// switching away — createBoard/adoptBoard/switchBoard/importBoard populate
+// this and await the user's choice before proceeding. The three callbacks
+// are the modal's entire contract; nothing else reads/writes this shape.
+export interface UnsavedGuardRequest {
+  boardName:     string
+  cardCount:     number
+  backdropCount: number
+  onSave:        (name: string) => void
+  onDiscard:     () => void
+  onCancel:      () => void
+}
+
 interface LibraryStore {
   boards:        BoardSummary[]
   activeBoardId: string | null
@@ -24,12 +37,21 @@ interface LibraryStore {
   upsertSummary: (summary: BoardSummary) => void
   removeSummary: (boardId: string) => void
   setActiveBoardId: (id: string) => void
+  // True while the active board is a fresh "New Board" / template-loaded
+  // draft that has never been written to disk — see src/lib/boardDraft.ts,
+  // which owns the actual save/guard logic gated on this flag.
+  isDraft:       boolean
+  setIsDraft:    (v: boolean) => void
+  unsavedGuard:  UnsavedGuardRequest | null
+  setUnsavedGuard: (v: UnsavedGuardRequest | null) => void
 }
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   boards: [],
   activeBoardId: null,
   hydrated: false,
+  isDraft: false,
+  unsavedGuard: null,
 
   hydrate: async () => {
     try {
@@ -66,4 +88,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     persistActiveBoardId(id)
     set({ activeBoardId: id })
   },
+
+  setIsDraft: (v) => set({ isDraft: v }),
+  setUnsavedGuard: (v) => set({ unsavedGuard: v }),
 }))
