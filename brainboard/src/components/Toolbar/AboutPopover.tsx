@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './AboutPopover.module.css'
+import { useDevModeStore } from '@/store/devModeStore'
+import { toast } from '@/store/toastStore'
+import { ConfettiBurst } from '@/components/Effects/ConfettiBurst'
 import {
   THIRD_PARTY,
   LICENSE_TEXTS,
@@ -18,11 +21,92 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'dev'
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA?.slice(0, 7)
 const VERSION_LABEL = BUILD_SHA ? `${APP_VERSION} (${BUILD_SHA})` : APP_VERSION
 
+/*
+ * "Minimal Humans" click easter egg — clicks 1-5 are a silent warmup, then
+ * the page starts shaking (harder each click) until TARGET_CLICKS is
+ * reached, at which point confetti fires and dev mode unlocks. Any gap
+ * longer than RESET_TIMEOUT_MS between clicks resets the whole sequence,
+ * which is what forces the back half of the sequence to be done quickly.
+ */
+const SHAKE_START_CLICKS = 5
+const TARGET_CLICKS       = 15
+const RESET_TIMEOUT_MS    = 900
+
+function stopPageShake() {
+  const root = document.getElementById('root')
+  if (!root) return
+  root.classList.remove('pageShake')
+  root.style.removeProperty('--shake-mag')
+}
+
+function triggerPageShake(intensity: number) {
+  const root = document.getElementById('root')
+  if (!root) return
+  root.style.setProperty('--shake-mag', `${2 + intensity * 1.8}px`)
+  // Remove-then-reflow-then-add restarts the CSS animation on every click,
+  // even if the previous shake hasn't finished playing yet.
+  root.classList.remove('pageShake')
+  void root.offsetWidth
+  root.classList.add('pageShake')
+}
+
 export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ top: 52, left: 0 })
   const [showLicenses, setShowLicenses] = useState(false)
   const [openText,     setOpenText]     = useState<LicenseId | null>(null)
+
+  const devModeEnabled    = useDevModeStore(s => s.enabled)
+  const setDevModeEnabled = useDevModeStore(s => s.setEnabled)
+  const [confettiActive,      setConfettiActive]      = useState(false)
+  const [devModeLineExiting,  setDevModeLineExiting]  = useState(false)
+  const humansClicksRef = useRef(0)
+  const resetTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const resetHumansEgg = () => {
+    humansClicksRef.current = 0
+    stopPageShake()
+  }
+
+  const handleHumansClick = () => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+
+    const next = humansClicksRef.current + 1
+    humansClicksRef.current = next
+
+    if (next >= TARGET_CLICKS) {
+      humansClicksRef.current = 0
+      stopPageShake()
+      setDevModeEnabled(true)
+      setConfettiActive(true)
+      toast.success("You've enabled Developer Mode!")
+      return
+    }
+
+    if (next > SHAKE_START_CLICKS) {
+      triggerPageShake(next - SHAKE_START_CLICKS)
+    }
+
+    resetTimerRef.current = setTimeout(resetHumansEgg, RESET_TIMEOUT_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+      stopPageShake()
+    }
+  }, [])
+
+  const handleDevModeLineClick = () => {
+    if (devModeLineExiting) return
+    setDevModeLineExiting(true)
+  }
+
+  const handleDevModeLineAnimEnd = () => {
+    setDevModeLineExiting(false)
+    setDevModeEnabled(false)
+    toast.info('Developer Mode disabled.')
+  }
 
   useLayoutEffect(() => {
     const btn = anchorRef.current
@@ -56,7 +140,7 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     }
   }, [onClose])
 
-  return createPortal(
+  return <>{createPortal(
     <div
       ref={popoverRef}
       className={styles.popover}
@@ -73,7 +157,26 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
     >
       <div className={styles.brand}>
         <span className={`${styles.wordmark} text-display`}>Scriptyard</span>
-        <span className={styles.byline}>Created by Minimal Humans - {VERSION_LABEL}</span>
+        <span className={styles.byline}>
+          Created by{' '}
+          <span className={styles.humansEgg} onClick={handleHumansClick}>
+            Minimal Humans
+          </span>
+          {' - '}
+          <span className={styles.versionLabel} title={`Scriptyard release: ${VERSION_LABEL}`}>
+            {VERSION_LABEL}
+          </span>
+        </span>
+        {devModeEnabled && (
+          <button
+            type="button"
+            className={`${styles.devModeLine} ${devModeLineExiting ? styles.devModeLineSpin : ''}`}
+            onClick={handleDevModeLineClick}
+            onAnimationEnd={handleDevModeLineAnimEnd}
+          >
+            Developer mode enabled
+          </button>
+        )}
       </div>
 
       <div className={styles.divider} />
@@ -183,7 +286,9 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
       )}
     </div>,
     document.body,
-  )
+  )}
+  {confettiActive && <ConfettiBurst onDone={() => setConfettiActive(false)} />}
+  </>
 }
 
 /* Split once at module scope — THIRD_PARTY is a static generated constant, so

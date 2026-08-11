@@ -77,6 +77,27 @@ body {
 }
 
 
+/*
+ * Page-shake easter egg (see AboutPopover.tsx's "Minimal Humans" byline).
+ * Scoped to #root rather than <html>/<body> so the About popover and toast
+ * stack — both portaled directly to document.body — stay put and clickable
+ * while the app content shakes underneath them. --shake-mag (set inline by
+ * the trigger) controls amplitude; the class is removed and re-added on each
+ * click to restart the animation.
+ */
+#root.pageShake {
+  animation: pageShakeAnim 0.35s ease-in-out;
+}
+
+@keyframes pageShakeAnim {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(calc(var(--shake-mag, 4px) * -1),  calc(var(--shake-mag, 4px) * 0.6)); }
+  40%  { transform: translate(var(--shake-mag, 4px),              calc(var(--shake-mag, 4px) * -0.6)); }
+  60%  { transform: translate(calc(var(--shake-mag, 4px) * -0.8), calc(var(--shake-mag, 4px) * 0.8)); }
+  80%  { transform: translate(var(--shake-mag, 4px),              calc(var(--shake-mag, 4px) * -0.3)); }
+  100% { transform: translate(0, 0); }
+}
+
 /* --- Typography utilities ---
  *  Applied directly in JSX via className, not via component style props.
  *  Keeps layout concerns in CSS, not in component logic.

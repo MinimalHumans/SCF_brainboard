@@ -47,6 +47,53 @@
   color:       var(--color-text-muted);
 }
 
+/* "Minimal Humans" click easter egg — deliberately not styled as a link (no
+   pointer cursor, no underline) so it doesn't read as interactive. See
+   AboutPopover.tsx for the click-counting/shake/confetti sequence. */
+.humansEgg {
+  cursor:      default;
+  user-select: none;
+}
+
+/* Build version — fixed-width so digits/hashes don't jitter the line, with a
+   subtle pill background so it reads as a distinct, copyable-looking value
+   rather than prose. */
+.versionLabel {
+  font-family:      var(--font-mono);
+  padding:          1px 4px;
+  background-color: var(--color-surface-inset);
+  border-radius:    var(--radius-xs);
+}
+
+.devModeLine {
+  display:        block;
+  margin-top:     2px;
+  padding:        0;
+  background:     none;
+  border:         none;
+  font-family:    var(--font-ui);
+  font-size:      var(--text-2xs);
+  font-weight:    var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color:          var(--color-accent);
+  cursor:         default;
+  text-align:     left;
+  transform-origin: left center;
+}
+
+/* Reverse easter egg — clicking "Developer mode enabled" spins/shrinks the
+   label away before flipping devMode back off (see handleDevModeLineAnimEnd
+   in AboutPopover.tsx). */
+.devModeLineSpin {
+  animation: devModeSpinOut 0.5s ease-in forwards;
+}
+
+@keyframes devModeSpinOut {
+  0%   { transform: rotate(0deg)   scale(1); opacity: 1; }
+  100% { transform: rotate(540deg) scale(0); opacity: 0; }
+}
+
 /* ── Divider ──────────────────────────────────────────────────────────────── */
 
 .divider {
