@@ -46,7 +46,36 @@ function loadGisScript(): Promise<void> {
   return scriptLoadPromise
 }
 
-let cachedToken: { accessToken: string; expiresAt: number } | null = null
+const TOKEN_STORAGE_KEY = 'scf-brainboard:drive-token'
+
+interface CachedToken { accessToken: string; expiresAt: number }
+
+// localStorage so it survives closing the tab or restarting the browser,
+// not just a reload — still self-limiting since Google caps the access
+// token itself at ~1hr regardless of where it's cached, and expiresAt is
+// checked on every read so a stale entry is never reused past that.
+function readCachedToken(): CachedToken | null {
+  try {
+    const raw = localStorage.getItem(TOKEN_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CachedToken
+    if (typeof parsed.accessToken !== 'string' || typeof parsed.expiresAt !== 'number') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCachedToken(token: CachedToken | null): void {
+  try {
+    if (token) localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(token))
+    else localStorage.removeItem(TOKEN_STORAGE_KEY)
+  } catch {
+    // Storage unavailable (e.g. private browsing) — falls back to in-memory-only for this call.
+  }
+}
+
+let cachedToken: CachedToken | null = readCachedToken()
 
 /*
  * requestAccessToken — wraps GIS's callback-based flow in a Promise.
@@ -72,6 +101,7 @@ export async function requestAccessToken(opts: { prompt: 'consent' | '' }): Prom
           accessToken: resp.access_token,
           expiresAt: Date.now() + resp.expires_in * 1000,
         }
+        writeCachedToken(cachedToken)
         resolve(resp.access_token)
       },
     })
@@ -81,10 +111,12 @@ export async function requestAccessToken(opts: { prompt: 'consent' | '' }): Prom
 
 /*
  * getValidAccessToken — returns the cached token if it's not near expiry,
- * otherwise silently reacquires. Never persisted to disk; lost on reload,
- * which is fine since sync only needs to run while the tab is open.
+ * otherwise silently reacquires. Cached in sessionStorage (survives a page
+ * reload, cleared when the tab/browser closes) so a reload doesn't force a
+ * fresh Google auth popup every time.
  */
 export async function getValidAccessToken(): Promise<string> {
+  if (!cachedToken) cachedToken = readCachedToken()
   if (cachedToken && cachedToken.expiresAt - EXPIRY_SAFETY_MARGIN_MS > Date.now()) {
     return cachedToken.accessToken
   }
@@ -92,11 +124,13 @@ export async function getValidAccessToken(): Promise<string> {
 }
 
 export function hasCachedToken(): boolean {
+  if (!cachedToken) cachedToken = readCachedToken()
   return cachedToken !== null && cachedToken.expiresAt > Date.now()
 }
 
 export function clearCachedToken(): void {
   cachedToken = null
+  writeCachedToken(null)
 }
 
 export async function revokeToken(): Promise<void> {
