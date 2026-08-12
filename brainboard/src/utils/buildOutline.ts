@@ -4,7 +4,7 @@ import { BACKDROP_SCHEMAS } from '@/config/backdropSchemas'
 import {
   CARD_W, CARD_H, ROW_SNAP, RANK,
   fullyInside, innermostParent, rowSort,
-  cutBackdrops, isCutCard,
+  liveContent,
 } from './screenplayCommon'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -224,10 +224,7 @@ export function buildOutline(board: Board): string {
    * cutBackdrops / isCutCard in screenplayCommon.ts), so nothing on the board
    * is modified — un-cut the backdrop and the outline fills back in.
    */
-  const cutBds    = cutBackdrops(allBackdrops)
-  const cutBdIds  = new Set(cutBds.map(b => b.id))
-  const backdrops = allBackdrops.filter(b => !cutBdIds.has(b.id))
-  const cards     = board.cards.filter(c => !isCutCard(c, eMap.get(c.entityId), cutBds))
+  const { cards, backdrops } = liveContent(board.cards, allBackdrops, eMap)
 
   // Frontmatter — counts describe what this outline CONTAINS, not what the
   // board holds, so they stay consistent with the body when things are cut.

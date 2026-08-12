@@ -108,6 +108,32 @@ export function isCutCard(card: Card, entity: Entity | undefined, cutBds: Backdr
   return cutBds.some(bd => fullyInside(card.position.x, card.position.y, CARD_W, CARD_H, bd))
 }
 
+/**
+ * The cards and backdrops an emitter should actually emit.
+ *
+ * Every emitter calls this FIRST and works from the result, so cut material is
+ * gone before any parent map, ordering or first-occurrence bookkeeping is
+ * built. Filtering later would let a cut placement claim the "first occurrence"
+ * slot and demote a live one to a shorthand reference.
+ *
+ * Cut cards can't survive inside surviving backdrops and vice versa (a live
+ * card is by definition not inside a cut backdrop), so the two filters are
+ * independent and the parent maps built from the result are unchanged for
+ * everything that remains.
+ */
+export function liveContent(
+  cards:     Card[],
+  backdrops: Backdrop[],
+  eMap:      Map<string, Entity>,
+): { cards: Card[]; backdrops: Backdrop[] } {
+  const cutBds   = cutBackdrops(backdrops)
+  const cutBdIds = new Set(cutBds.map(b => b.id))
+  return {
+    cards:     cards.filter(c => !isCutCard(c, eMap.get(c.entityId), cutBds)),
+    backdrops: backdrops.filter(b => !cutBdIds.has(b.id)),
+  }
+}
+
 /** Sort by row-snap row then x, so left-to-right within a visual row. */
 export function rowSort<T extends { position: { x: number; y: number } }>(items: T[]): T[] {
   return [...items].sort((a, b) => {

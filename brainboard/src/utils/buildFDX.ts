@@ -33,6 +33,7 @@ import {
   rootBackdrops,
   rootCards,
   rowSort,
+  liveContent,
   assembleSceneHeadingFromBackdrop,
   assembleSceneHeadingFromCard,
 } from './screenplayCommon'
@@ -100,8 +101,10 @@ function strAttrs(
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function buildFDX(board: Board): string {
-  const { cards, entities, backdrops, name, projectInfo } = board
+  const { entities, name, projectInfo } = board
   const eMap       = new Map<string, Entity>(entities.map(e => [e.id, e]))
+  // Cut material never reaches the script — see buildFountain / liveContent().
+  const { cards, backdrops } = liveContent(board.cards, board.backdrops, eMap)
   const bdParent   = buildBackdropParentMap(backdrops)
   const cardParent = buildCardParentMap(cards, backdrops)
   const content: string[] = []
