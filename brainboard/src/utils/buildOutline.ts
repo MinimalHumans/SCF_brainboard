@@ -1,9 +1,10 @@
-import type { Board, Backdrop, Card, Entity } from '@/types/board'
+import type { Board, Backdrop, Card, Entity, EntityType } from '@/types/board'
 import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import { BACKDROP_SCHEMAS } from '@/config/backdropSchemas'
 import {
   CARD_W, CARD_H, ROW_SNAP, RANK,
   fullyInside, innermostParent, rowSort,
+  cutBackdrops, isCutCard,
 } from './screenplayCommon'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -30,9 +31,15 @@ function hashes(depth: number): string {
 /**
  * Emit non-empty attribute bullets then noteRaw as blockquote.
  * Caller is responsible for the blank line BEFORE this block.
+ *
+ * `type` is passed in rather than read off the entity: the CARD's type is the
+ * one the user sees and the one every grouping in this file sorts by, so it is
+ * the one that must pick the attribute schema. (Entity.type is kept in step by
+ * the store, but a board written before that fix can still carry drift, and a
+ * mismatch here silently drops every attribute.)
  */
-function emitAttrsAndNote(entity: Entity, out: string[]): void {
-  const schema = ATTRIBUTE_SCHEMAS[entity.type] ?? []
+function emitAttrsAndNote(entity: Entity, type: EntityType, out: string[]): void {
+  const schema = ATTRIBUTE_SCHEMAS[type] ?? []
   for (const f of schema) {
     const v = entity.attributes[f.key]
     if (typeof v === 'string' && v.trim()) {
@@ -144,7 +151,7 @@ function renderBackdrop(
     const title = e?.title ?? c.title
     out.push(`**${title}** *(${c.type})*`)
     out.push('')
-    if (e) emitAttrsAndNote(e, out)
+    if (e) emitAttrsAndNote(e, c.type, out)
     else   out.push('')
     if (c.instanceNote?.trim()) {
       out.push(...blockquoteLines(c.instanceNote))
@@ -194,7 +201,7 @@ function renderCardGroups(
         const title = e?.title ?? c.title
         out.push(`**${title}** *(${c.type})*`)
         out.push('')
-        if (e) emitAttrsAndNote(e, out)
+        if (e) emitAttrsAndNote(e, c.type, out)
         else   out.push('')
       }
     }
@@ -204,16 +211,33 @@ function renderCardGroups(
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function buildOutline(board: Board): string {
-  const { cards, entities, backdrops } = board
+  const { entities, backdrops: allBackdrops } = board
   const out: string[] = []
 
-  // Frontmatter
+  const eMap = new Map<string, Entity>(entities.map(e => [e.id, e]))
+
+  /*
+   * ── Cut filtering ──────────────────────────────────────────────────────────
+   * Anything cut is dropped BEFORE any structure is built, so a cut first
+   * placement can't consume the `seen` slot and push a live instance of the
+   * same entity into the "Contains:" shorthand. Inheritance is derived (see
+   * cutBackdrops / isCutCard in screenplayCommon.ts), so nothing on the board
+   * is modified — un-cut the backdrop and the outline fills back in.
+   */
+  const cutBds    = cutBackdrops(allBackdrops)
+  const cutBdIds  = new Set(cutBds.map(b => b.id))
+  const backdrops = allBackdrops.filter(b => !cutBdIds.has(b.id))
+  const cards     = board.cards.filter(c => !isCutCard(c, eMap.get(c.entityId), cutBds))
+
+  // Frontmatter — counts describe what this outline CONTAINS, not what the
+  // board holds, so they stay consistent with the body when things are cut.
   const nonCustomBds = backdrops.filter(b => b.type !== 'Custom')
+  const liveEntityIds = new Set(cards.map(c => c.entityId).filter(id => eMap.has(id)))
   out.push('---')
   out.push(`board: ${board.name}`)
   out.push(`generated: ${new Date().toISOString()}`)
   out.push(`cards: ${cards.length}`)
-  out.push(`entities: ${entities.length}`)
+  out.push(`entities: ${liveEntityIds.size}`)
   out.push(`backdrops: ${nonCustomBds.length}`)
   out.push('---')
   out.push('')
@@ -222,12 +246,14 @@ export function buildOutline(board: Board): string {
   out.push('')
 
   if (!cards.length && !backdrops.length) {
-    out.push('*This board is empty.*')
+    out.push(
+      board.cards.length || allBackdrops.length
+        ? '*Everything on this board is cut.*'
+        : '*This board is empty.*',
+    )
     out.push('')
     return out.join('\n')
   }
-
-  const eMap = new Map<string, Entity>(entities.map(e => [e.id, e]))
 
   // ── Assign each non-Custom backdrop to its innermost non-Custom parent ──────
   const bdParent = new Map<string, string | null>()
@@ -311,28 +337,31 @@ export function buildOutline(board: Board): string {
   // ── Entity Library ────────────────────────────────────────────────────────────
   const clpCards  = cards.filter(c => ['Character', 'Location', 'Prop'].includes(c.type))
   const libSeen   = new Set<string>()
-  const libEntities: Entity[] = []
+  // Grouped by the CARD's type, not the entity's — see emitAttrsAndNote. An
+  // entity whose type had drifted from its card used to match none of the three
+  // groups below and vanished from the library entirely.
+  const libEntries: { entity: Entity; type: EntityType }[] = []
   for (const c of clpCards) {
     if (!libSeen.has(c.entityId)) {
       libSeen.add(c.entityId)
       const e = eMap.get(c.entityId)
-      if (e) libEntities.push(e)
+      if (e) libEntries.push({ entity: e, type: c.type })
     }
   }
 
-  if (libEntities.length) {
+  if (libEntries.length) {
     out.push('# Entity Library')
     out.push('')
     for (const type of ['Character', 'Location', 'Prop'] as const) {
-      const group = libEntities
-        .filter(e => e.type === type)
-        .sort((a, b) => a.title.localeCompare(b.title))
-      for (const e of group) {
-        out.push(`## ${e.title}`)
+      const group = libEntries
+        .filter(x => x.type === type)
+        .sort((a, b) => a.entity.title.localeCompare(b.entity.title))
+      for (const { entity } of group) {
+        out.push(`## ${entity.title}`)
         out.push('')
-        out.push(`*${e.type}*`)
+        out.push(`*${type}*`)
         out.push('')
-        emitAttrsAndNote(e, out)
+        emitAttrsAndNote(entity, type, out)
       }
     }
   }

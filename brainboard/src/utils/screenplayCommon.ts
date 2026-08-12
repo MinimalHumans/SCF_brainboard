@@ -55,6 +55,59 @@ export function innermostParent(
   )
 }
 
+// ─── Cut status ──────────────────────────────────────────────────────────────
+//
+// `status` lives in the attributes bag of an Entity (for cards) or a Backdrop.
+// 'Cut' means "kept on the canvas for reference, not part of the film" — so
+// emitters skip it.
+//
+// Inheritance is DERIVED, never written: a card is cut because it currently
+// sits inside a cut backdrop, not because anything stamped it. Drag it out and
+// it is live again; un-cut the backdrop and everything inside comes back. The
+// alternative — cascading the attribute onto children when a backdrop is cut —
+// would be destructive and, worse, wrong for instances: status lives on the
+// ENTITY, so stamping a Character card inside a cut Act would cut that
+// character everywhere else on the board too.
+//
+// Containment here is the same `fullyInside` test the outline uses, over ALL
+// backdrops including Custom ones (a Custom group never appears in the outline
+// itself, but cutting one still has to cut what it holds). No recursion is
+// needed: full containment is transitive, so anything inside a nested cut
+// backdrop is also inside its cut ancestor.
+
+export function isCutEntity(entity: Entity | undefined): boolean {
+  return entity?.attributes?.['status'] === 'Cut'
+}
+
+export function isCutBackdrop(bd: Backdrop): boolean {
+  return bd.attributes?.['status'] === 'Cut'
+}
+
+/** Backdrops that are cut, plus every backdrop sitting inside one. */
+export function cutBackdrops(backdrops: Backdrop[]): Backdrop[] {
+  const explicit = backdrops.filter(isCutBackdrop)
+  if (!explicit.length) return []
+  const ids = new Set(explicit.map(b => b.id))
+  for (const bd of backdrops) {
+    if (ids.has(bd.id)) continue
+    const inside = explicit.some(cut =>
+      fullyInside(bd.position.x, bd.position.y, bd.size.width, bd.size.height, cut),
+    )
+    if (inside) ids.add(bd.id)
+  }
+  return backdrops.filter(b => ids.has(b.id))
+}
+
+/**
+ * A card is cut when its own entity is cut, or when it sits inside any cut
+ * backdrop. `cutBds` is the result of cutBackdrops() — pass it in once rather
+ * than recomputing per card.
+ */
+export function isCutCard(card: Card, entity: Entity | undefined, cutBds: Backdrop[]): boolean {
+  if (isCutEntity(entity)) return true
+  return cutBds.some(bd => fullyInside(card.position.x, card.position.y, CARD_W, CARD_H, bd))
+}
+
 /** Sort by row-snap row then x, so left-to-right within a visual row. */
 export function rowSort<T extends { position: { x: number; y: number } }>(items: T[]): T[] {
   return [...items].sort((a, b) => {

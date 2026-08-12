@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useBoardStore, snapshotBoard } from '@/store/boardStore'
 import { useLibraryStore } from '@/store/libraryStore'
@@ -31,20 +31,43 @@ const FIELDS: FieldDef[] = [
 export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null)
 
+  // Writes go through useBoardStore.getState() in flushPending, so the actions
+  // aren't subscribed to here — only the board itself, for the field values.
   const board             = useBoardStore(s => s.board)
-  const setBoardName      = useBoardStore(s => s.setBoardName)
-  const updateProjectInfo = useBoardStore(s => s.updateProjectInfo)
   const isDraft           = useLibraryStore(s => s.isDraft)
   const hasDraftChanges   = (board.syncMeta?.version ?? 0) > 0
   const needsNameToSave   = isDraft && hasDraftChanges
 
   const [pos, setPos] = useState({ top: 52, left: 0 })
-  // Whether the user has actually typed into the name field since it was
-  // focused — a defocus with no edit must be a no-op (in particular, must
-  // NOT count as "accepting" a fresh draft's default name). Retyping the
-  // same text back (e.g. delete a char, undo it) still counts: any onChange
-  // marks it dirty, regardless of what the final value ends up being.
-  const nameDirtyRef = useRef(false)
+  /*
+   * Pending edits, held as VALUES rather than read back off the DOM at commit
+   * time.
+   *
+   * The fields are uncontrolled and save on blur, which is fine while the user
+   * moves between them but is a race with the popover closing: whichever of
+   * "blur" and "unmount" wins decides whether the last thing typed survives.
+   * commitFocusedField() below force-blurs on the two close paths this
+   * component owns, but it cannot cover a close that comes from anywhere else,
+   * and a blur that lands after React has torn the input down never reaches an
+   * onBlur handler at all — the text is simply gone, which is what it looks
+   * like from the outside.
+   *
+   * So every keystroke parks its value here, and flushPending() commits from
+   * this object. It is called on blur (unchanged behaviour), on both close
+   * paths, and — the part that actually closes the hole — from an unmount
+   * cleanup, which React guarantees to run no matter who closed the popover
+   * or why. Values live in a plain ref, not element refs: React nulls element
+   * refs during unmount, so by cleanup time there would be nothing to read.
+   */
+  const pendingInfoRef = useRef<Partial<ProjectInfo>>({})
+  /*
+   * null means "the name field has not been edited in this session" — which is
+   * also how the old nameDirtyRef flag worked, and it matters: an untouched
+   * draft default ("Untitled Board", or a template's own name) must NOT count
+   * as the user accepting that name and saving the board under it. Typing text
+   * back to what it already was still counts, since onChange fires either way.
+   */
+  const pendingNameRef = useRef<string | null>(null)
 
   // Anchor below the button. useLayoutEffect so there's no visible flash.
   // Clamp the left edge so the 320px popover never runs off a narrow (phone)
@@ -61,15 +84,49 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
     setPos({ top: rect.bottom + 4, left })
   }, [anchorRef])
 
-  // Commits whatever field is currently focused (if any) before the popover
-  // unmounts. Both close paths below fire before a natural blur would ever
-  // reach the input — closing first would silently discard an in-progress
-  // edit, since onBlur (where fields actually save) never gets to run once
-  // the input is torn down.
-  const commitFocusedField = () => {
+  /*
+   * Commit anything typed but not yet written to the store. Safe to call more
+   * than once: each field is cleared from the pending object as it lands, so a
+   * blur followed by the unmount flush commits once, not twice.
+   *
+   * Reads the store through getState() rather than the values captured in
+   * render, because the unmount cleanup below runs with the closure from the
+   * render that installed it.
+   */
+  const flushPending = useCallback(() => {
+    const store = useBoardStore.getState()
+
+    const info = pendingInfoRef.current
+    if (Object.keys(info).length) {
+      pendingInfoRef.current = {}
+      store.updateProjectInfo(info)
+    }
+
+    const name = pendingNameRef.current
+    pendingNameRef.current = null
+    if (name !== null) {
+      const t = name.trim()
+      if (t) {
+        store.setBoardName(t)
+        void attemptSaveDraft()
+      }
+    }
+    // Refs and getState() only — nothing from the render scope, so this is
+    // genuinely stable and the effects below don't churn.
+  }, [])
+
+  // Blurs the focused field first so its own onBlur runs normally, then
+  // commits whatever is still pending. Used by both close paths.
+  const commitFocusedField = useCallback(() => {
     const active = document.activeElement
     if (popoverRef.current?.contains(active)) (active as HTMLElement).blur()
-  }
+    flushPending()
+  }, [flushPending])
+
+  // Last line of defence: whoever unmounts this popover — the close paths
+  // below, a re-render of the toolbar, a board switch — the pending values
+  // are written first.
+  useEffect(() => flushPending, [flushPending])
 
   // Close on outside pointer-down or Escape.
   // capture: true on Escape so we win over Canvas's Escape handler.
@@ -93,7 +150,7 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
       document.removeEventListener('pointerdown', onPointerDown, { capture: true })
       document.removeEventListener('keydown',     onKeyDown,     { capture: true })
     }
-  }, [onClose])
+  }, [onClose, commitFocusedField])
 
   const pi = board.projectInfo ?? {}
 
@@ -111,20 +168,9 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
         <input
           className={needsNameToSave ? `${styles.input} ${styles.inputNeedsSave}` : styles.input}
           defaultValue={board.name}
-          onFocus={() => { snapshotBoard(); nameDirtyRef.current = false }}
-          onChange={() => { nameDirtyRef.current = true }}
-          onBlur={e => {
-            // Untouched draft default ("Untitled Board", or a template's own
-            // name) doesn't count until the user has actually edited the
-            // field — even editing it back to the same text counts, an
-            // unfocused field that was never touched does not.
-            if (!nameDirtyRef.current) return
-            nameDirtyRef.current = false
-            const t = e.target.value.trim()
-            if (!t) return
-            setBoardName(t)
-            void attemptSaveDraft()
-          }}
+          onFocus={() => snapshotBoard()}
+          onChange={e => { pendingNameRef.current = e.target.value }}
+          onBlur={flushPending}
           onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
           placeholder="Board name"
           maxLength={80}
@@ -149,7 +195,8 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
               className={styles.textarea}
               defaultValue={pi[f.key] ?? ''}
               onFocus={() => snapshotBoard()}
-              onBlur={e => updateProjectInfo({ [f.key]: e.target.value })}
+              onChange={e => { pendingInfoRef.current[f.key] = e.target.value }}
+              onBlur={flushPending}
               placeholder={f.placeholder}
               rows={2}
             />
@@ -158,7 +205,8 @@ export function ProjectInfoPopover({ anchorRef, onClose }: ProjectInfoPopoverPro
               className={styles.input}
               defaultValue={pi[f.key] ?? ''}
               onFocus={() => snapshotBoard()}
-              onBlur={e => updateProjectInfo({ [f.key]: e.target.value })}
+              onChange={e => { pendingInfoRef.current[f.key] = e.target.value }}
+              onBlur={flushPending}
               placeholder={f.placeholder}
             />
           )}

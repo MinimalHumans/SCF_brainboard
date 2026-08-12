@@ -11,6 +11,7 @@ import type { ContextMenuItem } from '@/components/ContextMenu/ContextMenu'
 import type { Card } from '@/types/board'
 import { ENTITY_TYPES, isInstance, type SwatchKey } from '@/types/board'
 import { SwatchPicker } from '@/components/common/SwatchPicker'
+import { AutoGrowTextarea } from '@/components/common/AutoGrowTextarea'
 import { ATTRIBUTE_SCHEMAS } from '@/config/attributeSchemas'
 import { IS_TOUCH_PRIMARY } from '@/utils/isTouchPrimary'
 import styles from './Card.module.css'
@@ -284,13 +285,13 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
                   {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               ) : field.type === 'textarea' ? (
-                <textarea
+                <AutoGrowTextarea
                   className={styles.textarea}
                   value={(entity?.attributes[field.key] as string) ?? ''}
                   onFocus={() => snapshotBoard()}
-                  onChange={e => setAttr(field.key, e.target.value)}
+                  onChange={v => setAttr(field.key, v)}
                   placeholder={field.hint}
-                  rows={2}
+                  minRows={2}
                 />
               ) : (
                 <input
@@ -308,25 +309,25 @@ export function CardComponent({ card, allCards, getViewerZoom, worldRef }: CardP
 
       <div className={styles.field}>
         <label className={styles.label}>Note <span className={styles.tag}> · shared</span></label>
-        <textarea
+        <AutoGrowTextarea
           className={styles.textarea}
           value={card.noteRaw}
           onFocus={() => snapshotBoard()}
-          onChange={e => setNoteRaw(e.target.value)}
+          onChange={setNoteRaw}
           placeholder="Add a note… (markdown supported)"
-          rows={3}
+          minRows={3}
         />
       </div>
 
       <div className={styles.field}>
         <label className={styles.label}>Placement note <span className={styles.tag}> · this card only</span></label>
-        <textarea
+        <AutoGrowTextarea
           className={styles.textarea}
           value={card.instanceNote}
           onFocus={() => snapshotBoard()}
-          onChange={e => setInstanceNote(e.target.value)}
+          onChange={setInstanceNote}
           placeholder="Context for this placement…"
-          rows={2}
+          minRows={2}
         />
       </div>
 

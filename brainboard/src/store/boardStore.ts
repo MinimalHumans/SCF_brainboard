@@ -105,6 +105,26 @@ function migrateEntities(entities: Entity[]): Entity[] {
 }
 
 /*
+ * migrateEntityTypes — repair Card.type / Entity.type drift.
+ *
+ * Boards saved before updateCardContent propagated a type change carry
+ * entities still stamped with the type the card had when it was created. The
+ * card is the authority (it is what the user sees and what the canvas renders),
+ * so the entity is re-stamped from the first card that references it. Boards
+ * with no drift come out identical.
+ */
+function migrateEntityTypes(entities: Entity[], cards: Card[]): Entity[] {
+  const typeByEntity = new Map<string, Card['type']>()
+  for (const c of cards) {
+    if (!typeByEntity.has(c.entityId)) typeByEntity.set(c.entityId, c.type)
+  }
+  return entities.map(e => {
+    const t = typeByEntity.get(e.id)
+    return t && t !== e.type ? { ...e, type: t } : e
+  })
+}
+
+/*
  * migrateBackdropAttrs — migrate any backdrop with status: 'Archived' to 'Cut'.
  */
 function migrateBackdropAttrs(backdrops: Backdrop[]): Backdrop[] {
@@ -357,20 +377,51 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set(s => ({ board: touch({ ...s.board, cards: s.board.cards.map(c => map.has(c.id) ? { ...c, position: map.get(c.id)! } : c) }) }))
   },
 
-  // NO snapshot here — text fields call snapshotBoard() on onFocus so the
-  // snapshot is taken once when the user enters the field. Discrete patches
-  // (color, type) call snapshotBoard() in the component before invoking this.
+  /*
+   * NO snapshot here — text fields call snapshotBoard() on onFocus so the
+   * snapshot is taken once when the user enters the field. Discrete patches
+   * (color, type) call snapshotBoard() in the component before invoking this.
+   *
+   * TYPE is special. It exists in two places — Card.type (what the canvas
+   * renders and what every emitter groups by) and Entity.type (what the
+   * attribute schema is keyed to in buildOutline / buildFountain / buildFDX).
+   * They are one truth stored twice, so a patch that moves only the card's
+   * copy leaves the entity claiming its original type, and the outline then
+   * reads that stale type, looks up the wrong schema and emits none of the
+   * attributes the user filled in. Duplicating the card papered over it,
+   * because duplicateCards mints its new entity with `type: card.type`.
+   *
+   * So a type change is applied to the entity as well, and to every OTHER card
+   * pointing at that entity: instances share one entity and therefore one set
+   * of attributes, and a Character instance sitting next to a Prop instance of
+   * the same entity has no coherent schema to render.
+   *
+   * Attributes are deliberately NOT cleared. Keys that don't belong to the new
+   * schema simply go unread (every consumer iterates the schema, not the bag),
+   * so switching Scene → Beat → Scene gets the goal/conflict/outcome text back
+   * instead of destroying it. The cost is some dormant keys in the file.
+   */
   updateCardContent: (id, patch) =>
     set(s => {
       const card = s.board.cards.find(c => c.id === id)
       if (!card) return s
-      const cards = s.board.cards.map(c => c.id === id ? { ...c, ...patch } : c)
+
+      const typeChanged = patch.type !== undefined && patch.type !== card.type
+
+      const cards = s.board.cards.map(c => {
+        if (c.id === id) return { ...c, ...patch }
+        // Siblings sharing the entity follow a type change.
+        if (typeChanged && c.entityId === card.entityId) return { ...c, type: patch.type! }
+        return c
+      })
+
       let entities = s.board.entities
-      if (patch.noteRaw !== undefined || patch.title !== undefined) {
+      if (patch.noteRaw !== undefined || patch.title !== undefined || typeChanged) {
         entities = entities.map(e => e.id === card.entityId ? {
           ...e,
           ...(patch.noteRaw !== undefined ? { noteRaw: patch.noteRaw } : {}),
           ...(patch.title   !== undefined ? { title:   patch.title   } : {}),
+          ...(typeChanged                 ? { type:    patch.type!    } : {}),
         } : e)
       }
       return { board: touch({ ...s.board, cards, entities }) }
@@ -577,15 +628,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
    * Migrations:
    *  1. normalizeBackdrops — fix z-index layers (pre-hierarchy boards)
    *  2. migrateEntities    — 'Archived' status → 'Cut' (standardized set)
-   *  3. migrateBackdropAttrs — same for backdrop attributes
-   *  4. projectInfo absent → {}
-   *  5. syncMeta absent → seeded fresh (pre-syncMeta boards)
+   *  3. migrateEntityTypes — Entity.type re-stamped from its card (drift repair)
+   *  4. migrateBackdropAttrs — same for backdrop attributes
+   *  5. projectInfo absent → {}
+   *  6. syncMeta absent → seeded fresh (pre-syncMeta boards)
    */
   loadBoard: (board) => set({
     board: {
       ...board,
       projectInfo: board.projectInfo ?? {},
-      entities:  migrateEntities(board.entities ?? []),
+      entities:  migrateEntityTypes(migrateEntities(board.entities ?? []), board.cards ?? []),
       backdrops: migrateBackdropAttrs(normalizeBackdrops(board.backdrops ?? [])),
       syncMeta: board.syncMeta ?? {
         version: 0, clientId: getClientId(), clientLabel: getClientLabel(),

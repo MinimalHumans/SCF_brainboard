@@ -190,16 +190,30 @@
   flex-shrink: 0; min-width: 60px; user-select: none;
 }
 
+/*
+ * No line clamp on any of the three blocks below (.attrVal, .noteMarkdown,
+ * .instanceNotePreview). The card root has no fixed height — it is a flex
+ * column that sizes to its content — so removing the clamps means the card
+ * simply grows downwards to fit whatever has been written, which is the point.
+ *
+ * Consequence worth knowing: backdrop containment (buildOutline, drag-with-
+ * backdrop, the outline's parent maps) assumes every card is CARD_H = 160 tall.
+ * A card taller than that can visually overhang the bottom edge of a backdrop
+ * while still counting as inside it. That errs toward INCLUDING the card, which
+ * is the forgiving direction, but a very tall card near a backdrop's bottom
+ * edge will look like it has escaped the backdrop when the outline still
+ * reports it as contained.
+ */
 .attrVal {
   font-family: var(--font-ui); font-size: var(--text-xs); color: var(--color-text-secondary);
-  line-height: var(--leading-snug); overflow: hidden; text-overflow: ellipsis;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; user-select: none;
+  line-height: var(--leading-snug); user-select: none;
+  min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap;
 }
 
 .noteMarkdown {
   font-family: var(--font-ui); font-size: var(--text-sm); color: var(--color-text-secondary);
   line-height: var(--leading-normal); user-select: none;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 10; overflow: hidden;
+  min-width: 0; overflow-wrap: anywhere;
 }
 .noteMarkdown p           { margin: 0; }
 .noteMarkdown p + p       { margin-top: var(--space-1); }
@@ -213,8 +227,7 @@
 .instanceNotePreview {
   margin-top: var(--space-2); font-family: var(--font-ui); font-size: var(--text-xs);
   color: var(--color-text-muted); font-style: italic; opacity: 0.6;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-  overflow: hidden; user-select: none;
+  user-select: none; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap;
 }
 
 /* ==========================================================================
