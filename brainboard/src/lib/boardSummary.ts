@@ -9,5 +9,6 @@ export function summaryOf(board: Board): BoardSummary {
     updatedAt:     board.updatedAt,
     cardCount:     board.cards?.length ?? 0,
     backdropCount: board.backdrops?.length ?? 0,
+    kind:          board.kind,
   }
 }

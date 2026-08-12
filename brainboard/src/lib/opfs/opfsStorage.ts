@@ -7,6 +7,9 @@ export interface BoardSummary {
   // have them on disk — callers should treat a missing value as 0.
   cardCount?:     number
   backdropCount?: number
+  // Mirrors Board.kind — absent (or 'board') is a normal board, 'template'
+  // is a user-saved template. See types/board.ts.
+  kind?: 'board' | 'template'
 }
 
 const LEGACY_BOARD_FILE_NAME = 'board.json'

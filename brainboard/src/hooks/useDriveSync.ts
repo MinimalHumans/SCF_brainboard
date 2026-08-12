@@ -30,7 +30,10 @@ const PROVIDER_ID = 'google-drive'
 const PUSH_DEBOUNCE_MS = 3000
 
 function summaryOf(board: Board) {
-  return { boardId: board.boardId, name: board.name, createdAt: board.createdAt, updatedAt: board.updatedAt }
+  // Carries `kind` through so a template pulled/pushed via Drive sync stays
+  // tagged as a template locally too (see types/board.ts) — otherwise it'd
+  // resurface in the Saved Boards list instead of Templates.
+  return { boardId: board.boardId, name: board.name, createdAt: board.createdAt, updatedAt: board.updatedAt, kind: board.kind }
 }
 
 /*

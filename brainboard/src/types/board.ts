@@ -122,6 +122,11 @@ export interface Board {
   backdrops:     Backdrop[]
   projectInfo?:  ProjectInfo
   syncMeta?:     SyncMeta
+  // Absent (or 'board') is a normal board. 'template' means this is a
+  // user-saved template ("My Templates") — it lives in the same OPFS/Drive
+  // storage and sync pipeline as any other board, but the Boards modal
+  // filters it into the Templates tab instead of the Saved Boards list.
+  kind?:         'board' | 'template'
 }
 
 export function isInstance(card: Card, allCards: Card[]): boolean {

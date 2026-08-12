@@ -330,6 +330,29 @@ export function useBoardLibrary() {
     toast.success(`Duplicated "${source.name}".`)
   }, [activeBoardId, requireMultiBoard, flushSave, upsertSummary])
 
+  // saveAsTemplate — snapshots the *currently active* board into a new
+  // boardId tagged kind:'template'. It's a real board on disk (so it links
+  // and syncs to Drive through the exact same pipeline as everything else in
+  // the library — see useDriveSync.syncAllBoards, which just iterates every
+  // summary regardless of kind), but the Boards modal filters it out of the
+  // Saved Boards list and into the Templates tab by that tag.
+  const saveAsTemplate = useCallback(async (name: string): Promise<boolean> => {
+    if (!requireMultiBoard()) return false
+    const now = new Date().toISOString()
+    const template: Board = {
+      ...boardRef.current,
+      boardId:   nanoid(),
+      name,
+      kind:      'template',
+      createdAt: now,
+      updatedAt: now,
+      syncMeta:  { version: 1, clientId: getClientId(), clientLabel: getClientLabel(), updatedAt: now },
+    }
+    await writeBoardFileById(template.boardId, JSON.stringify(template))
+    upsertSummary(summaryOf(template))
+    return true
+  }, [requireMultiBoard, upsertSummary])
+
   const renameBoard = useCallback(async (boardId: string, name: string) => {
     if (boardId === activeBoardId) {
       useBoardStore.getState().setBoardName(name)
@@ -440,6 +463,7 @@ export function useBoardLibrary() {
     createBoard,
     adoptBoard,
     duplicateBoard,
+    saveAsTemplate,
     renameBoard,
     deleteBoard,
   }

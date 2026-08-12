@@ -21,29 +21,6 @@ import styles from './BoardsModal.module.css'
 
 const PROVIDER_ID = 'google-drive'
 
-/* ── User template persistence ─────────────────────────────────────────── */
-
-const USER_TEMPLATES_KEY = 'brainboard_user_templates'
-
-export interface UserTemplate {
-  id:      string
-  name:    string
-  savedAt: string
-  board:   Board
-}
-
-function loadUserTemplates(): UserTemplate[] {
-  try {
-    const raw = localStorage.getItem(USER_TEMPLATES_KEY)
-    return raw ? (JSON.parse(raw) as UserTemplate[]) : []
-  } catch { return [] }
-}
-
-function saveUserTemplates(templates: UserTemplate[]): void {
-  try { localStorage.setItem(USER_TEMPLATES_KEY, JSON.stringify(templates)) }
-  catch { /* quota */ }
-}
-
 /* ── Merge helper — appends a template's cards/entities/backdrops into the
    current board, offset so they don't land on top of existing content. ──── */
 
@@ -124,14 +101,19 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   /* ── Templates tab state ────────────────────────────────────────────── */
 
   const [templatesTab, setTemplatesTab] = useState<TemplatesTab>('default')
-  const [userTemplates, setUserTemplates] = useState<UserTemplate[]>(loadUserTemplates)
+  // "My Templates" are just boards tagged kind:'template' — they live in the
+  // same OPFS/library/Drive-sync pipeline as every other board (see
+  // types/board.ts, useBoardLibrary.saveAsTemplate), so they sync for free.
+  // Split out of the unified `boards` list by that tag rather than tracked
+  // separately.
+  const userTemplates = boards.filter(b => b.kind === 'template')
   const defaultTemplates = useTemplates()
   const board     = useBoardStore(s => s.board)
   const loadBoard = useBoardStore(s => s.loadBoard)
 
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
   const [editingTemplateValue, setEditingTemplateValue] = useState('')
-  const [templateMenu, setTemplateMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [templateMenu, setTemplateMenu] = useState<{ boardId: string; x: number; y: number } | null>(null)
 
   // Opening the modal is a natural "check in" moment — sweep once so
   // anything linked/pushed from another device shows up without the user
@@ -149,7 +131,9 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
     return () => window.removeEventListener('keydown', handler)
   }, [onClose, editingId, rowMenu, editingTemplateId, templateMenu, exportTarget])
 
-  const sorted = [...boards].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const sorted = boards
+    .filter(b => b.kind !== 'template')
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 
   const startRename = (b: BoardSummary) => {
     setEditingId(b.boardId)
@@ -242,6 +226,11 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
       // actually edits it, even if the template file itself carries
       // syncMeta from whatever board it was originally exported from.
       syncMeta: undefined,
+      // A board created *from* a template is a normal board, not itself a
+      // template — templateBoard may carry kind:'template' (My Templates
+      // now are real boards under the hood), so this must be cleared
+      // explicitly rather than inherited via the spread above.
+      kind: undefined,
     }
     if (await library.adoptBoard(fresh)) {
       toast.success(`Loaded template "${templateBoard.name}"`)
@@ -255,58 +244,57 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
     onClose()
   }, [board, loadBoard, onClose])
 
-  /* ── User template actions ────────────────────────────────────────────── */
+  /* ── User template actions — "My Templates" are boards tagged
+     kind:'template' (see useBoardLibrary.saveAsTemplate), so they sync to
+     Drive through the normal board pipeline and these actions mostly just
+     delegate to the same `library`/`drive` calls the Saved Boards tab uses. ── */
 
-  const handleSaveCurrent = useCallback(() => {
+  const handleSaveCurrent = useCallback(async () => {
     const name = window.prompt('Name for this template:', board.name)
     if (!name || !name.trim()) return
-    const entry: UserTemplate = {
-      id:      nanoid(),
-      name:    name.trim(),
-      savedAt: new Date().toISOString(),
-      board:   { ...board },
+    if (await library.saveAsTemplate(name.trim())) {
+      toast.success(`Saved "${name.trim()}" to My Templates`)
+      setTemplatesTab('user')
     }
-    const updated = [entry, ...userTemplates]
-    setUserTemplates(updated)
-    saveUserTemplates(updated)
-    toast.success(`Saved "${name.trim()}" to My Templates`)
-    setTemplatesTab('user')
-  }, [board, userTemplates])
+  }, [board, library])
 
-  const startTemplateRename = (t: UserTemplate) => {
-    setEditingTemplateId(t.id)
+  const startTemplateRename = (t: BoardSummary) => {
+    setEditingTemplateId(t.boardId)
     setEditingTemplateValue(t.name)
   }
-  const commitTemplateRename = (id: string) => {
+  const commitTemplateRename = (boardId: string) => {
     const name = editingTemplateValue.trim()
     setEditingTemplateId(null)
-    if (!name) return
-    const updated = userTemplates.map(t => t.id === id ? { ...t, name } : t)
-    setUserTemplates(updated)
-    saveUserTemplates(updated)
+    if (name) library.renameBoard(boardId, name)
   }
 
-  const handleDeleteUserTemplate = useCallback((id: string, name: string) => {
+  const handleDeleteUserTemplate = useCallback(async (boardId: string, name: string) => {
     const ok = window.confirm(`Delete user template "${name}"?\n\nThis cannot be undone.`)
     if (!ok) return
-    const updated = userTemplates.filter(t => t.id !== id)
-    setUserTemplates(updated)
-    saveUserTemplates(updated)
+    await drive.deleteRemoteForBoard(boardId)
+    await library.deleteBoard(boardId)
     toast.success(`Deleted template "${name}"`)
-  }, [userTemplates])
+  }, [drive, library])
 
-  const templateMenuItems = (t: UserTemplate): ContextMenuItem[] => [
+  const templateMenuItems = (t: BoardSummary): ContextMenuItem[] => [
     { label: 'Rename', onClick: () => startTemplateRename(t) },
-    { label: 'Delete', divider: true, danger: true, onClick: () => handleDeleteUserTemplate(t.id, t.name) },
+    { label: 'Delete', divider: true, danger: true, onClick: () => handleDeleteUserTemplate(t.boardId, t.name) },
   ]
 
-  const handleUserNewBoard = useCallback((t: UserTemplate) => {
-    handleNewBoard(t.board)
-  }, [handleNewBoard])
+  // "New board" / "Merge" need the template's full content (cards/entities/
+  // backdrops), not just the summary shown in the list — fetched on demand
+  // via the same getBoardData the Export flow uses.
+  const handleUserNewBoard = useCallback(async (t: BoardSummary) => {
+    const data = await library.getBoardData(t.boardId)
+    if (!data) { toast.error("Couldn't load template — its file is missing or corrupt."); return }
+    handleNewBoard(data)
+  }, [library, handleNewBoard])
 
-  const handleUserMerge = useCallback((t: UserTemplate) => {
-    handleMerge(t.board)
-  }, [handleMerge])
+  const handleUserMerge = useCallback(async (t: BoardSummary) => {
+    const data = await library.getBoardData(t.boardId)
+    if (!data) { toast.error("Couldn't load template — its file is missing or corrupt."); return }
+    handleMerge(data)
+  }, [library, handleMerge])
 
   /* ── Render ───────────────────────────────────────────────────────────── */
 
@@ -338,7 +326,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
             onClick={() => setOuterTab('boards')}
           >
             Saved Boards
-            <span className={styles.tabBadge}>{boards.length}</span>
+            <span className={styles.tabBadge}>{sorted.length}</span>
           </button>
           <button
             className={`${styles.tab} ${outerTab === 'templates' ? styles.tabActive : ''}`}
@@ -515,16 +503,16 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
                   : <div className={styles.grid}>
                       {userTemplates.map(t => (
                         <UserCard
-                          key={t.id}
+                          key={t.boardId}
                           t={t}
-                          isEditing={editingTemplateId === t.id}
+                          isEditing={editingTemplateId === t.boardId}
                           editingValue={editingTemplateValue}
                           onEditingValueChange={setEditingTemplateValue}
-                          onCommitRename={() => commitTemplateRename(t.id)}
+                          onCommitRename={() => commitTemplateRename(t.boardId)}
                           onCancelRename={() => setEditingTemplateId(null)}
                           onNew={handleUserNewBoard}
                           onMerge={handleUserMerge}
-                          onOpenMenu={(x, y) => setTemplateMenu({ id: t.id, x, y })}
+                          onOpenMenu={(x, y) => setTemplateMenu({ boardId: t.boardId, x, y })}
                         />
                       ))}
                     </div>
@@ -548,7 +536,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
       })()}
 
       {templateMenu && (() => {
-        const t = userTemplates.find(x => x.id === templateMenu.id)
+        const t = userTemplates.find(x => x.boardId === templateMenu.boardId)
         if (!t) return null
         return (
           <ContextMenu
@@ -651,19 +639,19 @@ function UserCard({
   t, isEditing, editingValue, onEditingValueChange, onCommitRename, onCancelRename,
   onNew, onMerge, onOpenMenu,
 }: {
-  t:        UserTemplate
+  t:        BoardSummary
   isEditing: boolean
   editingValue: string
   onEditingValueChange: (v: string) => void
   onCommitRename: () => void
   onCancelRename: () => void
-  onNew:    (t: UserTemplate) => void
-  onMerge:  (t: UserTemplate) => void
+  onNew:    (t: BoardSummary) => void
+  onMerge:  (t: BoardSummary) => void
   onOpenMenu: (x: number, y: number) => void
 }) {
-  const savedDate = new Date(t.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  const cards     = t.board.cards?.length ?? 0
-  const bds       = t.board.backdrops?.length ?? 0
+  const savedDate = new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const cards     = t.cardCount ?? 0
+  const bds       = t.backdropCount ?? 0
 
   return (
     <div className={styles.card}>
