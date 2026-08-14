@@ -1,2 +1,8 @@
 php/deploy/config.php
 client_secret_*.apps.googleusercontent.com.json
+
+# Tauri build output
+brainboard/src-tauri/target/
+brainboard/src-tauri/gen/schemas/
+
+.claude/
