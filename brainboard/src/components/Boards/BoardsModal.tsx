@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { nanoid } from 'nanoid'
 import { useLibraryStore } from '@/store/libraryStore'
-import { useDevModeStore } from '@/store/devModeStore'
 import { useSyncStore, getProviderState } from '@/store/syncStore'
 import { useBoardStore, touch } from '@/store/boardStore'
 import { useTemplates } from '@/hooks/useTemplates'
@@ -97,11 +96,6 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   // Subscribe so per-board Drive badges update live (getProviderState alone
   // is a point-in-time read, not reactive).
   const syncBoards = useSyncStore(s => s.boards)
-  // Google Drive isn't Google-approved yet — hide the connect entry point
-  // from everyone except accounts that already linked it (so existing
-  // connections keep working) or devMode testers (see AboutPopover.tsx).
-  const devModeEnabled = useDevModeStore(s => s.enabled)
-  const showDriveRow   = drive.accountLinked || devModeEnabled
 
   const [editingId, setEditingId]   = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState('')
@@ -463,32 +457,29 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
                 (right) are separate elements — a single button that was both
                 the status display and the toggle read as passive rather than
                 interactive. Room for more provider rows to join later; Google
-                Drive is just the first. Hidden entirely for unlinked accounts
-                outside devMode — see showDriveRow above. */}
-            {showDriveRow && (
-              <div className={styles.cloudSyncRow}>
-                <span className={styles.cloudSyncStatus}>
-                  <GoogleDriveIcon />
-                  {drive.accountLinked ? (
-                    <>
-                      <span className={styles.statusDot} aria-hidden="true" />
-                      <span className={styles.cloudSyncText}>Connected to Google Drive</span>
-                    </>
-                  ) : (
-                    <span className={styles.cloudSyncTextMuted}>Google Drive Cloud Backup</span>
-                  )}
-                </span>
+                Drive is just the first. */}
+            <div className={styles.cloudSyncRow}>
+              <span className={styles.cloudSyncStatus}>
+                <GoogleDriveIcon />
                 {drive.accountLinked ? (
-                  <button type="button" className={styles.disconnectBtn} onClick={drive.disconnectAccount}>
-                    Disconnect
-                  </button>
+                  <>
+                    <span className={styles.statusDot} aria-hidden="true" />
+                    <span className={styles.cloudSyncText}>Connected to Google Drive</span>
+                  </>
                 ) : (
-                  <button type="button" className={styles.connectGhostBtn} onClick={drive.connectAccount}>
-                    Connect
-                  </button>
+                  <span className={styles.cloudSyncTextMuted}>Google Drive Cloud Backup</span>
                 )}
-              </div>
-            )}
+              </span>
+              {drive.accountLinked ? (
+                <button type="button" className={styles.disconnectBtn} onClick={drive.disconnectAccount}>
+                  Disconnect
+                </button>
+              ) : (
+                <button type="button" className={styles.connectGhostBtn} onClick={drive.connectAccount}>
+                  Connect
+                </button>
+              )}
+            </div>
 
             {/* Trash entry point — a fixed-height footer whose link only
                 appears when there's something in the trash, so the modal
