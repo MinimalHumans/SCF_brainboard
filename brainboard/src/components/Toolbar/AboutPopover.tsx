@@ -219,6 +219,21 @@ export function AboutPopover({ anchorRef, onClose }: AboutPopoverProps) {
             Join our Discord
           </a>
         </div>
+
+        <div className={styles.linkRow}>
+          <span className={styles.linkLabel}>Privacy</span>
+          {/* Served from public/ so the same document is reachable as a direct
+              URL (scriptyard.minimalhumans.com/privacy.html) — required for
+              the Google OAuth consent screen. */}
+          <a
+            className={styles.link}
+            href="/privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Privacy Policy
+          </a>
+        </div>
       </div>
 
       <div className={styles.divider} />
