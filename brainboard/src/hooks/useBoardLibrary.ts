@@ -219,11 +219,14 @@ export function useBoardLibrary() {
               console.error(`Board file for "${target.boardId}" is missing or corrupt — dropping it from the library`)
               removeSummary(target.boardId)
             }
+            // Start a fresh *draft*, not a written board — persisting an
+            // untouched "Untitled Board" would add a junk entry on every
+            // launch while the library has nothing openable (e.g.
+            // everything sits in the trash). See activateNextBoard.
             const fresh = makeBoard()
-            await writeBoardFileById(fresh.boardId, JSON.stringify(fresh))
-            upsertSummary(summaryOf(fresh))
             setActiveBoardId(fresh.boardId)
             loadBoard(fresh)
+            setIsDraft(true)
           }
           backendRef.current = 'opfs'
         } else {
@@ -396,15 +399,21 @@ export function useBoardLibrary() {
       if (parsed) {
         loadBoard(parsed)
         setActiveBoardId(next.boardId)
+        setIsDraft(false)
         return
       }
     }
+    // No live boards left — start a fresh *draft* (like createBoard), not a
+    // written board file. Persisting an untouched "Untitled Board" here
+    // would mint a real, deletable row every time the last board is
+    // trashed — an endless trash-the-replacement loop that fills the trash
+    // with empty boards. As a draft it has no row and only becomes real
+    // once the user actually changes and names it (see lib/boardDraft.ts).
     const fresh = makeBoard()
-    await writeBoardFileById(fresh.boardId, JSON.stringify(fresh))
-    upsertSummary(summaryOf(fresh))
-    setActiveBoardId(fresh.boardId)
     loadBoard(fresh)
-  }, [loadBoard, setActiveBoardId, upsertSummary])
+    setActiveBoardId(fresh.boardId)
+    setIsDraft(true)
+  }, [loadBoard, setActiveBoardId, setIsDraft])
 
   /*
    * trashBoard — the reversible "delete": flips trashed/trashedAt on the
