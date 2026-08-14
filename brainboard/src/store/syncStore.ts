@@ -36,6 +36,14 @@ interface SyncStore {
   hydrate:          (legacyBoardId?: string) => Promise<void>
   setAccountLinked: (providerId: string, linked: boolean) => void
   setProviderState: (boardId: string, providerId: string, state: ProviderSyncState) => void
+  // Full sever for an active, user-initiated provider disconnect: drops the
+  // account flag AND every board's per-provider state (remoteFileId,
+  // baselines, statuses) plus any conflicts. Without this purge, a later
+  // local deletion would still "know" about a Drive file on an account this
+  // device no longer syncs with and try to delete it there. Reconnecting
+  // relinks from scratch via find-by-name/manifest discovery, so nothing of
+  // value is lost by purging.
+  clearProvider:    (providerId: string) => void
   removeBoard:      (boardId: string) => void
   setConflict:      (boardId: string, c: ConflictSummary | null) => void
   setDeletionConflict: (boardId: string, d: DeletionSummary | null) => void
@@ -46,6 +54,33 @@ function persist(accounts: Record<string, boolean>, boards: Record<string, Provi
   // Sync-state is bookkeeping, not board content — a lost write here means
   // one extra conflict prompt next sync, not lost work, so no verified write.
   writeSyncStateFile(JSON.stringify(payload)).catch(err => console.error('Failed to persist sync state', err))
+}
+
+/*
+ * Self-heal on hydrate: a board must never carry a link to a provider whose
+ * *account* isn't connected — "account disconnected" means fully severed
+ * (see useDriveSync.disconnectAccount). Persisted states that violate this
+ * do exist in the wild: anything written before disconnect purged per-board
+ * state, or a disconnect whose fire-and-forget persist lost the race with a
+ * reload. Left in place, those stale links make later local deletions reach
+ * for a token on a severed account (surprise auth prompt) and can queue
+ * remote deletions that a future reconnect would wrongly replay.
+ */
+function stripUnlinkedProviders(
+  accounts: Record<string, boolean>,
+  boards:   Record<string, ProvidersForBoard>,
+): { boards: Record<string, ProvidersForBoard>; changed: boolean } {
+  let changed = false
+  const cleaned: Record<string, ProvidersForBoard> = {}
+  for (const [boardId, providers] of Object.entries(boards)) {
+    const kept: ProvidersForBoard = {}
+    for (const [providerId, state] of Object.entries(providers)) {
+      if (accounts[providerId] === true) kept[providerId] = state
+      else changed = true
+    }
+    if (Object.keys(kept).length > 0) cleaned[boardId] = kept
+  }
+  return { boards: cleaned, changed }
 }
 
 export const useSyncStore = create<SyncStore>((set) => ({
@@ -61,7 +96,9 @@ export const useSyncStore = create<SyncStore>((set) => ({
       if (raw) {
         const parsed = JSON.parse(raw) as PersistedSyncStateV1 | PersistedSyncStateV2
         if (parsed.schemaVersion === 2) {
-          set({ accounts: parsed.accounts, boards: parsed.boards, hydrated: true })
+          const { boards, changed } = stripUnlinkedProviders(parsed.accounts, parsed.boards)
+          if (changed) persist(parsed.accounts, boards)
+          set({ accounts: parsed.accounts, boards, hydrated: true })
           return
         }
         if (parsed.schemaVersion === 1 && legacyBoardId) {
@@ -94,6 +131,23 @@ export const useSyncStore = create<SyncStore>((set) => ({
       const boards = { ...s.boards, [boardId]: { ...s.boards[boardId], [providerId]: state } }
       persist(s.accounts, boards)
       return { boards }
+    })
+  },
+
+  clearProvider: (providerId) => {
+    set(s => {
+      const accounts = { ...s.accounts }
+      delete accounts[providerId]
+      const boards: Record<string, ProvidersForBoard> = {}
+      for (const [boardId, providers] of Object.entries(s.boards)) {
+        const rest = { ...providers }
+        delete rest[providerId]
+        if (Object.keys(rest).length > 0) boards[boardId] = rest
+      }
+      persist(accounts, boards)
+      // Conflicts/deletion prompts all reference remote state that no longer
+      // applies once the provider is severed.
+      return { accounts, boards, conflicts: {}, deletionConflicts: {} }
     })
   },
 

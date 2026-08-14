@@ -10,6 +10,10 @@ export interface BoardSummary {
   // Mirrors Board.kind — absent (or 'board') is a normal board, 'template'
   // is a user-saved template. See types/board.ts.
   kind?: 'board' | 'template'
+  // Mirrors Board.trashed/trashedAt so lists and the retention sweep can
+  // work off the index alone without opening every board file.
+  trashed?:   boolean
+  trashedAt?: string
 }
 
 const LEGACY_BOARD_FILE_NAME = 'board.json'
@@ -150,4 +154,14 @@ export function readSyncStateFile(): Promise<string | null> {
 
 export function writeSyncStateFile(json: string): Promise<void> {
   return writeFile('sync-state.json', json)
+}
+
+/* ── Trash bookkeeping (retention setting + offline deletion log) ────────── */
+
+export function readTrashStateFile(): Promise<string | null> {
+  return readFile('trash-state.json')
+}
+
+export function writeTrashStateFile(json: string): Promise<void> {
+  return writeFile('trash-state.json', json)
 }

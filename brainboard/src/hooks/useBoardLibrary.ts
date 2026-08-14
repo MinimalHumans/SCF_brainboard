@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { nanoid } from 'nanoid'
-import { useBoardStore, makeBoard } from '@/store/boardStore'
+import { useBoardStore, makeBoard, touch } from '@/store/boardStore'
 import { useLibraryStore, getStoredActiveBoardId, type BoardSummary } from '@/store/libraryStore'
 import { getClientId, getClientLabel } from '@/lib/sync/clientIdentity'
 import { toast } from '@/store/toastStore'
@@ -31,6 +31,13 @@ function parseBoard(raw: string): Board | null {
 
 function mostRecentlyUpdated(summaries: BoardSummary[]): BoardSummary {
   return [...summaries].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]
+}
+
+// The boards that are valid to auto-open/switch to: not a template, not in
+// the trash. Everything that picks a board on the user's behalf (startup
+// target, "next board" after a delete/trash) must go through this filter.
+function selectableBoards(summaries: BoardSummary[]): BoardSummary[] {
+  return summaries.filter(b => b.kind !== 'template' && !b.trashed)
 }
 
 /*
@@ -192,17 +199,26 @@ export function useBoardLibrary() {
         if (index && index.length > 0) {
           setBoards(index)
           backfillMissingStats(index)
+          const selectable = selectableBoards(index)
           const stored = getStoredActiveBoardId()
-          const target = (stored && index.find(b => b.boardId === stored)) ?? mostRecentlyUpdated(index)
-          const raw = await readBoardFileById(target.boardId)
+          // Never auto-open a trashed board (nor a template) — if the last
+          // active board got trashed (possibly from another device), fall
+          // back to the most recent live one; if *everything* is trashed or
+          // a template, start a fresh board rather than resurrecting one.
+          const target = selectable.length > 0
+            ? (stored && selectable.find(b => b.boardId === stored)) ?? mostRecentlyUpdated(selectable)
+            : null
+          const raw = target ? await readBoardFileById(target.boardId) : null
           const parsed = raw ? parseBoard(raw) : null
-          if (parsed) {
+          if (target && parsed) {
             loadBoard(parsed)
             setActiveBoardId(target.boardId)
           } else {
-            // Index says this board exists but its file is missing/corrupt.
-            console.error(`Board file for "${target.boardId}" is missing or corrupt — dropping it from the library`)
-            removeSummary(target.boardId)
+            if (target) {
+              // Index says this board exists but its file is missing/corrupt.
+              console.error(`Board file for "${target.boardId}" is missing or corrupt — dropping it from the library`)
+              removeSummary(target.boardId)
+            }
             const fresh = makeBoard()
             await writeBoardFileById(fresh.boardId, JSON.stringify(fresh))
             upsertSummary(summaryOf(fresh))
@@ -367,19 +383,12 @@ export function useBoardLibrary() {
     upsertSummary(summaryOf(updated))
   }, [activeBoardId, requireMultiBoard, upsertSummary])
 
-  // Deletes the local file + index entry only. Callers that also want the
-  // linked Drive copy removed (per the "always delete both" policy) must
-  // additionally call useDriveSync's per-board delete before/after this —
-  // this hook doesn't know about sync providers.
-  const deleteBoard = useCallback(async (boardId: string) => {
-    if (!requireMultiBoard()) return
-    const wasActive = boardId === activeBoardId
-    await deleteBoardFileById(boardId)
-    removeSummary(boardId)
-
-    if (!wasActive) return
-
-    const remaining = useLibraryStore.getState().boards.filter(b => b.boardId !== boardId)
+  // Loads the most recently updated live (non-trashed, non-template) board,
+  // excluding `excludeId`, or a fresh board if none remain — shared by
+  // deleteBoard/trashBoard when they displace the active board, and by the
+  // trashed-active-board effect below.
+  const activateNextBoard = useCallback(async (excludeId: string) => {
+    const remaining = selectableBoards(useLibraryStore.getState().boards).filter(b => b.boardId !== excludeId)
     if (remaining.length > 0) {
       const next = mostRecentlyUpdated(remaining)
       const raw = await readBoardFileById(next.boardId)
@@ -395,7 +404,67 @@ export function useBoardLibrary() {
     upsertSummary(summaryOf(fresh))
     setActiveBoardId(fresh.boardId)
     loadBoard(fresh)
-  }, [activeBoardId, requireMultiBoard, removeSummary, loadBoard, setActiveBoardId, upsertSummary])
+  }, [loadBoard, setActiveBoardId, upsertSummary])
+
+  /*
+   * trashBoard — the reversible "delete": flips trashed/trashedAt on the
+   * board's own content (via touch(), so it version-bumps and syncs to
+   * Drive like any other edit) and hides it from every normal list. No
+   * confirmation needed anywhere that calls this — restore undoes it.
+   */
+  const trashBoard = useCallback(async (boardId: string) => {
+    if (!requireMultiBoard()) return
+    const wasActive = boardId === activeBoardId
+    if (wasActive) await flushSave()
+    const raw = wasActive ? JSON.stringify(boardRef.current) : await readBoardFileById(boardId)
+    const parsed = raw ? parseBoard(raw) : null
+    if (!parsed) { toast.error("Couldn't move that board to the trash — its file is missing or corrupt."); return }
+    const updated = touch({ ...parsed, trashed: true, trashedAt: new Date().toISOString() })
+    await writeBoardFileById(boardId, JSON.stringify(updated))
+    upsertSummary(summaryOf(updated))
+    if (wasActive) await activateNextBoard(boardId)
+  }, [activeBoardId, requireMultiBoard, flushSave, upsertSummary, activateNextBoard])
+
+  const restoreBoard = useCallback(async (boardId: string) => {
+    if (!requireMultiBoard()) return
+    const raw = await readBoardFileById(boardId)
+    const parsed = raw ? parseBoard(raw) : null
+    if (!parsed) { toast.error("Couldn't restore — board file is missing or corrupt."); return }
+    // undefined (not false/'') so JSON.stringify drops the keys entirely —
+    // a restored board is byte-identical to one that was never trashed.
+    const updated = touch({ ...parsed, trashed: undefined, trashedAt: undefined })
+    await writeBoardFileById(boardId, JSON.stringify(updated))
+    upsertSummary(summaryOf(updated))
+  }, [requireMultiBoard, upsertSummary])
+
+  // Permanently deletes the local file + index entry — the only
+  // irreversible action, reached from the Trash view ("delete forever" /
+  // "delete all") and the retention sweep. Callers that also want the
+  // linked Drive copy removed must additionally call useDriveSync's
+  // deleteRemoteForBoard before/after this — this hook doesn't know about
+  // sync providers.
+  const deleteBoard = useCallback(async (boardId: string) => {
+    if (!requireMultiBoard()) return
+    const wasActive = boardId === activeBoardId
+    await deleteBoardFileById(boardId)
+    removeSummary(boardId)
+    if (wasActive) await activateNextBoard(boardId)
+  }, [activeBoardId, requireMultiBoard, removeSummary, activateNextBoard])
+
+  // If the *active* board becomes trashed under us — a sync pull applied a
+  // trash performed on another device — move the editor off it; the canvas
+  // must never be showing a trashed board. flushSave first: a pull only
+  // updates the in-memory store and relies on the debounced autosave to
+  // persist, but switching boards cancels that timer — without the flush,
+  // the trashed flag would never reach this device's file or index.
+  const activeBoardTrashed = board.trashed === true
+  useEffect(() => {
+    if (!isLoaded || !activeBoardTrashed || backendRef.current !== 'opfs') return
+    ;(async () => {
+      await flushSave()
+      await activateNextBoard(boardRef.current.boardId)
+    })()
+  }, [isLoaded, activeBoardTrashed, activateNextBoard, flushSave])
 
   // Shared by the file-picker (importBoard) and drag-and-drop import — both
   // just need to hand off a File, everything past that is identical.
@@ -465,6 +534,8 @@ export function useBoardLibrary() {
     duplicateBoard,
     saveAsTemplate,
     renameBoard,
+    trashBoard,
+    restoreBoard,
     deleteBoard,
   }
 }

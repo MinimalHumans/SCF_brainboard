@@ -613,6 +613,119 @@
   border-color:     var(--color-accent-hover);
 }
 
+/* ── Trash ─────────────────────────────────────────────────────────────── */
+
+/* Footer entry point to the trash. Always rendered at a fixed height so the
+   list area doesn't jump when the count crosses 0→1 — the link text inside
+   it is what appears/disappears, not the footer itself. */
+.trashFooter {
+  display:     flex;
+  align-items: center;
+  min-height:  18px;
+  flex-shrink: 0;
+}
+/* The templates tab manages its own padding (grid handles it), so its
+   footer carries the inset itself. */
+.trashFooterTemplates {
+  padding: 0 var(--space-6) var(--space-4);
+}
+
+.trashLink {
+  font-family:            var(--font-ui);
+  font-size:              var(--text-2xs);
+  color:                  var(--color-text-muted);
+  background:             transparent;
+  border:                 none;
+  padding:                0;
+  cursor:                 pointer;
+  text-decoration:        underline;
+  text-decoration-color:  transparent;
+  transition:             color var(--duration-fast) var(--easing-out);
+}
+.trashLink:hover {
+  color:                 var(--color-text-secondary);
+  text-decoration-color: var(--color-text-muted);
+}
+
+.backBtn {
+  height:        26px;
+  padding:       0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family:   var(--font-ui);
+  font-size:     var(--text-xs);
+  color:         var(--color-text-secondary);
+  background:    transparent;
+  border:        1px solid var(--color-border);
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    color            var(--duration-fast) var(--easing-out),
+                 background-color var(--duration-fast) var(--easing-out);
+}
+.backBtn:hover {
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+}
+
+.trashControls {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-3);
+}
+
+.retentionLabel {
+  display:     inline-flex;
+  align-items: center;
+  gap:         var(--space-2);
+  font-family: var(--font-ui);
+  font-size:   var(--text-xs);
+  color:       var(--color-text-secondary);
+}
+
+.retentionInput {
+  width:         52px;
+  height:        26px;
+  padding:       0 var(--space-2);
+  font-family:   var(--font-ui);
+  font-size:     var(--text-xs);
+  color:         var(--color-text-primary);
+  background:    var(--color-surface-inset);
+  border:        1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-align:    center;
+}
+.retentionInput:focus {
+  outline:      none;
+  border-color: var(--color-accent-muted);
+}
+
+/* Trash rows aren't openable — no pointer cursor, no hover invitation. */
+.trashRow,
+.trashRow:hover {
+  cursor:           default;
+  background-color: var(--color-surface-raised);
+  border-color:     var(--color-border);
+}
+
+.restoreBtn {
+  height:        28px;
+  padding:       0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family:   var(--font-ui);
+  font-size:     var(--text-xs);
+  font-weight:   var(--weight-medium);
+  color:         var(--color-text-secondary);
+  background:    transparent;
+  border:        1px solid var(--color-border-strong);
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    color            var(--duration-fast) var(--easing-out),
+                 background-color var(--duration-fast) var(--easing-out);
+}
+.restoreBtn:hover {
+  color:            var(--color-text-primary);
+  background-color: var(--color-surface-hover);
+}
+
 /* Empty state */
 .empty {
   padding:    var(--space-8) var(--space-6);

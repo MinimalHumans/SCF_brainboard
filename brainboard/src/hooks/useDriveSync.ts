@@ -18,12 +18,14 @@ import {
   type ReconcileResult,
 } from '@/lib/sync/syncEngine'
 import { hashContent } from '@/lib/sync/hash'
-import { makeInitialProviderState, type ProviderSyncState } from '@/lib/sync/types'
+import { makeInitialProviderState } from '@/lib/sync/types'
 import {
   fetchAllManifests, mergeManifests, removeOwnManifestEntry, upsertOwnManifestEntry,
   type DriveManifestEntry,
 } from '@/lib/sync/driveManifest'
 import { getClientId, getClientLabel } from '@/lib/sync/clientIdentity'
+import { reconcileTrashSettings } from '@/lib/sync/trashSettingsSync'
+import { useTrashStore } from '@/store/trashStore'
 import { readBoardFileById, writeBoardFileById } from '@/lib/opfs/opfsStorage'
 
 const PROVIDER_ID = 'google-drive'
@@ -32,8 +34,13 @@ const PUSH_DEBOUNCE_MS = 3000
 function summaryOf(board: Board) {
   // Carries `kind` through so a template pulled/pushed via Drive sync stays
   // tagged as a template locally too (see types/board.ts) — otherwise it'd
-  // resurface in the Saved Boards list instead of Templates.
-  return { boardId: board.boardId, name: board.name, createdAt: board.createdAt, updatedAt: board.updatedAt, kind: board.kind }
+  // resurface in the Saved Boards list instead of Templates. Same for the
+  // trashed flags: a board trashed on another device must land here already
+  // hidden, not pop back into the Saved Boards list.
+  return {
+    boardId: board.boardId, name: board.name, createdAt: board.createdAt, updatedAt: board.updatedAt,
+    kind: board.kind, trashed: board.trashed, trashedAt: board.trashedAt,
+  }
 }
 
 /*
@@ -91,6 +98,19 @@ export function useDriveSync(boardLoaded: boolean) {
     if (!boardLoaded || !activeBoardId) return
     hydrate(activeBoardId)
   }, [boardLoaded, activeBoardId, hydrate])
+
+  // Startup sanitization for the offline permanent-deletion log: entries are
+  // only legitimate while the account stays linked (queued during a passive
+  // outage). If we come up disconnected, anything still queued references a
+  // severed account — replaying it on a future reconnect would delete Drive
+  // copies the reconnect is supposed to restore. Active disconnect already
+  // clears the queue; this catches states persisted around that (or by
+  // older builds).
+  const trashHydrated = useTrashStore(s => s.hydrated)
+  useEffect(() => {
+    if (!syncHydrated || !trashHydrated) return
+    if (!isAccountLinked(PROVIDER_ID)) useTrashStore.getState().clearPendingRemoteDeletions()
+  }, [syncHydrated, trashHydrated])
 
   const upsertManifestForBoard = useCallback(async (boardId: string, b: Board, remoteFileId: string) => {
     try {
@@ -153,11 +173,12 @@ export function useDriveSync(boardLoaded: boolean) {
   // Reconciles the active board against the live in-memory store.
   const runCheck = useCallback(async () => {
     if (!activeBoardId || inFlightRef.current) return
-    // Must check the *account*, not just this board's `linked` flag —
-    // disconnecting the account never clears a board's linked/remoteFileId
-    // (so it can pick back up on reconnect), so without this check every
-    // focus/visibility/push-debounce trigger would still try to reacquire a
-    // token after disconnect, popping the Google auth prompt unprompted.
+    // Must check the *account*, not just this board's `linked` flag, so a
+    // focus/visibility/push-debounce trigger can never try to reacquire a
+    // token while the account isn't connected, popping the Google auth
+    // prompt unprompted. (An active disconnect also purges every board's
+    // state — see disconnectAccount — making the board check redundant
+    // there, but the account check stands on its own.)
     if (!isAccountLinked(PROVIDER_ID)) return
     const state = getProviderState(activeBoardId, PROVIDER_ID)
     if (!state.linked) return
@@ -241,6 +262,20 @@ export function useDriveSync(boardLoaded: boolean) {
 
   /* ── Account-level ──────────────────────────────────────────────────── */
 
+  /*
+   * disconnectAccount — an ACTIVE, user-initiated disconnect is a full
+   * sever, not a pause: every board's per-provider sync state
+   * (remoteFileId, baselines) is purged along with the account flag, and
+   * any queued offline remote-deletions are dropped (they reference an
+   * account this device no longer syncs with). Without the purge, a later
+   * local deletion would still try to delete from the disconnected Drive
+   * account. Reconnecting relinks every board from scratch via
+   * find-by-name/manifest discovery, so no data is lost.
+   *
+   * (A PASSIVE disconnect — simply being offline — goes nowhere near this;
+   * sync state stays put and reconcile just fails until connectivity is
+   * back.)
+   */
   const disconnectAccount = useCallback(async () => {
     try {
       await revokeToken()
@@ -248,9 +283,10 @@ export function useDriveSync(boardLoaded: boolean) {
       console.error('Drive token revoke failed', err)
     }
     clearCachedToken()
-    setAccountLinked(PROVIDER_ID, false)
+    useSyncStore.getState().clearProvider(PROVIDER_ID)
+    useTrashStore.getState().clearPendingRemoteDeletions()
     toast.info('Disconnected from Google Drive.')
-  }, [setAccountLinked])
+  }, [])
 
   const ensureAccountConnected = useCallback(async () => {
     if (isAccountLinked(PROVIDER_ID)) {
@@ -309,23 +345,52 @@ export function useDriveSync(boardLoaded: boolean) {
     toast.info('This board no longer syncs to Google Drive.')
   }, [setProviderState])
 
-  // Best-effort: deletes the board's Drive file + this client's manifest
-  // entry for it, then drops its sync-state bookkeeping regardless of
-  // whether the Drive-side delete succeeded (per "delete always removes
-  // both" — a failed Drive delete shouldn't leave orphaned local state).
+  // Deletes the board's Drive file + this client's manifest entry for it,
+  // then drops its sync-state bookkeeping. If Drive is unreachable (offline
+  // permanent-delete), the remote deletion is queued in the trash store's
+  // offline log and replayed by the next syncAllBoards sweep — drive.appdata
+  // is invisible in Drive's own UI, so an orphaned remote copy could never
+  // be cleaned up by hand.
+  //
+  // The account gate matters: only a PASSIVELY unreachable but still-linked
+  // account gets the delete/queue treatment. If the account itself is
+  // disconnected, a lingering per-board link (however it survived — see
+  // the hydrate sanitization in syncStore) must not reach for a token here:
+  // that pops the Google auth prompt out of nowhere, and worse, a deletion
+  // queued while severed would be replayed against the account on a future
+  // reconnect — destroying the very Drive copies a reconnect is supposed to
+  // restore.
   const deleteRemoteForBoard = useCallback(async (boardId: string) => {
     const state = getProviderState(boardId, PROVIDER_ID)
-    if (state.linked && state.remoteFileId) {
+    if (isAccountLinked(PROVIDER_ID) && state.linked && state.remoteFileId) {
       try {
         const token = await getValidAccessToken()
         await deleteFile(token, state.remoteFileId)
         await removeOwnManifestEntry(token, getClientId(), getClientLabel(), boardId)
       } catch (err) {
-        console.error('Failed to delete Drive file', err)
-        toast.error("Removed locally, but couldn't remove the Drive copy — you may want to clean it up there.")
+        console.error('Failed to delete Drive file, queueing for retry', err)
+        useTrashStore.getState().enqueuePendingRemoteDeletion({
+          boardId, fileId: state.remoteFileId, queuedAt: new Date().toISOString(),
+        })
       }
     }
     useSyncStore.getState().removeBoard(boardId)
+  }, [])
+
+  // Replays the offline permanent-deletion log (see trashStore) — each
+  // entry is a Drive file a permanent delete couldn't remove at the time.
+  // deleteFile treats 404 as success, so entries another device already
+  // cleaned up just drain silently.
+  const replayPendingRemoteDeletions = useCallback(async (token: string) => {
+    for (const p of useTrashStore.getState().pendingRemoteDeletions) {
+      try {
+        await deleteFile(token, p.fileId)
+        await removeOwnManifestEntry(token, getClientId(), getClientLabel(), p.boardId)
+        useTrashStore.getState().removePendingRemoteDeletion(p.boardId)
+      } catch (err) {
+        console.error('Deferred Drive deletion still failing, keeping it queued', err)
+      }
+    }
   }, [])
 
   /* ── Full-library sync ─────────────────────────────────────────────────
@@ -365,12 +430,38 @@ export function useDriveSync(boardLoaded: boolean) {
     if (!isAccountLinked(PROVIDER_ID) || syncAllInFlightRef.current) return
     syncAllInFlightRef.current = true
     try {
-      // 1. Pull in anything another client has pushed that we don't have yet.
+      // 0. Settle trash bookkeeping first: replay any permanent deletions
+      //    performed while offline, and reconcile the global retention
+      //    setting's Drive mirror. Both non-fatal.
+      try {
+        const token = await getValidAccessToken()
+        await replayPendingRemoteDeletions(token)
+        await reconcileTrashSettings(token)
+      } catch (err) {
+        console.error('Trash bookkeeping sync failed', err)
+      }
+
+      // 1. Pull in anything another client has pushed that we don't have
+      //    yet. "Don't have" includes one deliberate special case: a local
+      //    board that sits in the trash with NO provider link. That's a
+      //    board trashed/deleted while this device was severed from the
+      //    account (an active disconnect purges every link) — a local-only
+      //    decision made against a de-linked copy. On reconnect the Drive
+      //    copy is authoritative and gets pulled back over it, which is
+      //    what "reconnect brings my boards back" means. A trashed board
+      //    WITH a live link is the normal synced-trash flow and is left to
+      //    reconcile below. Without this, reconnecting after a local wipe
+      //    restores nothing, and the resulting conflicts would attach to
+      //    trashed rows no list ever shows.
       try {
         const token = await getValidAccessToken()
         const merged = mergeManifests(await fetchAllManifests(token))
-        const localIds = new Set(useLibraryStore.getState().boards.map(b => b.boardId))
-        const missing = [...merged.values()].filter(e => !localIds.has(e.boardId))
+        const localBoards = useLibraryStore.getState().boards
+        const missing = [...merged.values()].filter(e => {
+          const local = localBoards.find(b => b.boardId === e.boardId)
+          if (!local) return true
+          return local.trashed === true && !getProviderState(e.boardId, PROVIDER_ID).linked
+        })
         const pulledNames = (await Promise.all(missing.map(pullBoardFromDrive))).filter((n): n is string => n !== null)
         if (pulledNames.length > 0) {
           toast.success(pulledNames.length === 1
@@ -393,7 +484,19 @@ export function useDriveSync(boardLoaded: boolean) {
     } finally {
       syncAllInFlightRef.current = false
     }
-  }, [linkBoard, syncNowForBoard, pullBoardFromDrive])
+  }, [linkBoard, syncNowForBoard, pullBoardFromDrive, replayPendingRemoteDeletions])
+
+  // Fire-and-forget mirror push after the user edits the retention setting
+  // in the Trash view — syncAllBoards also reconciles it, but that only
+  // runs on connect/mount/modal-open, which could be a whole session away.
+  const syncTrashSettingsNow = useCallback(async () => {
+    if (!isAccountLinked(PROVIDER_ID)) return
+    try {
+      await reconcileTrashSettings(await getValidAccessToken())
+    } catch (err) {
+      console.error('Trash settings sync failed', err)
+    }
+  }, [])
 
   const connectAccount = useCallback(async () => {
     try {
@@ -508,6 +611,7 @@ export function useDriveSync(boardLoaded: boolean) {
     deleteRemoteForBoard,
     syncNowForBoard,
     syncAllBoards,
+    syncTrashSettingsNow,
     resolveConflict,
     resolveDeletion,
   }

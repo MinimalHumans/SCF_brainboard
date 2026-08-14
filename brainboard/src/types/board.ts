@@ -127,6 +127,16 @@ export interface Board {
   // storage and sync pipeline as any other board, but the Boards modal
   // filters it into the Templates tab instead of the Saved Boards list.
   kind?:         'board' | 'template'
+  // Soft-delete flags — "deleting" a board just sets these (a field update
+  // that syncs to Drive like any other edit; no folder move, no tombstone
+  // file). Trashed boards are hidden from every normal list and picker and
+  // only surface in the Trash view, until either the user restores them or
+  // the retention sweep permanently deletes them (the only irreversible
+  // step). Eligibility for permanent deletion is trashedAt measured against
+  // the single app-wide retention setting (see store/trashStore.ts) — the
+  // board itself never carries a per-file retention.
+  trashed?:      boolean
+  trashedAt?:    string
 }
 
 export function isInstance(card: Card, allCards: Card[]): boolean {

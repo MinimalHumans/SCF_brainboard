@@ -14,6 +14,7 @@ import { useBoardStore }  from '@/store/boardStore'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useBoardLibrary } from '@/hooks/useBoardLibrary'
 import { useDriveSync }   from '@/hooks/useDriveSync'
+import { useTrashMaintenance } from '@/hooks/useTrashMaintenance'
 import { toast }          from '@/store/toastStore'
 
 export default function App() {
@@ -24,6 +25,9 @@ export default function App() {
 
   const library = useBoardLibrary()
   const drive   = useDriveSync(library.isLoaded)
+  // Hydrates trash bookkeeping and runs the retention sweep (permanently
+  // deletes boards whose time in the trash has expired).
+  useTrashMaintenance(library.isLoaded, library, drive)
 
   const [showHelp,      setShowHelp]      = useState(false)
   const [showOutline,   setShowOutline]   = useState(false)
