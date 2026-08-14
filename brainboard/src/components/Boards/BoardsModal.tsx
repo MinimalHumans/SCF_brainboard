@@ -83,6 +83,12 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   // Non-null while the trash of the current tab is open in place of the
   // normal list — no standalone trash page, it lives inside this modal.
   const [trashKind, setTrashKind] = useState<'board' | 'template' | null>(null)
+  // Bumped on every move-to-trash so the footer link briefly glows —
+  // feedback pointing at where the item just went. Used as the link's key,
+  // so each bump remounts it and the CSS animation replays from the start
+  // even when trashes come in quick succession.
+  const [boardTrashPulse,    setBoardTrashPulse]    = useState(0)
+  const [templateTrashPulse, setTemplateTrashPulse] = useState(0)
 
   /* ── Boards tab state ───────────────────────────────────────────────── */
 
@@ -180,6 +186,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   const handleDelete = async (b: BoardSummary) => {
     await library.trashBoard(b.boardId)
     drive.syncNowForBoard(b.boardId)
+    setBoardTrashPulse(p => p + 1)
     toast.success(`Moved "${b.name}" to the trash.`)
   }
 
@@ -286,6 +293,7 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   const handleDeleteUserTemplate = useCallback(async (boardId: string, name: string) => {
     await library.trashBoard(boardId)
     drive.syncNowForBoard(boardId)
+    setTemplateTrashPulse(p => p + 1)
     toast.success(`Moved template "${name}" to the trash.`)
   }, [drive, library])
 
@@ -487,7 +495,12 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
                 never jumps at the 0→1 transition. */}
             <div className={styles.trashFooter}>
               {trashedBoardCount > 0 && (
-                <button type="button" className={styles.trashLink} onClick={() => setTrashKind('board')}>
+                <button
+                  type="button"
+                  key={boardTrashPulse}
+                  className={`${styles.trashLink} ${boardTrashPulse > 0 ? styles.trashLinkGlow : ''}`}
+                  onClick={() => setTrashKind('board')}
+                >
                   {trashedBoardCount} item{trashedBoardCount !== 1 ? 's' : ''} in trash
                 </button>
               )}
@@ -551,7 +564,12 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
                 templates have their own parallel trash and count. */}
             <div className={`${styles.trashFooter} ${styles.trashFooterTemplates}`}>
               {trashedTemplateCount > 0 && (
-                <button type="button" className={styles.trashLink} onClick={() => setTrashKind('template')}>
+                <button
+                  type="button"
+                  key={templateTrashPulse}
+                  className={`${styles.trashLink} ${templateTrashPulse > 0 ? styles.trashLinkGlow : ''}`}
+                  onClick={() => setTrashKind('template')}
+                >
                   {trashedTemplateCount} template{trashedTemplateCount !== 1 ? 's' : ''} in trash
                 </button>
               )}
