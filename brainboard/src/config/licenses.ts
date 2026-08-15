@@ -8,7 +8,7 @@
  * TypeScript, ESLint) is omitted — it never reaches the bundle — as are
  * type-only packages.
  *
- * Generated 2026-07-22 against package-lock.json.
+ * Generated 2026-08-15 against package-lock.json.
  */
 
 export type LicenseId = 'OFL-1.1' | 'MIT'
@@ -53,7 +53,7 @@ export const THIRD_PARTY: ThirdPartyPackage[] = [
   },
   {
     name: "nanoid",
-    version: "5.1.9",
+    version: "5.1.16",
     license: "MIT",
     copyright: "Copyright 2017 Andrey Sitnik <andrey@sitnik.es>",
     url: "https://github.com/ai/nanoid",
