@@ -6,7 +6,10 @@ import { toast } from '@/store/toastStore'
 import type { Board } from '@/types/board'
 import { googleDriveProvider } from '@/lib/sync/googleDriveProvider'
 import { deleteFile, findFileByName } from '@/lib/sync/googleDriveApi'
-import { clearCachedToken, getValidAccessToken, requestAccessToken, revokeToken } from '@/lib/sync/googleAuth'
+import {
+  attemptBrokerUpgrade, clearCachedToken, getValidAccessToken, isImplicitOnly,
+  precheckBrokerHealth, requestAccessToken, revokeToken,
+} from '@/lib/sync/googleAuth'
 import {
   reconcile,
   resolveConflictCancel,
@@ -111,6 +114,15 @@ export function useDriveSync(boardLoaded: boolean) {
     if (!syncHydrated || !trashHydrated) return
     if (!isAccountLinked(PROVIDER_ID)) useTrashStore.getState().clearPendingRemoteDeletions()
   }, [syncHydrated, trashHydrated])
+
+  // Broker-upgrade precheck: no popup involved, so safe to fire on mount.
+  // Just warms brokerHealthCache for attemptBrokerUpgrade below — the actual
+  // upgrade attempt still has to ride a real user gesture (see useDriveSync's
+  // tryUpgradeToBroker, wired into the Boards-modal open click in App.tsx).
+  useEffect(() => {
+    if (!boardLoaded || !isAccountLinked(PROVIDER_ID) || !isImplicitOnly()) return
+    precheckBrokerHealth()
+  }, [boardLoaded])
 
   const upsertManifestForBoard = useCallback(async (boardId: string, b: Board, remoteFileId: string) => {
     try {
@@ -401,10 +413,27 @@ export function useDriveSync(boardLoaded: boolean) {
    * this device" affordances — this is the only entry point for all of it.
    * Sequential (not parallel) to stay gentle on the Drive API. */
 
-  const pullBoardFromDrive = useCallback(async (entry: DriveManifestEntry): Promise<string | null> => {
+  // ownBoardIds/token let a 404 self-heal: if the stale manifest entry lives
+  // in THIS client's own manifest (the only file it's ever the writer for —
+  // see driveManifest.ts), it's safe to prune here. A 404 for an entry that
+  // came from another client's manifest is left alone — no one but that
+  // client may write its file, so pruning it would race a manifest this
+  // device doesn't own.
+  const pullBoardFromDrive = useCallback(async (
+    entry: DriveManifestEntry, ownBoardIds: Set<string>, token: string,
+  ): Promise<string | null> => {
     try {
       const remote = await googleDriveProvider.fetchRemote(entry.fileId)
-      if (!remote) return null
+      if (!remote) {
+        if (ownBoardIds.has(entry.boardId)) {
+          try {
+            await removeOwnManifestEntry(token, getClientId(), getClientLabel(), entry.boardId)
+          } catch (err) {
+            console.error('Failed to prune stale manifest entry', err)
+          }
+        }
+        return null
+      }
       const b = JSON.parse(remote.content) as Board
       await writeBoardFileById(b.boardId, remote.content)
       useLibraryStore.getState().upsertSummary(summaryOf(b))
@@ -455,14 +484,18 @@ export function useDriveSync(boardLoaded: boolean) {
       //    trashed rows no list ever shows.
       try {
         const token = await getValidAccessToken()
-        const merged = mergeManifests(await fetchAllManifests(token))
+        const manifests = await fetchAllManifests(token)
+        const merged = mergeManifests(manifests)
+        const ownManifest = manifests.find(m => m.clientId === getClientId())
+        const ownBoardIds = new Set(ownManifest?.boards.map(b => b.boardId) ?? [])
         const localBoards = useLibraryStore.getState().boards
         const missing = [...merged.values()].filter(e => {
           const local = localBoards.find(b => b.boardId === e.boardId)
           if (!local) return true
           return local.trashed === true && !getProviderState(e.boardId, PROVIDER_ID).linked
         })
-        const pulledNames = (await Promise.all(missing.map(pullBoardFromDrive))).filter((n): n is string => n !== null)
+        const pulledNames = (await Promise.all(missing.map(e => pullBoardFromDrive(e, ownBoardIds, token))))
+          .filter((n): n is string => n !== null)
         if (pulledNames.length > 0) {
           toast.success(pulledNames.length === 1
             ? `Added "${pulledNames[0]}" from Drive.`
@@ -598,10 +631,14 @@ export function useDriveSync(boardLoaded: boolean) {
     }
   }, [activeBoardId, loadBoard, setDeletionConflict, setProviderState, upsertManifestForBoard])
 
+  // Must be called synchronously from a click handler — see attemptBrokerUpgrade.
+  const tryUpgradeToBroker = useCallback(() => { attemptBrokerUpgrade() }, [])
+
   return {
     accountLinked,
     connectAccount,
     disconnectAccount,
+    tryUpgradeToBroker,
     providerState,
     conflict,
     conflictCount,

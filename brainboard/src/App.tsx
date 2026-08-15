@@ -51,7 +51,7 @@ export default function App() {
         onPublishSelected={selectedIds.size > 0 ? handlePublishSelected : undefined}
         onOutline={() => setShowOutline(true)}
         onHelp={() => setShowHelp(true)}
-        onOpenBoards={() => setShowBoards(true)}
+        onOpenBoards={() => { drive.tryUpgradeToBroker(); setShowBoards(true) }}
       />
       <Canvas />
       <StatusBar />

@@ -408,6 +408,51 @@ export function hasCachedToken(): boolean {
   return cachedToken !== null && cachedToken.expiresAt > Date.now()
 }
 
+/* ── Opportunistic broker upgrade ────────────────────────────────────────
+ * A session that fell back to the implicit flow (broker was down/unconfigured
+ * at link time) has no refresh token and stays that way forever unless the
+ * user happens to go through an interactive re-link. This lets the app try
+ * for a refresh token without asking the user to reconnect: a cheap health
+ * check can run anytime (e.g. on page load), but the actual exchange needs
+ * requestCode()'s popup, which browsers only allow inside a real user
+ * gesture — so it has to ride one the app already has (e.g. the click that
+ * opens the Boards modal), not fire on its own from a timer or effect.
+ */
+
+let brokerHealthCache: boolean | null = null
+let upgradeAttempted = false
+
+export function isImplicitOnly(): boolean {
+  if (!cachedToken) cachedToken = readCachedToken()
+  return cachedToken !== null && cachedToken.expiresAt > Date.now() && !cachedToken.encryptedRefreshToken
+}
+
+// No user gesture involved — safe to call from an effect on mount/reconnect.
+export async function precheckBrokerHealth(): Promise<void> {
+  const brokerUrl = import.meta.env.VITE_AUTH_BROKER_URL
+  brokerHealthCache = brokerUrl ? await brokerHealthy(brokerUrl) : false
+}
+
+/*
+ * attemptBrokerUpgrade — MUST be called synchronously from within a user
+ * gesture handler (e.g. a button onClick), with nothing awaited beforehand
+ * that could consume the gesture. Silently no-ops unless we're actually
+ * stuck on implicit-only auth with a broker that just passed its health
+ * check, and only ever tries once per page load (repeated failures would
+ * otherwise mean a popup flash on every single click of the trigger).
+ */
+export function attemptBrokerUpgrade(): void {
+  if (upgradeAttempted) return
+  if (!isImplicitOnly() || brokerHealthCache !== true) return
+  if (!window.google?.accounts?.oauth2) return // GIS not loaded yet — try again on a later trigger
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  if (!clientId) return
+  upgradeAttempted = true
+  linkAccountViaBroker(clientId)
+    .then(() => console.info('Upgraded Google Drive connection to the auth broker.'))
+    .catch(err => console.warn('Opportunistic broker upgrade failed, staying on implicit auth.', err))
+}
+
 export function clearCachedToken(): void {
   cachedToken = null
   writeCachedToken(null)
