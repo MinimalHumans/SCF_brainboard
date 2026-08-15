@@ -166,7 +166,20 @@ function tryLoadConfig(): array
     if ($path === null) {
         return [null, 'config_missing'];
     }
-    $config = require $path;
+    // A syntax error in the config file surfaces as a ParseError thrown at
+    // this require — left uncaught, it would fall through to the top-level
+    // handler and come back as an undifferentiated internal_error, making a
+    // typo indistinguishable from every other kind of failure. Catching it
+    // here keeps the response codes leak-free (still no path/message from
+    // $e reaches the client) while giving 'config_parse_error' as a
+    // specific, actionable code — check the server's PHP error log (this
+    // logs $e's message there) for the exact line.
+    try {
+        $config = require $path;
+    } catch (Throwable $e) {
+        error_log('scriptyard-auth: config file failed to load: ' . $e->getMessage());
+        return [null, 'config_parse_error'];
+    }
     if (!is_array($config)) {
         return [null, 'config_invalid'];
     }

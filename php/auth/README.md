@@ -73,8 +73,15 @@ Nothing to upload by hand. The only manual, one-time step is the config file:
    ```
 
    Expect `{"status":"ok","config":true,...}`. If `config` is `false`, check
-   `config_error` (`config_missing` or `config_invalid`) and the file
-   location/permissions — the message never reveals the path it looked in.
+   `config_error`:
+   - `config_missing` — no file found at any searched location.
+   - `config_invalid` — a file was found and parsed, but a required key is
+     missing/empty or `encryption_key_hex` isn't 64 valid hex characters.
+   - `config_parse_error` — the file has a PHP syntax error (or throws while
+     evaluating). The exact message is logged server-side via `error_log()`,
+     not returned here — check the server's PHP error log for the line.
+
+   None of these ever reveal the path the broker looked in.
 
 `php/auth/README.md` and `php/auth/scriptyard-auth.config.php.example` (this
 file and its template) are deliberately *not* under `brainboard/public/` —
