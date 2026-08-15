@@ -119,6 +119,12 @@ jobs:
         env:
           VITE_APP_VERSION: dev
           VITE_BUILD_SHA: ${{ github.sha }}
+          # brainboard/public/auth/index.php ships automatically with every
+          # build (Vite copies public/ into dist/ verbatim, same as
+          # favicon.ico) and lands at <dev-site-root>/auth/index.php once
+          # deployed. This overrides brainboard/.env's prod broker URL so
+          # the dev build calls its own same-origin copy instead of prod's.
+          VITE_AUTH_BROKER_URL: https://dev.scriptyard.minimalhumans.com/auth/index.php
         run: npm run build
 
       - name: Zip dist directory

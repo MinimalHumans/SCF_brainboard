@@ -1,0 +1,47 @@
+<?php
+/**
+ * Scriptyard auth-broker config — TEMPLATE. Copy this file to a location
+ * OUTSIDE your web root, rename it to `scriptyard-auth.config.php`, and fill
+ * in real values. Never commit the filled-in copy.
+ *
+ * Where the broker (deployed at <site-root>/auth/index.php — source lives at
+ * brainboard/public/auth/index.php) looks for this file, in order:
+ *   1. Walking upward from its own directory toward the filesystem root,
+ *      skipping any directory that resolves inside $_SERVER['DOCUMENT_ROOT'].
+ *   2. $_SERVER['HOME'] or getenv('HOME') or posix_getpwuid()'s home dir,
+ *      as scriptyard-auth.config.php or .config/scriptyard/auth.config.php.
+ *
+ * On most shared hosts your account home is one or two levels above
+ * DOCUMENT_ROOT, so simply placing this file at ~/scriptyard-auth.config.php
+ * works without any web-server configuration.
+ *
+ * Generate encryption_key_hex with:
+ *   php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+ */
+
+return [
+    // From Google Cloud Console > APIs & Services > Credentials.
+    'google_client_id' => 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+    'google_client_secret' => 'YOUR_CLIENT_SECRET',
+
+    // 64 hex chars = 32 raw bytes, used as an AEAD key (XChaCha20-Poly1305 if
+    // libsodium is available, else AES-256-GCM). Rotating this invalidates
+    // every previously issued encrypted_refresh_token blob — clients will
+    // get invalid_payload and fall back to interactive consent.
+    'encryption_key_hex' => 'REPLACE_WITH_64_HEX_CHARS_FROM_random_bytes_32',
+
+    // Browser origins allowed to call this broker cross-origin. The main
+    // case — the deployed web app calling /auth/index.php on its own
+    // domain — is same-origin and never needs this list at all. It only
+    // matters for origins that are NOT scriptyard.minimalhumans.com: the
+    // local Vite dev server, the dev subdomain (which gets its own broker
+    // copy but is worth listing in case something ever calls across), and
+    // the Tauri desktop build (whose origin is something like
+    // tauri://localhost or https://tauri.localhost depending on platform —
+    // check the actual Origin header it sends).
+    'allowed_origins' => [
+        'http://localhost:5173', // local vite dev server
+        // 'https://dev.scriptyard.minimalhumans.com',
+        // 'tauri://localhost',
+    ],
+];
