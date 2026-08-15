@@ -67,13 +67,34 @@ jobs:
       - name: Trigger Deployment Webhook
         if: success() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
         run: |
-          curl --fail \
-            --retry 5 \
-            --retry-delay 10 \
-            --retry-all-errors \
-            -X POST \
-            -H "X-Deploy-Token: ${{ secrets.DEPLOY_SECRET }}" \
-            "${{ secrets.DEPLOY_WEBHOOK_URL }}"
+          max_attempts=5
+          delay=15
+          success=false
+          for attempt in $(seq 1 $max_attempts); do
+            if response=$(curl --fail -sS \
+                --retry 3 \
+                --retry-delay 5 \
+                --retry-all-errors \
+                -X POST \
+                -H "X-Deploy-Token: ${{ secrets.DEPLOY_SECRET }}" \
+                "${{ secrets.DEPLOY_WEBHOOK_URL }}"); then
+              if echo "$response" | grep -q "Successfully deployed"; then
+                echo "$response"
+                success=true
+                break
+              fi
+              echo "::warning::Attempt $attempt/$max_attempts: webhook responded but didn't confirm deployment (possibly a WAF/bot-check interstitial instead of the deploy script)."
+            else
+              echo "::warning::Attempt $attempt/$max_attempts: curl request to deploy webhook failed."
+            fi
+            [ "$attempt" -lt "$max_attempts" ] && sleep "$delay"
+          done
+          if [ "$success" != true ]; then
+            echo "::error::Deploy webhook never confirmed a successful deploy after $max_attempts attempts."
+            echo "Last response body:"
+            echo "$response"
+            exit 1
+          fi
 
       - name: Notify on failure
         if: failure()
@@ -149,10 +170,31 @@ jobs:
       - name: Trigger dev deployment webhook
         if: success() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
         run: |
-          curl --fail \
-            --retry 5 \
-            --retry-delay 10 \
-            --retry-all-errors \
-            -X POST \
-            -H "X-Deploy-Token: ${{ secrets.DEV_DEPLOY_SECRET }}" \
-            "${{ secrets.DEPLOY_WEBHOOK_URL }}?env=dev"
+          max_attempts=5
+          delay=15
+          success=false
+          for attempt in $(seq 1 $max_attempts); do
+            if response=$(curl --fail -sS \
+                --retry 3 \
+                --retry-delay 5 \
+                --retry-all-errors \
+                -X POST \
+                -H "X-Deploy-Token: ${{ secrets.DEV_DEPLOY_SECRET }}" \
+                "${{ secrets.DEPLOY_WEBHOOK_URL }}?env=dev"); then
+              if echo "$response" | grep -q "Successfully deployed"; then
+                echo "$response"
+                success=true
+                break
+              fi
+              echo "::warning::Attempt $attempt/$max_attempts: webhook responded but didn't confirm deployment (possibly a WAF/bot-check interstitial instead of the deploy script)."
+            else
+              echo "::warning::Attempt $attempt/$max_attempts: curl request to deploy webhook failed."
+            fi
+            [ "$attempt" -lt "$max_attempts" ] && sleep "$delay"
+          done
+          if [ "$success" != true ]; then
+            echo "::error::Deploy webhook never confirmed a successful deploy after $max_attempts attempts."
+            echo "Last response body:"
+            echo "$response"
+            exit 1
+          fi
