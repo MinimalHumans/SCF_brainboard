@@ -1,3 +1,5 @@
+import { toast } from '@/store/toastStore'
+
 const GIS_SRC = 'https://accounts.google.com/gsi/client'
 const SCOPE    = 'https://www.googleapis.com/auth/drive.appdata'
 // Reacquire a bit before actual expiry so a check-in-flight never races real expiration.
@@ -5,6 +7,10 @@ const EXPIRY_SAFETY_MARGIN_MS = 60_000
 // Broker calls must fail fast — a hung/unreachable auth server should never
 // stall the UI longer than this before we fall back to the no-broker path.
 const BROKER_TIMEOUT_MS = 5_000
+// Shorter budget for the pre-link health precheck — it gates whether we
+// bother showing the broker's popup at all, so it must resolve well before
+// a user would notice a delay in clicking "Connect".
+const BROKER_HEALTH_TIMEOUT_MS = 2_000
 
 interface TokenResponse {
   access_token: string
@@ -138,42 +144,70 @@ class BrokerAuthError extends Error {
   }
 }
 
+/*
+ * brokerHealthy — best-effort GET ?action=health precheck, used only before
+ * the INTERACTIVE link flow. Its one job is to keep the common failure mode
+ * (broker unconfigured/unreachable) from being discovered only after the
+ * user has already clicked through one Google consent popup and is then hit
+ * with a second, unexplained one for the implicit-flow fallback. A cheap GET
+ * with no popup attached can run first and route straight to the implicit
+ * flow instead. Doesn't eliminate the double popup entirely — the broker can
+ * still fail between this check and the real exchange — just the common case.
+ */
+async function brokerHealthy(brokerUrl: string): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), BROKER_HEALTH_TIMEOUT_MS)
+  try {
+    const res = await fetch(`${brokerUrl}?action=health`, { method: 'GET', signal: controller.signal })
+    if (!res.ok) return false
+    const body = (await res.json()) as { config?: unknown }
+    return body.config === true
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function brokerFetch(action: 'exchange' | 'refresh', params: Record<string, string>): Promise<Record<string, unknown>> {
   const brokerUrl = import.meta.env.VITE_AUTH_BROKER_URL
   if (!brokerUrl) throw new BrokerUnavailableError('Auth broker is not configured')
 
+  // Keeps the abort armed across both the fetch() call and the res.json()
+  // body read — clearing it as soon as fetch() resolves (headers received)
+  // would leave a stalled-body response with no timeout at all.
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), BROKER_TIMEOUT_MS)
-  let res: Response
   try {
-    res = await fetch(brokerUrl, {
+    const res = await fetch(brokerUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ action, ...params }),
       signal: controller.signal,
     })
+
+    // 5xx = broker/server trouble, not a verdict on the request — treat like unreachable.
+    if (res.status >= 500) throw new BrokerUnavailableError(`Broker returned HTTP ${res.status}`)
+
+    let body: unknown
+    try {
+      body = await res.json()
+    } catch {
+      throw new BrokerUnavailableError('Broker returned a non-JSON response')
+    }
+    const parsed = (body ?? {}) as Record<string, unknown>
+
+    if (!res.ok) {
+      const code = typeof parsed.error === 'string' ? parsed.error : 'broker_error'
+      throw new BrokerAuthError(code, typeof parsed.error_description === 'string' ? parsed.error_description : '')
+    }
+    return parsed
   } catch (err) {
+    if (err instanceof BrokerUnavailableError || err instanceof BrokerAuthError) throw err
     throw new BrokerUnavailableError(err instanceof Error ? err.message : 'Broker request failed')
   } finally {
     clearTimeout(timer)
   }
-
-  // 5xx = broker/server trouble, not a verdict on the request — treat like unreachable.
-  if (res.status >= 500) throw new BrokerUnavailableError(`Broker returned HTTP ${res.status}`)
-
-  let body: unknown
-  try {
-    body = await res.json()
-  } catch {
-    throw new BrokerUnavailableError('Broker returned a non-JSON response')
-  }
-  const parsed = (body ?? {}) as Record<string, unknown>
-
-  if (!res.ok) {
-    const code = typeof parsed.error === 'string' ? parsed.error : 'broker_error'
-    throw new BrokerAuthError(code, typeof parsed.error_description === 'string' ? parsed.error_description : '')
-  }
-  return parsed
 }
 
 function cacheFromBrokerResult(result: Record<string, unknown>, fallbackRefreshBlob?: string): string {
@@ -289,12 +323,16 @@ function requiredClientId(): string {
 /*
  * requestAccessToken — public entry point used throughout the sync layer.
  *
- *   prompt: 'consent'  Interactive link. Tries the broker-backed
- *                       authorization-code flow first (so future renewals
- *                       can be silent even across FedCM/3P-cookie
- *                       restrictions); if the broker is unconfigured,
- *                       unreachable, or errors, falls back to the plain
- *                       implicit consent popup so linking still succeeds.
+ *   prompt: 'consent'  Interactive link. Precedes the broker's own popup
+ *                       with a cheap health check so an unconfigured/
+ *                       unreachable broker (the common case, e.g. before the
+ *                       one-time server-side config exists) is routed
+ *                       straight to the plain implicit consent popup —
+ *                       just one popup, not two. If the health check passes
+ *                       but the broker still fails during the real exchange
+ *                       (rarer — e.g. it goes down in that exact window),
+ *                       falls back to the implicit popup same as before,
+ *                       with a toast since the user already saw one popup.
  *   prompt: ''          Silent reacquire. Only ever used directly as a
  *                       fallback from getValidAccessToken below, or by a
  *                       caller that already knows no broker renewal path
@@ -305,11 +343,21 @@ export async function requestAccessToken(opts: { prompt: 'consent' | '' }): Prom
   const clientId = requiredClientId()
 
   if (opts.prompt === 'consent') {
+    const brokerUrl = import.meta.env.VITE_AUTH_BROKER_URL
+    if (!brokerUrl || !(await brokerHealthy(brokerUrl))) {
+      if (brokerUrl) console.warn('Auth broker failed health check, using the plain implicit consent flow.')
+      return await requestAccessTokenImplicit(clientId, opts)
+    }
+
     try {
       return await linkAccountViaBroker(clientId)
     } catch (err) {
       if (err instanceof BrokerUnavailableError || err instanceof BrokerAuthError) {
         console.warn('Auth broker unavailable for interactive link, falling back to implicit flow.', err)
+        // The user already completed one Google popup (requestAuthorizationCode)
+        // by the time we get here — the implicit-flow fallback below shows a
+        // second one. Without this, that second prompt looks like a glitch.
+        toast.info('Reconnecting to Google — you may see a second sign-in prompt.')
         return await requestAccessTokenImplicit(clientId, opts)
       }
       throw err

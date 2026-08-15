@@ -146,6 +146,50 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
   const trashedBoardCount    = trashedItemsOf(boards, 'board').length
   const trashedTemplateCount = trashedItemsOf(boards, 'template').length
 
+  // Cross-tab "needs attention" summary — a conflict/error can land on a
+  // board that's on whichever tab the user *isn't* looking at (a template
+  // while they're on Saved Boards, or vice versa), so this can't be a
+  // per-tab thing; it has to surface regardless of outerTab/trashKind or it
+  // goes right back to being an invisible toolbar dot. Trashed boards are
+  // deliberately excluded — there's no resolution path for them yet (see
+  // SyncIndicator, which TrashView doesn't render at all).
+  //
+  // "Sticky" rather than a plain derived filter: opening this modal triggers
+  // syncAllBoards() above, which re-syncs every already-linked board —
+  // including ones already sitting in conflict/error. That flips lastStatus
+  // to 'syncing' for the duration, which would otherwise make the banner
+  // disappear and (once reconcile re-detects the same conflict) reappear a
+  // moment later. A board already flagged stays flagged through a 'syncing'
+  // pass; it only clears once reconcile reports back with a real verdict
+  // other than the three issue statuses.
+  const [stickyAttentionIds, setStickyAttentionIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    // Genuinely needs an effect, not a render-time derivation: the sticky
+    // set depends on its OWN previous value (a board flagged before a
+    // resync starts must stay flagged through the 'syncing' pass), which a
+    // pure function of (boards, syncBoards) alone can't express.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStickyAttentionIds(prev => {
+      const next = new Set(prev)
+      for (const b of boards) {
+        const state = syncBoards[b.boardId]?.[PROVIDER_ID]
+        if (b.trashed || !state?.linked) { next.delete(b.boardId); continue }
+        if (state.lastStatus === 'conflict' || state.lastStatus === 'deleted-remote' || state.lastStatus === 'error') {
+          next.add(b.boardId)
+        } else if (state.lastStatus !== 'syncing') {
+          next.delete(b.boardId)
+        }
+      }
+      return next
+    })
+  }, [boards, syncBoards])
+
+  const attentionItems = drive.accountLinked
+    ? boards
+        .filter(b => stickyAttentionIds.has(b.boardId))
+        .map(b => ({ board: b, state: syncBoards[b.boardId]?.[PROVIDER_ID] ?? getProviderState(b.boardId, PROVIDER_ID) }))
+    : []
+
   const startRename = (b: BoardSummary) => {
     setEditingId(b.boardId)
     setEditingValue(b.name)
@@ -354,6 +398,31 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
           </button>
         </div>
 
+        {/* Cross-tab attention banner — see attentionItems above for why this
+            can't live inside just the Saved Boards or Templates body. */}
+        {attentionItems.length > 0 && (
+          <div className={styles.attentionBanner}>
+            <span className={styles.attentionIcon} aria-hidden="true">⚠</span>
+            <span className={styles.attentionTitle}>
+              {attentionItems.length === 1 ? '1 item needs attention:' : `${attentionItems.length} items need attention:`}
+            </span>
+            <div className={styles.attentionChips}>
+              {attentionItems.map(({ board, state }) => (
+                <button
+                  key={board.boardId}
+                  type="button"
+                  className={styles.attentionChip}
+                  onClick={() => handleResolve(board)}
+                  title={`${state.lastStatus === 'error' ? (state.lastError ?? SYNC_STATUS_LABEL.error) : SYNC_STATUS_LABEL[state.lastStatus]} — click to resolve`}
+                >
+                  {board.name}
+                  {board.kind === 'template' && <span className={styles.attentionChipTag}>Template</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {trashKind ? (
           <TrashView kind={trashKind} library={library} drive={drive} onBack={() => setTrashKind(null)} />
         ) : outerTab === 'boards' ? (
@@ -545,6 +614,9 @@ export function BoardsModal({ onClose, library, drive }: BoardsModalProps) {
                           onNew={handleUserNewBoard}
                           onMerge={handleUserMerge}
                           onOpenMenu={(x, y) => setTemplateMenu({ boardId: t.boardId, x, y })}
+                          driveState={syncBoards[t.boardId]?.[PROVIDER_ID] ?? getProviderState(t.boardId, PROVIDER_ID)}
+                          accountLinked={drive.accountLinked}
+                          onResolve={() => handleResolve(t)}
                         />
                       ))}
                     </div>
@@ -684,7 +756,7 @@ function DefaultCard({ t, onNew, onMerge }: {
 
 function UserCard({
   t, isEditing, editingValue, onEditingValueChange, onCommitRename, onCancelRename,
-  onNew, onMerge, onOpenMenu,
+  onNew, onMerge, onOpenMenu, driveState, accountLinked, onResolve,
 }: {
   t:        BoardSummary
   isEditing: boolean
@@ -695,6 +767,9 @@ function UserCard({
   onNew:    (t: BoardSummary) => void
   onMerge:  (t: BoardSummary) => void
   onOpenMenu: (x: number, y: number) => void
+  driveState:    ProviderSyncState
+  accountLinked: boolean
+  onResolve:     () => void
 }) {
   const savedDate = new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   const cards     = t.cardCount ?? 0
@@ -718,6 +793,7 @@ function UserCard({
         ) : (
           <span className={styles.cardName}>{t.name}</span>
         )}
+        <SyncIndicator driveState={driveState} accountLinked={accountLinked} onResolve={onResolve} />
         <button
           type="button"
           className={styles.kebabBtn}

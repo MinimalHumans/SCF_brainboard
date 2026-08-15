@@ -154,6 +154,66 @@
 
 .tabFlex { flex: 1; }
 
+/* ── Cross-tab attention banner — a conflict/error can sit on a board from
+   whichever tab isn't currently open, so this renders above both tab bodies
+   rather than inside either one. ─────────────────────────────────────────── */
+
+.attentionBanner {
+  display:          flex;
+  align-items:      center;
+  flex-wrap:        wrap;
+  gap:              var(--space-2);
+  padding:          var(--space-2) var(--space-6);
+  background-color: var(--color-status-error-surface);
+  border-bottom:    1px solid var(--color-border);
+  flex-shrink:      0;
+}
+
+.attentionIcon {
+  font-size: var(--text-sm);
+  color:     var(--color-status-error);
+}
+
+.attentionTitle {
+  font-family: var(--font-ui);
+  font-size:   var(--text-sm);
+  font-weight: var(--weight-medium);
+  color:       var(--color-status-error);
+  flex-shrink: 0;
+}
+
+.attentionChips {
+  display:  flex;
+  flex-wrap: wrap;
+  gap:      var(--space-2);
+}
+
+.attentionChip {
+  display:          flex;
+  align-items:      center;
+  gap:              var(--space-1);
+  padding:          2px var(--space-2);
+  font-family:      var(--font-ui);
+  font-size:        var(--text-xs);
+  color:            var(--color-status-error);
+  background-color: var(--color-surface-overlay);
+  border:           1px solid var(--color-status-error);
+  border-radius:    var(--radius-full);
+  cursor:           pointer;
+  transition:       background-color var(--duration-fast) var(--easing-out);
+}
+.attentionChip:hover { background-color: var(--color-status-error-surface); }
+
+.attentionChipTag {
+  padding:          0 4px;
+  font-size:        var(--text-2xs);
+  font-weight:      var(--weight-bold);
+  text-transform:   uppercase;
+  color:            var(--color-text-muted);
+  background-color: var(--color-surface-raised);
+  border-radius:    var(--radius-sm);
+}
+
 /* Only .listScroll (below) scrolls — New/Import above and the cloud-sync
    row below always stay visible regardless of how many boards there are. */
 .body {
